@@ -1,0 +1,52 @@
+[
+  {
+    "id": "3f1a7c58-9d2e-4b16-8a54-0c7e2b91d4f3",
+    "slug": "paediatrics",
+    "name": "Paediatrics Department",
+    "family": "women_and_children",
+    "short_description": null,
+    "featured_image": null,
+    "order": 1,
+    "published": true
+  },
+  {
+    "id": "6c84b2d1-5e73-4a08-9f21-8b3d5e07a2c6",
+    "slug": "obstetrics-and-gynaecology",
+    "name": "Obstetrics & Gynaecology",
+    "family": "women_and_children",
+    "short_description": null,
+    "featured_image": null,
+    "order": 2,
+    "published": true
+  },
+  {
+    "id": "a27e9f04-3b61-4d95-8c72-1e5a8d43b0f7",
+    "slug": "lily-fertility-clinic",
+    "name": "Paelon Lily Fertility Clinic",
+    "family": "specialist",
+    "short_description": null,
+    "featured_image": null,
+    "order": 3,
+    "published": true
+  },
+  {
+    "id": "d54c1b87-2a49-4e36-b018-7f9c3a56e2d1",
+    "slug": "general-practice",
+    "name": "General Practice",
+    "family": "family_healthcare",
+    "short_description": null,
+    "featured_image": null,
+    "order": 4,
+    "published": true
+  },
+  {
+    "id": "09b3e6a2-7c15-42d8-9e64-3a1f8c07b5e9",
+    "slug": "family-health",
+    "name": "Family Health",
+    "family": "family_healthcare",
+    "short_description": null,
+    "featured_image": null,
+    "order": 5,
+    "published": true
+  }
+]

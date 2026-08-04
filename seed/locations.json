@@ -1,0 +1,17 @@
+[
+  {
+    "id": "2b6a1e94-8f57-4d03-a6c1-7e94b520fd83",
+    "slug": "victoria-island",
+    "name": "Victoria Island",
+    "address_line_1": "Plot 12, Admiralty Way",
+    "address_line_2": null,
+    "city": "Victoria Island",
+    "state": "Lagos",
+    "country": "Nigeria",
+    "phone": "+234 1234 5678",
+    "whatsapp": null,
+    "emergency_line": "+234 1234 5678",
+    "order": 1,
+    "published": true
+  }
+]
