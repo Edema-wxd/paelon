@@ -1,0 +1,50 @@
+[
+  {
+    "id": "5e2c8a41-b073-49df-816c-2a7e94d05b38",
+    "slug": "axa-mansard",
+    "name": "AXA Mansard",
+    "logo": null,
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 1,
+    "published": true
+  },
+  {
+    "id": "c8140b96-7d3a-4e25-91f8-0b6c5a2e83d4",
+    "slug": "leadway",
+    "name": "Leadway",
+    "logo": null,
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 2,
+    "published": true
+  },
+  {
+    "id": "e30f5c72-186b-4a9d-b452-9c78e1a06f2b",
+    "slug": "avon",
+    "name": "Avon",
+    "logo": null,
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 3,
+    "published": true
+  },
+  {
+    "id": "7a92d4e5-4c81-4b60-a3f7-58e2b9c14d06",
+    "slug": "cigna",
+    "name": "Cigna",
+    "logo": null,
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 4,
+    "published": true
+  }
+]

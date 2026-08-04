@@ -1,34 +1,160 @@
 @import "tailwindcss";
 
 /*
- * TODO(brand): tokens below are scaffold placeholders, not Paelon's brand.
- * Section 4 of the spec ships with an empty colour block — do not invent hex
- * values. Fill in primary / primary-dark / accent / emergency-red /
- * background / surface / text-primary / text-muted / border / success /
- * warning once Francis supplies them, then add the type scale and radius
- * scale alongside.
+ * Brand tokens.
+ *
+ * TODO(design): these hex values were extracted from the Figma HTML export
+ * (style.css), not from a confirmed brand sheet. Spec §4 still ships an empty
+ * colour block. Francis to confirm before launch.
+ *
+ * TODO(design): no dark-surface treatment is specified yet (spec §4, §18).
+ * The site is deliberately light-only until Francis supplies the dark palette
+ * — inventing one would put unapproved colour on a hospital site.
  */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --brand-navy: #223645;
+  --brand-maroon: #a02b3e;
+  --brand-cream: #f9f7f2;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: var(--brand-cream);
+  --foreground: #000000;
+
+  --surface: #ffffff;
+  --surface-foreground: #000000;
+
+  /* shadcn semantic layer, mapped onto the brand */
+  --card: var(--surface);
+  --card-foreground: var(--surface-foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--surface-foreground);
+
+  --primary: var(--brand-navy);
+  --primary-foreground: var(--brand-cream);
+
+  --accent: var(--brand-maroon);
+  --accent-foreground: var(--brand-cream);
+
+  --secondary: #eeebe3;
+  --secondary-foreground: var(--brand-navy);
+
+  /* Neutral hover/rest surface. Kept distinct from --accent so shadcn's
+     ghost/outline hovers do not fill with brand maroon. */
+  --muted: #eeebe3;
+  --muted-foreground: #5c5c5c;
+
+  --destructive: #b3261e;
+
+  --border: #ddd8cc;
+  --input: #ddd8cc;
+  --ring: var(--brand-maroon);
+
+  --radius: 0.5rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-maroon: var(--brand-maroon);
+  --color-brand-cream: var(--brand-cream);
+
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /*
+   * Typography. Spec §4 locks the family to Neo Tech.
+   *
+   * TODO(brand): the .woff2 files have not been delivered (spec §18), so the
+   * fallback stack is doing the work. Swap in next/font/local once they land.
+   *
+   * TODO(design): the Figma export sets the hero headline in
+   * PlusJakartaSans-Bold, which is not in spec §4. Not implemented — a second
+   * typeface is Francis's call, not a silent addition.
+   */
   --font-sans: "Neo Tech", ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 12px;
+  --text-xs--line-height: 1.4;
+  --text-sm: 14px;
+  --text-sm--line-height: 1.5;
+  --text-base: 16px;
+  --text-base--line-height: 1.6;
+  --text-lg: 18px;
+  --text-lg--line-height: 1.6;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.5;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 1.4;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 1.3;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 1.2;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 1.1;
+  --text-6xl: 60px;
+  --text-6xl--line-height: 1.05;
+
+  /*
+   * Radius scale is locked by spec §4 to sm/md/lg/xl/full.
+   *
+   * TODO(design): the Figma export uses 20px and 50px radii, which are not on
+   * this scale. They are mapped down to lg (12px) and xl (16px) here. The 50px
+   * cards read noticeably softer in the mock than xl does — Francis to confirm
+   * whether to keep the locked scale or extend it.
+   */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Spec §4: no shadow above lg. The blue tint is carried over from the Figma
+     export (rgba(0,45,114,…)) rather than a neutral black. */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 45, 114, 0.12);
+  --shadow-md: 0 2px 8px 0 rgba(0, 45, 114, 0.16);
+  --shadow-lg: 0 4px 20px 0 rgba(0, 45, 114, 0.22);
+
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: ease-out;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Spec §12: focus rings stay visible and on-brand. Never remove these. */
+:focus-visible {
+  outline: 2px solid var(--brand-maroon);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
