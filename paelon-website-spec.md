@@ -73,7 +73,7 @@ Every technology below is locked. Do not substitute without asking.
 |---|---|---|
 | Framework | Next.js 15 (App Router) | Server components by default; use client components only when necessary. |
 | Language | TypeScript (strict mode) | No `any` without a comment explaining why. |
-| Styling | Tailwind CSS + shadcn/ui | shadcn components copied into the repo, not imported as a package. |
+| Styling | Tailwind CSS v4 + shadcn/ui | CSS-first config. Theme tokens live in `styles/globals.css` under `@theme`; there is no `tailwind.config.ts`. shadcn components copied into the repo, not imported as a package. |
 | Package manager | npm | Not pnpm, not yarn. Lockfile committed. |
 | Node version | 22 LTS | Specify in `.nvmrc` and `package.json` engines field. |
 | Database | Neon (Postgres) | Serverless Postgres. Move to self-hosted post-launch. |
@@ -179,7 +179,8 @@ clsx tailwind-merge
 ├── .nvmrc
 ├── package.json
 ├── tsconfig.json
-├── tailwind.config.ts
+├── postcss.config.mjs
+├── eslint.config.mjs
 ├── drizzle.config.ts
 ├── next.config.ts
 └── README.md
@@ -271,7 +272,7 @@ Success:        <hex>
 Warning:        <hex>
 ```
 
-Configure these as Tailwind theme extensions and expose as CSS variables so they can be referenced from arbitrary components.
+Declare these in the `@theme` block in `styles/globals.css`. Tailwind v4 emits each one as a real CSS variable automatically, so they can be referenced from arbitrary components as well as via utility classes. The type scale and radius scale below go in the same block.
 
 ### Spacing scale
 
@@ -1035,7 +1036,7 @@ npm run dev
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "db:generate": "drizzle-kit generate",
@@ -1156,4 +1157,9 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
 
 ---
 
-*Prepared by VARYN Studio. Built Right. Built For You. Last updated: July 2026.*
+*Prepared by VARYN Studio. Built Right. Built For You. Last updated: August 2026.*
+
+**Amendments since 1.0**
+
+- Tailwind pinned to v4 (CSS-first). `tailwind.config.ts` removed from §3; brand tokens now declared in `styles/globals.css` under `@theme` per §4.
+- `lint` script is `eslint`, not `next lint` — the latter is deprecated in Next 15.5 and removed in 16.
