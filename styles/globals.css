@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/*
+ * TODO(brand): tokens below are scaffold placeholders, not Paelon's brand.
+ * Section 4 of the spec ships with an empty colour block — do not invent hex
+ * values. Fill in primary / primary-dark / accent / emergency-red /
+ * background / surface / text-primary / text-muted / border / success /
+ * warning once Francis supplies them, then add the type scale and radius
+ * scale alongside.
+ */
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Neo Tech", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

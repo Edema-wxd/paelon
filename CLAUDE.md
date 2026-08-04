@@ -26,7 +26,9 @@ Phase 1 reads content from `/seed/*.json`. There is no CMS dependency for launch
 
 ## Stack — locked, do not substitute without asking
 
-Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind + shadcn/ui · npm · Node 22 LTS · Neon Postgres · Drizzle ORM · Auth.js v5 (Phase 2) · UploadThing · Resend (optional) · Umami · Vercel
+Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind v4 + shadcn/ui · npm · Node 22 LTS · Neon Postgres · Drizzle ORM · Auth.js v5 (Phase 2) · UploadThing · Resend (optional) · Umami · Vercel
+
+Tailwind is **v4, CSS-first**. Theme tokens go in the `@theme` block in `styles/globals.css` — there is no `tailwind.config.ts` and one should not be added.
 
 **Never install:** any UI kit other than shadcn/ui · any state management library · any CSS-in-JS · any date library beyond `date-fns` · any HTTP client (use native `fetch`).
 
@@ -106,14 +108,14 @@ Lighthouse mobile Perf ≥ 90 · A11y ≥ 95 · SEO ≥ 95 · Best Practices 100
 ```bash
 npm install
 cp .env.example .env.local     # then fill in
-npm run db:push                # Drizzle schema → Neon
-npm run db:seed
 npm run dev
 
 npm run typecheck              # tsc --noEmit
-npm run lint
-npm run test                   # vitest
+npm run lint                   # eslint (not `next lint` — deprecated in 15.5)
+npm run build
 ```
+
+Not wired yet — these arrive with their packages, which need approval first (§16): `db:push`, `db:seed`, `db:generate`, `db:studio` (drizzle-kit + tsx), `test` (vitest), `format` (prettier).
 
 Run typecheck and tests after every meaningful change. Every env var goes in `.env.example` (§14).
 
