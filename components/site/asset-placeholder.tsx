@@ -11,6 +11,12 @@ interface AssetPlaceholderProps {
    * `alt=""` they will carry once swapped for `next/image`.
    */
   decorative?: boolean;
+  /**
+   * Render the tinted block without the icon and caption. For placeholders
+   * that sit behind text, where the caption shows through the overlay and
+   * reads as a rendering artifact rather than a pending image.
+   */
+  bare?: boolean;
 }
 
 /**
@@ -25,6 +31,7 @@ export function AssetPlaceholder({
   label,
   className,
   decorative = false,
+  bare = false,
 }: AssetPlaceholderProps) {
   return (
     <div
@@ -36,8 +43,12 @@ export function AssetPlaceholder({
         ? { "aria-hidden": true }
         : { role: "img", "aria-label": `Placeholder: ${label}` })}
     >
-      <ImageIcon className="size-6 text-muted-foreground" aria-hidden />
-      <span className="text-xs text-muted-foreground">{label}</span>
+      {bare ? null : (
+        <>
+          <ImageIcon className="size-6 text-muted-foreground" aria-hidden />
+          <span className="text-xs text-muted-foreground">{label}</span>
+        </>
+      )}
     </div>
   );
 }

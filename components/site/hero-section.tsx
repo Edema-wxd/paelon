@@ -20,6 +20,7 @@ export function HeroSection() {
         label="Hero photograph"
         className="absolute inset-0 h-full w-full rounded-none"
         decorative
+        bare
       />
 
       {/* The export washes the photo with a 50% white veil so the copy stays
@@ -47,7 +48,7 @@ export function HeroSection() {
           expertise wrapped in compassionate care.
         </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+        <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row">
           <Button asChild size="pill" className="w-full sm:w-50">
             <Link href="/book">Book Appointment</Link>
           </Button>
@@ -61,11 +62,15 @@ export function HeroSection() {
             TODO(design): "Our Specialists" has no route in spec §6; points at
             /services. See nav-items.ts.
           */}
+          {/* Shrink-to-content and centred on mobile. Stacked at equal full
+              width, the outline treatment alone was not enough to stop these
+              reading as two co-equal CTAs, which spec §6 explicitly does not
+              want. */}
           <Button
             asChild
             variant="outline"
             size="pill"
-            className="w-full sm:w-50"
+            className="self-center px-8 sm:w-50 sm:self-auto sm:px-0"
           >
             <Link href="/services">Our Specialists</Link>
           </Button>

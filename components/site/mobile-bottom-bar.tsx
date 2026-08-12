@@ -26,7 +26,11 @@ export function MobileBottomBar() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface lg:hidden">
-      <nav aria-label="Quick actions" className="mx-auto flex max-w-md">
+      {/* No max-width: capping this at 448px pinned the three tiles to a
+          centred island inside a full-width bar on any viewport between 448px
+          and the lg breakpoint — large phones in landscape, foldables, small
+          tablets — leaving white gutters either side. */}
+      <nav aria-label="Quick actions" className="flex">
         <a
           href={toTelHref(location.emergency_line)}
           className={`${tile} text-accent`}

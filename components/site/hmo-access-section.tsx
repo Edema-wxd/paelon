@@ -51,7 +51,11 @@ export function HmoAccessSection() {
             Some of the HMOs we work with include
           </h3>
 
-          <ul className="mt-6 flex flex-wrap items-center gap-8">
+          {/* A grid, not flex-wrap: fixed 176px logo widths against ~310px of
+              usable mobile width fitted one per row, stranding each logo in a
+              left-aligned column and turning four providers into ~800px of
+              scroll. Fluid columns keep the strip compact at every width. */}
+          <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8">
             {hmos.map((hmo) => (
               <li key={hmo.id}>
                 {/* TODO(asset): HMO logos were not delivered. The provider name
@@ -59,7 +63,7 @@ export function HmoAccessSection() {
                     accessible text once the logo replaces it. */}
                 <AssetPlaceholder
                   label={`${hmo.name} logo`}
-                  className="h-20 w-44 rounded-md"
+                  className="h-20 w-full rounded-md"
                 />
               </li>
             ))}

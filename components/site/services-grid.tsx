@@ -38,11 +38,14 @@ export function ServicesGrid() {
           </p>
         </div>
 
-        <ul className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-3">
+        {/* Cards are 78vw rather than 85vw so the next one intrudes ~45px into
+            the viewport — at 85vw the peek was under 20px and nothing
+            signalled that four more cards existed. */}
+        <ul className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible">
           {services.map((service) => (
             <li
               key={service.id}
-              className="w-[85vw] shrink-0 snap-start sm:w-96 lg:w-auto"
+              className="w-[78vw] shrink-0 snap-start sm:w-96 lg:w-auto"
             >
               <Link
                 href={`/services/${service.slug}`}

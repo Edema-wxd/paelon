@@ -93,8 +93,17 @@ export function NewsletterSignup() {
             onSubmit={handleSubmit(onSubmit)}
             className="mx-auto mt-10 max-w-2xl"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="flex-1">
+            {/*
+              DOM order is email → consent → submit, which is the order the
+              form should be completed in and the order it is tabbed in. On
+              `sm` and up the flex `order` utilities lift the button up beside
+              the input (the Figma desktop layout) and let the full-width
+              consent row wrap beneath. Stacked on mobile the source order
+              stands, so the required consent box can no longer end up below
+              the submit button where nobody sees it before tapping.
+            */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start">
+              <div className="order-1 flex-1">
                 <label htmlFor="newsletter-email" className="sr-only">
                   Your email address
                 </label>
@@ -120,46 +129,46 @@ export function NewsletterSignup() {
                 ) : null}
               </div>
 
+              <div className="order-2 flex w-full items-start gap-3 sm:order-3 sm:mt-2">
+                <input
+                  id="newsletter-consent"
+                  type="checkbox"
+                  className="mt-0.5 size-5 shrink-0 accent-accent"
+                  aria-invalid={Boolean(errors.consent_ndpr)}
+                  aria-describedby={
+                    errors.consent_ndpr ? "newsletter-consent-error" : undefined
+                  }
+                  {...register("consent_ndpr")}
+                />
+                <div>
+                  <label htmlFor="newsletter-consent" className="text-sm">
+                    I agree that Paelon Memorial Hospital may email me updates,
+                    and I have read the{" "}
+                    <Link
+                      href="/privacy"
+                      className="underline underline-offset-4 hover:no-underline"
+                    >
+                      privacy policy
+                    </Link>
+                    .
+                  </label>
+                  {errors.consent_ndpr ? (
+                    <p id="newsletter-consent-error" className="mt-1 text-sm">
+                      {errors.consent_ndpr.message}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 variant="accent"
                 size="pill"
                 disabled={status === "submitting"}
-                className="w-full sm:w-50"
+                className="order-3 w-full sm:order-2 sm:w-50"
               >
                 {status === "submitting" ? "Subscribing…" : "Subscribe Now"}
               </Button>
-            </div>
-
-            <div className="mt-6 flex items-start gap-3">
-              <input
-                id="newsletter-consent"
-                type="checkbox"
-                className="mt-1 size-4 shrink-0 accent-accent"
-                aria-invalid={Boolean(errors.consent_ndpr)}
-                aria-describedby={
-                  errors.consent_ndpr ? "newsletter-consent-error" : undefined
-                }
-                {...register("consent_ndpr")}
-              />
-              <div>
-                <label htmlFor="newsletter-consent" className="text-sm">
-                  I agree that Paelon Memorial Hospital may email me updates,
-                  and I have read the{" "}
-                  <Link
-                    href="/privacy"
-                    className="underline underline-offset-4 hover:no-underline"
-                  >
-                    privacy policy
-                  </Link>
-                  .
-                </label>
-                {errors.consent_ndpr ? (
-                  <p id="newsletter-consent-error" className="mt-1 text-sm">
-                    {errors.consent_ndpr.message}
-                  </p>
-                ) : null}
-              </div>
             </div>
 
             {/* Spec §12: form outcomes are announced, not just recoloured. */}
