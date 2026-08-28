@@ -35,7 +35,15 @@ export function NewsletterSignup() {
     formState: { errors },
   } = useForm<NewsletterInput>({
     resolver: zodResolver(newsletterSchema),
-    defaultValues: { email: "", consent_ndpr: false as unknown as true },
+    defaultValues: {
+      email: "",
+      // `literal(true)` types the field as `true`, but an unticked box must
+      // start as false so consent is never pre-given. The cast is the narrow
+      // cost of that guarantee.
+      consentNdpr: false as unknown as true,
+      website: "",
+      formRenderedAt: Date.now(),
+    },
   });
 
   async function onSubmit(values: NewsletterInput) {
@@ -94,6 +102,25 @@ export function NewsletterSignup() {
             className="mx-auto mt-10 max-w-2xl"
           >
             {/*
+              Honeypot. Hidden from sighted users and from assistive tech, and
+              never focusable, so no real person can fill it in — a non-empty
+              value means a bot, and the server discards the submission while
+              still returning success. Preferred over a CAPTCHA, which costs
+              accessibility and performance (spec §12/§13).
+            */}
+            <div className="hidden" aria-hidden="true">
+              <label htmlFor="newsletter-website">Leave this field empty</label>
+              <input
+                id="newsletter-website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                {...register("website")}
+              />
+            </div>
+            <input type="hidden" {...register("formRenderedAt", { valueAsNumber: true })} />
+
+            {/*
               DOM order is email → consent → submit, which is the order the
               form should be completed in and the order it is tabbed in. On
               `sm` and up the flex `order` utilities lift the button up beside
@@ -134,11 +161,11 @@ export function NewsletterSignup() {
                   id="newsletter-consent"
                   type="checkbox"
                   className="mt-0.5 size-5 shrink-0 accent-accent"
-                  aria-invalid={Boolean(errors.consent_ndpr)}
+                  aria-invalid={Boolean(errors.consentNdpr)}
                   aria-describedby={
-                    errors.consent_ndpr ? "newsletter-consent-error" : undefined
+                    errors.consentNdpr ? "newsletter-consent-error" : undefined
                   }
-                  {...register("consent_ndpr")}
+                  {...register("consentNdpr")}
                 />
                 <div>
                   <label htmlFor="newsletter-consent" className="text-sm">
@@ -152,9 +179,9 @@ export function NewsletterSignup() {
                     </Link>
                     .
                   </label>
-                  {errors.consent_ndpr ? (
+                  {errors.consentNdpr ? (
                     <p id="newsletter-consent-error" className="mt-1 text-sm">
-                      {errors.consent_ndpr.message}
+                      {errors.consentNdpr.message}
                     </p>
                   ) : null}
                 </div>
