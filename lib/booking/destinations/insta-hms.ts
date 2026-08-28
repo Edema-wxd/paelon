@@ -1,7 +1,6 @@
 import {
   NotImplementedError,
   type BookingDestination,
-  type BookingDispatch,
   type DestinationResult,
 } from "./types";
 
@@ -20,7 +19,7 @@ export const instaHmsDestination: BookingDestination = {
   name: "insta-hms",
   enabled: false,
 
-  send(_dispatch: BookingDispatch): Promise<DestinationResult> {
+  send(): Promise<DestinationResult> {
     throw new NotImplementedError("Insta HMS booking destination");
   },
 };
