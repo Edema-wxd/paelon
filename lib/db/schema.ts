@@ -228,8 +228,15 @@ export const locations = pgTable(
     phone: text("phone").notNull(),
     whatsapp: text("whatsapp"),
     emergencyLine: text("emergency_line").notNull(),
-    /** Shape validated on write by `hoursSchema` (lib/validation/hours.ts). */
-    hours: jsonb("hours").$type<Hours>().notNull(),
+    /**
+     * Shape validated on write by `hoursSchema` (lib/validation/hours.ts).
+     *
+     * The empty-object case is in the type on purpose: a seeded branch whose
+     * hours Francis has not supplied yet stores `{}` rather than a fabricated
+     * schedule, and consumers are forced to handle "not published yet" instead
+     * of trusting that all seven days are present.
+     */
+    hours: jsonb("hours").$type<Hours | Record<string, never>>().notNull(),
     parkingInfo: text("parking_info"),
     accessibilityNotes: text("accessibility_notes"),
     heroImage: text("hero_image"),
