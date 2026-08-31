@@ -64,7 +64,7 @@ export function corporateNotificationEmail(
 
   return {
     to,
-    subject: `Corporate enquiry — ${data.companyName}`,
+    subject: `Corporate enquiry: ${data.companyName}`,
     html: wrapHtml({ title: "New corporate enquiry", bodyHtml }),
     text: [
       "New corporate healthcare enquiry.",
@@ -100,7 +100,7 @@ export function newsletterConfirmEmail(data: {
     p(
       `If the button does not work, open this link:<br><span style="word-break:break-all;">${esc(data.confirmUrl)}</span>`,
     ),
-    p("If you did not request this, you can ignore this email — nothing will happen."),
+    p("If you did not request this, you can ignore this email. Nothing will happen."),
   ].join("");
 
   return {
@@ -118,7 +118,7 @@ export function newsletterConfirmEmail(data: {
       "Please confirm you would like to receive the Paelon Memorial Hospital newsletter by opening this link:",
       data.confirmUrl,
       "",
-      "If you did not request this, you can ignore this email — nothing will happen.",
+      "If you did not request this, you can ignore this email. Nothing will happen.",
     ].join("\n"),
   };
 }

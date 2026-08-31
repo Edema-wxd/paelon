@@ -36,7 +36,7 @@ export function Header() {
         <Link
           href="/"
           className="flex shrink-0 items-center rounded-md"
-          aria-label="Paelon Memorial Hospital — home"
+          aria-label="Paelon Memorial Hospital, home"
         >
           <Image
             src="/images/paelon-logo.svg"
@@ -74,8 +74,7 @@ export function Header() {
               <a href={toTelHref(location.emergency_line)}>
                 Emergency
                 <span className="sr-only">
-                  {" "}
-                  — call {location.emergency_line}
+                  , call {location.emergency_line}
                 </span>
               </a>
             </Button>

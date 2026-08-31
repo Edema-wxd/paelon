@@ -71,7 +71,7 @@ export function bookingPatientEmail(
 
   return {
     to: data.patientEmail,
-    subject: `Your appointment request — ${data.reference}`,
+    subject: `Your appointment request: ${data.reference}`,
     html: wrapHtml({ title: "Appointment request received", bodyHtml }),
     text,
   };
@@ -117,7 +117,7 @@ export function bookingBranchEmail(
 
   return {
     to,
-    subject: `New booking ${data.reference} — ${data.locationName}`,
+    subject: `New booking ${data.reference}: ${data.locationName}`,
     html: wrapHtml({ title: "New appointment request", bodyHtml }),
     text,
     replyTo: data.patientEmail,

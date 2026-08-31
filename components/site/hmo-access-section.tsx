@@ -34,18 +34,19 @@ export function HmoAccessSection() {
 
           <ol className="mt-4 list-decimal space-y-3 pl-6 text-base leading-relaxed">
             <li>
-              <strong className="font-medium">Private (Self-Pay)</strong> —
+              <strong className="font-medium">Private (Self-Pay)</strong>:
               Patients pay for services out of pocket.
             </li>
             <li>
-              <strong className="font-medium">Corporate Retainer</strong> —
+              <strong className="font-medium">Corporate Retainer</strong>:
               Services are provided under an approved corporate agreement.
             </li>
             <li>
               <strong className="font-medium">
                 Health Maintenance Organizations (HMOs)
-              </strong>{" "}
-              — Patients can access care through their registered HMO plans.
+              </strong>
+              {": "}
+              Patients can access care through their registered HMO plans.
             </li>
           </ol>
 

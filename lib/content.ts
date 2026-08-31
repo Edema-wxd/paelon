@@ -1,3 +1,4 @@
+import type { Hours } from "@/lib/validation/hours";
 import blogPostsJson from "@/seed/blog-posts.json";
 import hmosJson from "@/seed/hmos.json";
 import locationsJson from "@/seed/locations.json";
@@ -66,6 +67,27 @@ export interface Location {
   emergency_line: string;
   order: number;
   published: boolean;
+
+  /*
+   * Fields below exist on the `locations` table (spec §5) but are absent from
+   * every row in seed/locations.json today. They are optional here rather than
+   * nullable so the type says "may not have been supplied at all", and every
+   * template is forced to handle that case instead of rendering `null`.
+   *
+   * TODO(seed): hours, coordinates, parking, accessibility and photos are all
+   * outstanding for Victoria Island, and three further branches implied by
+   * .env.example are not seeded at all. See seed/README.md.
+   */
+
+  /** Decimal degrees, as strings — matches the numeric column in the schema. */
+  latitude?: string | null;
+  longitude?: string | null;
+  /** `{}` or absent means the schedule has not been confirmed. */
+  hours?: Hours | Record<string, never>;
+  parking_info?: string | null;
+  accessibility_notes?: string | null;
+  hero_image?: string | null;
+  gallery_images?: string[];
 }
 
 export interface BlogPost {
@@ -131,4 +153,59 @@ export function getPrimaryLocation(): Location | null {
 /** Strip spaces and punctuation so a number can be used in a `tel:` href. */
 export function toTelHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
+/** One published branch by slug, or null when it is unknown or unpublished. */
+export function getLocationBySlug(slug: string): Location | null {
+  return getLocations().find((l) => l.slug === slug) ?? null;
+}
+
+/**
+ * The branch address on one line, in the order someone would read it aloud to
+ * a driver. Country is omitted: it is "Nigeria" on every row, and a Lagos
+ * driver does not need it.
+ */
+export function formatAddress(location: Location): string {
+  return [
+    location.address_line_1,
+    location.address_line_2,
+    location.city,
+    location.state,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+/**
+ * A directions link that opens the visitor's own maps app on mobile and
+ * google.com/maps on desktop, rather than trapping them in an embed.
+ *
+ * Coordinates win when they exist — an address string can resolve to the wrong
+ * side of a Lagos street. Until they are seeded the address is all there is.
+ */
+export function toDirectionsHref(location: Location): string {
+  const destination =
+    location.latitude && location.longitude
+      ? `${location.latitude},${location.longitude}`
+      : formatAddress(location);
+
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+}
+
+/**
+ * WhatsApp deep link with a pre-populated greeting (spec §10), or null when no
+ * number is known for the branch.
+ *
+ * Falls back to the site-wide NEXT_PUBLIC_WHATSAPP_NUMBER, which callers pass
+ * in — this module is imported by client components and must not reach into
+ * `lib/env`, which would pull zod into the browser bundle.
+ */
+export function toWhatsAppHref(
+  number: string | null | undefined,
+  message: string,
+): string | null {
+  if (!number) return null;
+  const digits = number.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }

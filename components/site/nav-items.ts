@@ -24,6 +24,10 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Medical Services", href: "/services" },
   { label: "Our Specialties", href: "/services" },
+  // Added now that /locations exists. Spec §6 puts locations in the header;
+  // the export omits it. Sits after the service links and before About so the
+  // nav runs care, then place, then company.
+  { label: "Locations", href: "/locations" },
   { label: "About Us", href: "/about" },
   { label: "Contact Us", href: "/contact" },
 ] as const;

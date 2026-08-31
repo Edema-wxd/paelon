@@ -66,6 +66,6 @@ export async function POST(request: NextRequest) {
 function accepted() {
   return ok({
     message:
-      "Thank you. If this address is not already subscribed, we have sent a confirmation email — please click the link in it to finish signing up.",
+      "Thank you. If this address is not already subscribed, we have sent a confirmation email. Please click the link in it to finish signing up.",
   });
 }
