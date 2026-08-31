@@ -1,4 +1,4 @@
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { SiteImage } from "@/components/site/site-image";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
 import { getHmos } from "@/lib/content";
 
@@ -61,9 +61,11 @@ export function HmoAccessSection() {
                 {/* TODO(asset): HMO logos were not delivered. The provider name
                     carries the meaning in the meantime, which is also the
                     accessible text once the logo replaces it. */}
-                <AssetPlaceholder
-                  label={`${hmo.name} logo`}
-                  className="h-20 w-full rounded-md"
+                <SiteImage
+                  kind="hmo-logo"
+                  name={hmo.slug}
+                  alt={hmo.name}
+                  className="h-20 w-full rounded-md object-contain"
                 />
               </li>
             ))}

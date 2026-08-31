@@ -19,7 +19,10 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx lib/db/seed.ts",
-    "seed:report": "tsx lib/db/seed-report.ts"
+    "seed:report": "tsx lib/db/seed-report.ts",
+    "images": "node scripts/optimize-images.mjs",
+    "images:force": "node scripts/optimize-images.mjs --force",
+    "images:check": "node scripts/optimize-images.mjs --check"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
@@ -47,6 +50,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "15.5.22",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5",

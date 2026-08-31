@@ -1,4 +1,4 @@
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { SiteImage } from "@/components/site/site-image";
 import { getFeaturedTestimonials } from "@/lib/content";
 
 /**
@@ -35,10 +35,11 @@ export function TestimonialsSection() {
                   {/* TODO(asset): patient photographs were not delivered, and
                       spec §6 only permits them "where consented" — no consent
                       record was supplied either. */}
-                  <AssetPlaceholder
-                    label={`Portrait of ${testimonial.patient_name}`}
-                    className="size-25 shrink-0 rounded-full"
-                    decorative
+                  <SiteImage
+                    kind="portrait"
+                    name={testimonial.slug}
+                    alt=""
+                    className="size-25 shrink-0 rounded-full object-cover"
                   />
                   <figcaption>
                     <p className="text-base font-medium">

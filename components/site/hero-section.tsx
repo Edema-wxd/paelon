@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -16,12 +16,7 @@ export function HeroSection() {
       {/* TODO(asset): paelon-hero-img-10.png was not delivered. Becomes a
           next/image with `priority` and explicit `sizes` — it is the LCP
           element and the perf budget in spec §13 depends on it. */}
-      <AssetPlaceholder
-        label="Hero photograph"
-        className="absolute inset-0 h-full w-full rounded-none"
-        decorative
-        bare
-      />
+      <SiteImage kind="hero" name="main" alt="" fill />
 
       {/* The export washes the photo with a 50% white veil so the copy stays
           legible. Kept, and strengthened on small screens where the text sits

@@ -1,4 +1,4 @@
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { SiteImage } from "@/components/site/site-image";
 
 /**
  * "About Paelon Memorial Hospital" block with the headline statistics.
@@ -24,9 +24,11 @@ export function AboutPreview() {
     >
       <div className="mx-auto grid max-w-360 items-start gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-25">
         {/* TODO(asset): img-0237-1-10.png was not delivered. */}
-        <AssetPlaceholder
-          label="Paelon Memorial Hospital exterior"
-          className="aspect-3/2 w-full rounded-lg"
+        <SiteImage
+          kind="about-feature"
+          name="exterior"
+          alt="The exterior of Paelon Memorial Hospital"
+          className="aspect-3/2 w-full rounded-lg object-cover"
         />
 
         <div>

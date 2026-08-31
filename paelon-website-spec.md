@@ -1163,3 +1163,14 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
 
 - Tailwind pinned to v4 (CSS-first). `tailwind.config.ts` removed from §3; brand tokens now declared in `styles/globals.css` under `@theme` per §4.
 - `lint` script is `eslint`, not `next lint` — the latter is deprecated in Next 15.5 and removed in 16.
+- Marketing images ship as static, pre-optimised files rather than CMS uploads.
+  Masters live in `assets/<kind>/`, `npm run images` converts them to AVIF with
+  a WebP fallback, and output goes to `public/images/`. Accepted source types
+  are PNG, SVG, AVIF and WebP; JPEG is excluded. Slot dimensions for desktop
+  and mobile are defined once in `lib/images.ts` and consumed by both the
+  engine and the `SiteImage` component. UploadThing (§10) remains Phase 2 and
+  is for editor-uploaded CMS content only — it is not the pipeline for the
+  marketing site's own assets.
+- `next.config.ts` sets `images.formats` to AVIF then WebP, with `deviceSizes`
+  and `imageSizes` tuned to the 1440px layout container. `dangerouslyAllowSVG`
+  stays off; SVG is served straight from `/public` with the optimizer bypassed.

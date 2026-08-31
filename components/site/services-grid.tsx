@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { SiteImage } from "@/components/site/site-image";
 import { getServices } from "@/lib/content";
 
 /**
@@ -52,10 +52,11 @@ export function ServicesGrid() {
                 className="group relative flex h-76 flex-col justify-end overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-lg"
               >
                 {/* TODO(asset): frame-1{3,5,6,7,8}0.png were not delivered. */}
-                <AssetPlaceholder
-                  label={`${service.name} photograph`}
-                  className="absolute inset-0 h-full w-full"
-                  decorative
+                <SiteImage
+                  kind="service-card"
+                  name={service.slug}
+                  alt=""
+                  fill
                 />
 
                 <div className="relative m-0 flex min-h-17 items-center justify-between gap-3 rounded-xl bg-background/85 px-6 py-4">
