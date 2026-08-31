@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { AssetPlaceholder } from "@/components/site/asset-placeholder";
@@ -51,12 +52,36 @@ export function ServicesGrid() {
                 href={`/services/${service.slug}`}
                 className="group relative flex h-76 flex-col justify-end overflow-hidden rounded-xl shadow-md transition-shadow hover:shadow-lg"
               >
-                {/* TODO(asset): frame-1{3,5,6,7,8}0.png were not delivered. */}
-                <AssetPlaceholder
-                  label={`${service.name} photograph`}
-                  className="absolute inset-0 h-full w-full"
-                  decorative
-                />
+                {/*
+                  Decorative: the card's own <h3> names the service, so alt
+                  text here would be read twice by a screen reader.
+
+                  Falls back to the placeholder when a service has no image
+                  seeded, so adding a sixth service does not 404.
+
+                  `sizes` mirrors the layout below: a 78vw snap card on
+                  mobile, a fixed 384px card at sm, and one third of the
+                  1240px content column at lg.
+
+                  TODO(asset): all five sources are 401x314, under 1x for a
+                  ~397x304 card and well under the 3x a phone asks for. They
+                  will look soft. Ask Francis for 1200px-wide originals.
+                */}
+                {service.featured_image ? (
+                  <Image
+                    src={service.featured_image}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1024px) 397px, (min-width: 640px) 384px, 78vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <AssetPlaceholder
+                    label={`${service.name} photograph`}
+                    className="absolute inset-0 h-full w-full"
+                    decorative
+                  />
+                )}
 
                 <div className="relative m-0 flex min-h-17 items-center justify-between gap-3 rounded-xl bg-background/85 px-6 py-4">
                   <h3 className="text-xl text-foreground">{service.name}</h3>

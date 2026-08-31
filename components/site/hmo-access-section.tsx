@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { AssetPlaceholder } from "@/components/site/asset-placeholder";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
 import { getHmos } from "@/lib/content";
@@ -58,13 +60,36 @@ export function HmoAccessSection() {
           <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8">
             {hmos.map((hmo) => (
               <li key={hmo.id}>
-                {/* TODO(asset): HMO logos were not delivered. The provider name
-                    carries the meaning in the meantime, which is also the
-                    accessible text once the logo replaces it. */}
-                <AssetPlaceholder
-                  label={`${hmo.name} logo`}
-                  className="h-20 w-full rounded-md"
-                />
+                {/*
+                  `object-contain`, not `cover`: the four logos range from
+                  4.4:1 (AXA Mansard) to nearly square (Cigna), so a uniform
+                  slot has to letterbox them. `cover` would crop the wordmarks.
+
+                  The provider name is the alt text — a reader scanning for
+                  their own HMO needs the name, not "logo".
+
+                  TODO(asset): all four appear to be flattened screenshots —
+                  each carries faint background imagery from whatever page it
+                  was lifted off, visible against a light surface. Ask Francis
+                  for clean transparent PNG or SVG from each provider's brand
+                  kit; using a screenshot of an insurer's mark is also a
+                  trademark-usage question worth confirming.
+                */}
+                {hmo.logo ? (
+                  <Image
+                    src={hmo.logo}
+                    alt={hmo.name}
+                    width={176}
+                    height={80}
+                    sizes="176px"
+                    className="h-20 w-full rounded-md object-contain"
+                  />
+                ) : (
+                  <AssetPlaceholder
+                    label={`${hmo.name} logo`}
+                    className="h-20 w-full rounded-md"
+                  />
+                )}
               </li>
             ))}
           </ul>

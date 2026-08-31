@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { MobileNav } from "@/components/site/mobile-nav";
@@ -18,19 +19,34 @@ export function Header() {
     <header className="sticky top-0 z-40 bg-background shadow-sm">
       <div className="mx-auto flex h-20 max-w-360 items-center gap-6 px-4 sm:px-6 lg:h-26 lg:px-25">
         {/*
-          TODO(asset): paelon-logo-2-x-10.png was not delivered. A text
-          wordmark stands in rather than a grey placeholder block — a
-          placeholder here put visible text ("Paelon logo") inside the link
-          that did not match its accessible name, tripping WCAG 2.5.3 Label in
-          Name. Swap for next/image with alt="Paelon Memorial Hospital" once
-          the file lands.
+          `unoptimized` because the source is an SVG: Next's optimizer refuses
+          SVG unless `dangerouslyAllowSVG` is set, and that flag would let the
+          optimizer serve *any* SVG — which can carry script. Serving this one
+          straight from /public is the cheaper and safer trade.
+
+          The alt is the destination, not a description of the mark, since the
+          image is the entire content of a link.
+
+          TODO(asset): paelon-logo.svg is not really vector — it is a 175x81
+          raster PNG base64-embedded in a <pattern>, with zero path elements,
+          which is what Figma emits when a logo is placed as an image. At the
+          138x64 slot it is already under 2x and will look soft on every
+          retina display, on every page. Ask Francis for a true vector.
         */}
         <Link
           href="/"
-          className="flex shrink-0 items-center rounded-md text-lg leading-tight font-bold text-primary lg:text-xl"
+          className="flex shrink-0 items-center rounded-md"
+          aria-label="Paelon Memorial Hospital — home"
         >
-          Paelon
-          <span className="sr-only"> Memorial Hospital — home</span>
+          <Image
+            src="/images/paelon-logo.svg"
+            alt=""
+            width={138}
+            height={64}
+            priority
+            unoptimized
+            className="h-12 w-auto lg:h-16"
+          />
         </Link>
 
         <nav aria-label="Primary" className="ml-auto hidden lg:block">

@@ -1,6 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -13,14 +13,25 @@ import { Button } from "@/components/ui/button";
 export function HeroSection() {
   return (
     <section className="relative isolate overflow-hidden" aria-labelledby="hero-heading">
-      {/* TODO(asset): paelon-hero-img-10.png was not delivered. Becomes a
-          next/image with `priority` and explicit `sizes` — it is the LCP
-          element and the perf budget in spec §13 depends on it. */}
-      <AssetPlaceholder
-        label="Hero photograph"
-        className="absolute inset-0 h-full w-full rounded-none"
-        decorative
-        bare
+      {/*
+        The LCP element — `priority` opts it out of lazy loading so it is
+        discovered in the initial HTML rather than after hydration, which the
+        LCP < 2.0s budget in spec §13 depends on.
+
+        `sizes="100vw"` because the section is full-bleed at every breakpoint.
+        Decorative: `alt=""` — the headline beside it carries the meaning, and
+        the photograph adds nothing a screen reader user would miss.
+
+        Source is 2880x1362 — 2x at the 1440px container width, so the
+        generated ladder covers retina without upscaling.
+      */}
+      <Image
+        src="/images/paelon-hero.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center"
       />
 
       {/* The export washes the photo with a 50% white veil so the copy stays
