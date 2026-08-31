@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { MobileNav } from "@/components/site/mobile-nav";
 import { NAV_ITEMS } from "@/components/site/nav-items";
+import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 import { getPrimaryLocation, toTelHref } from "@/lib/content";
 
@@ -19,15 +19,15 @@ export function Header() {
     <header className="sticky top-0 z-40 bg-background shadow-sm">
       <div className="mx-auto flex h-20 max-w-360 items-center gap-6 px-4 sm:px-6 lg:h-26 lg:px-25">
         {/*
-          `unoptimized` because the source is an SVG: Next's optimizer refuses
-          SVG unless `dangerouslyAllowSVG` is set, and that flag would let the
-          optimizer serve *any* SVG — which can carry script. Serving this one
-          straight from /public is the cheaper and safer trade.
+          Goes through SiteImage like every other asset, so the logo picks up
+          the `logo` slot's sizing and the engine's SVG pass-through rather
+          than pointing at /public by hand.
 
-          The alt is the destination, not a description of the mark, since the
-          image is the entire content of a link.
+          The accessible name lives on the link and the image is decorative,
+          because the image is the entire content of the link — labelling both
+          would announce the destination twice.
 
-          TODO(asset): paelon-logo.svg is not really vector — it is a 175x81
+          TODO(asset): logo/main.svg is not really vector — it is a 175x81
           raster PNG base64-embedded in a <pattern>, with zero path elements,
           which is what Figma emits when a logo is placed as an image. At the
           138x64 slot it is already under 2x and will look soft on every
@@ -38,13 +38,10 @@ export function Header() {
           className="flex shrink-0 items-center rounded-md"
           aria-label="Paelon Memorial Hospital, home"
         >
-          <Image
-            src="/images/paelon-logo.svg"
+          <SiteImage
+            kind="logo"
+            name="main"
             alt=""
-            width={138}
-            height={64}
-            priority
-            unoptimized
             className="h-12 w-auto lg:h-16"
           />
         </Link>

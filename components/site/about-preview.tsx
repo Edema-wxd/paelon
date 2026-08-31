@@ -24,10 +24,23 @@ export function AboutPreview() {
     >
       <div className="mx-auto grid max-w-360 items-start gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-25">
         {/* TODO(asset): img-0237-1-10.png was not delivered. */}
+        {/*
+          The slot was specced as a hospital *exterior*; the only delivered
+          file is a theatre *interior*, so the slot is named for what we
+          actually have rather than captioned as something it is not.
+
+          The alt describes what is visible and stops there. It deliberately
+          does not assert the room is Paelon's, because provenance is
+          unconfirmed.
+
+          TODO(asset): Francis to confirm (a) this is a Paelon theatre and not
+          stock, and (b) whether the intended exterior shot still exists. If
+          it is stock, it cannot run under an "About Paelon" heading.
+        */}
         <SiteImage
           kind="about-feature"
-          name="exterior"
-          alt="The exterior of Paelon Memorial Hospital"
+          name="theatre"
+          alt="An operating theatre, with an overhead surgical light, anaesthesia machine and a mobile C-arm X-ray unit arranged around the table."
           className="aspect-3/2 w-full rounded-lg object-cover"
         />
 

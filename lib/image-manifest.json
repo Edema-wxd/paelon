@@ -1,9 +1,9 @@
 {
-  "about-feature/main": {
+  "about-feature/theatre": {
     "kind": "about-feature",
     "stamp": "235ae0228afb",
-    "src": "/images/about-feature/main.avif",
-    "fallback": "/images/about-feature/main.webp",
+    "src": "/images/about-feature/theatre.avif",
+    "fallback": "/images/about-feature/theatre.webp",
     "width": 1240,
     "height": 826,
     "vector": false
