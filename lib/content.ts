@@ -34,6 +34,13 @@ export interface Hmo {
   id: string;
   slug: string;
   name: string;
+  /**
+   * Other names this provider trades under, searched alongside `name` by the
+   * typeahead. Optional: the seed loader defaults it to `[]` and most records
+   * do not need one, because generic tokens ("HMO", "Health") are stripped at
+   * match time rather than aliased per record.
+   */
+  aliases?: string[];
   logo: string | null;
   coverage_notes: string | null;
   copay_applies: boolean;

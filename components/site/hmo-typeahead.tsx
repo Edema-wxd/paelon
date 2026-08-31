@@ -6,6 +6,7 @@ import { useId, useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import type { Hmo } from "@/lib/content";
+import { searchHmos } from "@/lib/hmo-search";
 
 interface HmoTypeaheadProps {
   hmos: readonly Hmo[];
@@ -29,12 +30,14 @@ export function HmoTypeahead({ hmos }: HmoTypeaheadProps) {
   const inputId = useId();
   const listId = useId();
 
-  const trimmed = query.trim().toLowerCase();
+  const trimmed = query.trim();
 
-  const matches = useMemo(() => {
-    if (!trimmed) return [];
-    return hmos.filter((hmo) => hmo.name.toLowerCase().includes(trimmed));
-  }, [hmos, trimmed]);
+  /**
+   * Matching lives in `lib/hmo-search` so it can be unit tested without a
+   * DOM. A plain `includes()` here missed "Leadway Health" and "Avon HMO" —
+   * the names printed on the logos directly above this input.
+   */
+  const matches = useMemo(() => searchHmos(hmos, trimmed), [hmos, trimmed]);
 
   const expanded = trimmed.length > 0;
   const activeId =
