@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     type: "website",
     url: siteUrl,
     siteName: "Paelon Memorial Hospital",
-    title: "Paelon Memorial Hospital — Expertly Human Healthcare",
+    title: "Paelon Memorial Hospital | Expertly Human Healthcare",
     description:
       "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Paelon Memorial Hospital — Expertly Human Healthcare",
+    title: "Paelon Memorial Hospital | Expertly Human Healthcare",
     description:
       "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
   },

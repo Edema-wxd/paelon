@@ -23,6 +23,11 @@ These must be resolved with Francis before the site goes live.
   testimonial block twice with the same name and identical quote text but
   different photos. Only one is seeded here. Spec §6 calls for two real
   testimonials; the second needs a real name, quote, and consent record.
+- **General contact email.** `contact@paelonmemorial.com` is transcribed from
+  the Figma export and is rendered on `/contact` (inline in
+  `app/(marketing)/contact/page.tsx` — spec §5 `locations` has no email column
+  and Phase 1 has no site-settings table). Confirm it reaches a monitored
+  inbox; an unread address on the contact page is worse than none.
 - **Homepage stats (41+ doctors, 4+ digital labs, 45+ years, 15+ awards).**
   Currently inline in `components/site/about-preview.tsx`. Confirm these are
   current before launch. "45+ years of experience" also sits oddly against the

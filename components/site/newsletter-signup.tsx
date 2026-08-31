@@ -202,7 +202,7 @@ export function NewsletterSignup() {
             <div aria-live="polite" className="mt-4 text-sm">
               {status === "success" ? (
                 <p>
-                  Thank you — please check your inbox to confirm your
+                  Thank you. Please check your inbox to confirm your
                   subscription.
                 </p>
               ) : null}

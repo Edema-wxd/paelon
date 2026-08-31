@@ -136,7 +136,7 @@ export function Footer() {
             address that does not resolve.
           */}
           <p className="text-sm text-primary-foreground/85">
-            Data Protection Officer contact pending — required before launch
+            Data Protection Officer contact pending, required before launch
             under the NDPR.
           </p>
           <p className="mt-3 text-sm text-primary-foreground/85">

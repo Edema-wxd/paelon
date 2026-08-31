@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s · Paelon Memorial Hospital",
   },
   description:
-    "Paelon Memorial Hospital — family healthcare, women and children's health, and specialist care in Lagos.",
+    "Paelon Memorial Hospital: family healthcare, women and children's health, and specialist care in Lagos.",
 };
 
 export default function RootLayout({
