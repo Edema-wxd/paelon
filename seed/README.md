@@ -61,3 +61,65 @@ labelled placeholders and swap to `next/image` once the files land in `/public`.
 
 Also needed and absent from the export entirely: the SafeCare 5-star badge for
 the trust ribbon (spec §6).
+
+---
+
+## Seed contract (added with the backend)
+
+`npm run db:seed` now loads these files into Postgres, and `npm run seed:report`
+lists every unfilled field without writing anything. The loader is idempotent —
+it upserts on `slug`, so running it twice leaves row counts unchanged.
+
+Keys stay `snake_case`, mirroring the database columns. Unknown keys are
+ignored, so nothing here had to change to make seeding work.
+
+### Relations are expressed as slugs
+
+The loader resolves relation slugs to UUIDs in a second pass. The current files
+predate this and use `branch_ids: []` / `branch_id: null`, which the loader
+ignores. To attach records to branches, rename them:
+
+| Current key | Loader expects | Files |
+|---|---|---|
+| `branch_ids` | `location_slugs` | `services.json`, `hmos.json`, `doctors.json` |
+| `branch_id` | `location_slug` | `testimonials.json` |
+| — | `service_slug` | `testimonials.json` |
+| — | `related_slugs` | `services.json`, `blog-posts.json` |
+| — | `author_slug` (required) | `blog-posts.json` |
+
+Values are slugs, not UUIDs — e.g. `"location_slugs": ["victoria-island"]`.
+
+### `consent_given` on testimonials
+
+`testimonials.json` now needs `consent_given: true` for a testimonial to appear
+on the public site. It defaults to `false`, so the seeded Sarah Adenuga
+testimonial will **not** render from the database until consent is recorded.
+This is deliberate: spec §6 permits real names and photos "where consented", and
+no consent record was supplied. It needs to be confirmed with Francis before
+launch, not defaulted to true.
+
+(The homepage currently reads these files directly through `lib/content.ts`, so
+this does not change what renders today.)
+
+### `hours` on locations
+
+`locations.json` has no `hours` yet, so branches seed with `{}` — a visible
+"not supplied" rather than an invented schedule. Once known, the shape is:
+
+```json
+"hours": {
+  "mon": { "open": "08:00", "close": "18:00" },
+  "sun": { "closed": true }
+}
+```
+
+All seven day keys are required. A 24-hour branch is
+`{ "open": "00:00", "close": "23:59" }` — which branches are 24/7 is still an
+open question for Francis.
+
+### `booking_email`
+
+`locations.booking_email` is where branch booking notifications go. Until it is
+filled, the backend falls back to the `BRANCH_*_EMAIL` env vars matched by slug.
+If neither is set, the booking is still saved but nobody is notified, and the
+backend logs `booking.branch_inbox_missing`.

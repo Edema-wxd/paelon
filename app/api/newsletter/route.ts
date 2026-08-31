@@ -1,46 +1,71 @@
-import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
+import {
+  fail,
+  internalError,
+  ok,
+  rateLimited,
+  readJson,
+} from "@/lib/api/response";
+import { subscribeToNewsletter } from "@/lib/newsletter/subscribe";
+import { RATE_LIMITS, checkRateLimit, clientIpFrom } from "@/lib/rate-limit";
+import { isLikelySpam } from "@/lib/spam";
 import { newsletterSchema } from "@/lib/validation/newsletter";
 
-/**
- * Newsletter signup handler.
- *
- * Server-side validation is the source of truth; the client form runs the same
- * schema only for UX. Field-level errors are returned so the form can surface
- * them without a second round of guessing.
- *
- * TODO(phase1): persistence is not wired. The `newsletter_subscribers` table
- * in spec §5 needs the Drizzle schema and a Neon connection, neither of which
- * exists yet — that is its own task, not a side effect of the homepage. Double
- * opt-in via Resend (spec §10) also depends on RESEND_ENABLED and must no-op
- * cleanly when it is false. Until then this validates and accepts.
- */
-export async function POST(request: Request): Promise<NextResponse> {
-  let payload: unknown;
+export const runtime = "nodejs";
 
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json(
-      { message: "Request body must be valid JSON." },
-      { status: 400 },
-    );
+/**
+ * Newsletter signup, starting double opt-in.
+ *
+ * Every non-validation path returns the **same** body and status. A different
+ * response for an address already on the list would make this endpoint a
+ * subscriber-list oracle: anyone could test whether a given person subscribes
+ * to a hospital's mailing list. Even the internal-error path is deliberately
+ * indistinguishable in shape.
+ */
+export async function POST(request: NextRequest) {
+  const payload = await readJson(request);
+
+  if (payload === null) {
+    return fail("BAD_REQUEST", "Request body must be valid JSON.");
   }
 
   const parsed = newsletterSchema.safeParse(payload);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        message: "Please check the details you entered.",
-        errors: parsed.error.flatten().fieldErrors,
-      },
-      { status: 400 },
-    );
+    return fail("VALIDATION_FAILED", "Please check the details you entered.", {
+      fields: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    });
   }
 
-  // TODO(phase1): insert into `newsletter_subscribers` with double_opt_in and
-  // dispatch the confirmation email once the DB and Resend wiring land.
+  if (isLikelySpam(parsed.data, { form: "newsletter" })) {
+    return accepted();
+  }
 
-  return NextResponse.json({ ok: true }, { status: 202 });
+  const limit = await checkRateLimit(
+    RATE_LIMITS.newsletter,
+    clientIpFrom(request.headers),
+  );
+
+  if (!limit.allowed) {
+    return rateLimited(limit.retryAfterSeconds);
+  }
+
+  try {
+    await subscribeToNewsletter(parsed.data);
+    return accepted();
+  } catch (error) {
+    return internalError("newsletter.subscribe_failed", error);
+  }
+}
+
+/**
+ * The one success response. Worded so it is truthful for a new address, an
+ * unconfirmed repeat, and an already-confirmed subscriber alike.
+ */
+function accepted() {
+  return ok({
+    message:
+      "Thank you. If this address is not already subscribed, we have sent a confirmation email — please click the link in it to finish signing up.",
+  });
 }
