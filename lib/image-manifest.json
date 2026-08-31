@@ -1,1 +1,110 @@
-{}
+{
+  "about-feature/main": {
+    "kind": "about-feature",
+    "stamp": "235ae0228afb",
+    "src": "/images/about-feature/main.avif",
+    "fallback": "/images/about-feature/main.webp",
+    "width": 1240,
+    "height": 826,
+    "vector": false
+  },
+  "hero/main": {
+    "kind": "hero",
+    "stamp": "de56df0ef544",
+    "src": "/images/hero/main.avif",
+    "fallback": "/images/hero/main.webp",
+    "mobileSrc": "/images/hero/main-mobile.avif",
+    "mobileFallback": "/images/hero/main-mobile.webp",
+    "width": 2880,
+    "height": 1362,
+    "vector": false
+  },
+  "hmo-logo/avon": {
+    "kind": "hmo-logo",
+    "stamp": "3b22a0f8e41b",
+    "src": "/images/hmo-logo/avon.avif",
+    "fallback": "/images/hmo-logo/avon.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/axa-mansard": {
+    "kind": "hmo-logo",
+    "stamp": "1fdab0d71379",
+    "src": "/images/hmo-logo/axa-mansard.avif",
+    "fallback": "/images/hmo-logo/axa-mansard.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/cigna": {
+    "kind": "hmo-logo",
+    "stamp": "d225c22d5b6b",
+    "src": "/images/hmo-logo/cigna.avif",
+    "fallback": "/images/hmo-logo/cigna.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/leadway": {
+    "kind": "hmo-logo",
+    "stamp": "b00a64843f26",
+    "src": "/images/hmo-logo/leadway.avif",
+    "fallback": "/images/hmo-logo/leadway.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "logo/main": {
+    "kind": "logo",
+    "src": "/images/logo/main.svg",
+    "vector": true,
+    "width": 138,
+    "height": 64
+  },
+  "service-card/family-health": {
+    "kind": "service-card",
+    "stamp": "9af65b4514d1",
+    "src": "/images/service-card/family-health.avif",
+    "fallback": "/images/service-card/family-health.webp",
+    "width": 1200,
+    "height": 912,
+    "vector": false
+  },
+  "service-card/general-practice": {
+    "kind": "service-card",
+    "stamp": "1df826a0f9b1",
+    "src": "/images/service-card/general-practice.avif",
+    "fallback": "/images/service-card/general-practice.webp",
+    "width": 1200,
+    "height": 912,
+    "vector": false
+  },
+  "service-card/lily-fertility-clinic": {
+    "kind": "service-card",
+    "stamp": "561d04eee8f8",
+    "src": "/images/service-card/lily-fertility-clinic.avif",
+    "fallback": "/images/service-card/lily-fertility-clinic.webp",
+    "width": 1200,
+    "height": 912,
+    "vector": false
+  },
+  "service-card/obstetrics-and-gynaecology": {
+    "kind": "service-card",
+    "stamp": "b1b747d64f07",
+    "src": "/images/service-card/obstetrics-and-gynaecology.avif",
+    "fallback": "/images/service-card/obstetrics-and-gynaecology.webp",
+    "width": 1200,
+    "height": 912,
+    "vector": false
+  },
+  "service-card/paediatrics": {
+    "kind": "service-card",
+    "stamp": "dbeddd157db2",
+    "src": "/images/service-card/paediatrics.avif",
+    "fallback": "/images/service-card/paediatrics.webp",
+    "width": 1200,
+    "height": 912,
+    "vector": false
+  }
+}
