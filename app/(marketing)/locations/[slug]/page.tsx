@@ -21,6 +21,7 @@ import {
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import { toOpeningHoursSpecification } from "@/lib/locations/hours-display";
+import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -57,11 +58,13 @@ export async function generateMetadata({
       siteName: "Paelon Memorial Hospital",
       title: `${location.name} branch | Paelon Memorial Hospital`,
       description,
+      images: OG_IMAGES,
     },
     twitter: {
       card: "summary_large_image",
       title: `${location.name} branch | Paelon Memorial Hospital`,
       description,
+      images: TWITTER_IMAGES,
     },
   };
 }

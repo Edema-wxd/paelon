@@ -17,7 +17,7 @@ export function TestimonialsSection() {
   return (
     <section
       aria-labelledby="testimonials-heading"
-      className="bg-background py-16 lg:py-24"
+      className="bg-surface py-16 lg:py-24"
     >
       <div className="mx-auto max-w-360 px-4 sm:px-6 lg:px-25">
         <h2
@@ -27,10 +27,23 @@ export function TestimonialsSection() {
           Warmth in Every Journey
         </h2>
 
-        <ul className="mt-12 grid gap-8 lg:grid-cols-2">
+        {/*
+          Only one testimonial is seeded, and a lone card in a two-column grid
+          left ~700px of empty ground beside it on a desktop screen, which reads
+          as a card that failed to load rather than as a deliberate single
+          quote. One quote gets a centred, measure-limited column instead; the
+          grid comes back on its own as soon as a second is seeded.
+        */}
+        <ul
+          className={
+            testimonials.length === 1
+              ? "mx-auto mt-12 grid max-w-2xl gap-8"
+              : "mt-12 grid gap-8 lg:grid-cols-2"
+          }
+        >
           {testimonials.map((testimonial) => (
             <li key={testimonial.id}>
-              <figure className="flex h-full flex-col gap-8 rounded-xl bg-surface p-8 lg:p-12">
+              <figure className="flex h-full flex-col gap-8 rounded-xl bg-secondary p-8 lg:p-12">
                 <div className="flex items-center gap-6">
                   {/* TODO(asset): patient photographs were not delivered, and
                       spec §6 only permits them "where consented" — no consent

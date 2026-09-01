@@ -22,7 +22,8 @@
     "seed:report": "tsx lib/db/seed-report.ts",
     "images": "node scripts/optimize-images.mjs",
     "images:force": "node scripts/optimize-images.mjs --force",
-    "images:check": "node scripts/optimize-images.mjs --check"
+    "images:check": "node scripts/optimize-images.mjs --check",
+    "og": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",

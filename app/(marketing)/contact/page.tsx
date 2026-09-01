@@ -15,6 +15,7 @@ import {
   toWhatsAppHref,
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
+import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -31,11 +32,13 @@ export const metadata: Metadata = {
     siteName: "Paelon Memorial Hospital",
     title: "Contact us | Paelon Memorial Hospital",
     description,
+    images: OG_IMAGES,
   },
   twitter: {
     card: "summary_large_image",
     title: "Contact us | Paelon Memorial Hospital",
     description,
+    images: TWITTER_IMAGES,
   },
 };
 

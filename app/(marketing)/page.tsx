@@ -11,6 +11,7 @@ import { ServicesGrid } from "@/components/site/services-grid";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { TrustRibbon } from "@/components/site/trust-ribbon";
 import { getPrimaryLocation } from "@/lib/content";
+import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -26,12 +27,14 @@ export const metadata: Metadata = {
     title: "Paelon Memorial Hospital | Expertly Human Healthcare",
     description:
       "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
+    images: OG_IMAGES,
   },
   twitter: {
     card: "summary_large_image",
     title: "Paelon Memorial Hospital | Expertly Human Healthcare",
     description:
       "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
+    images: TWITTER_IMAGES,
   },
 };
 
@@ -74,6 +77,29 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
       />
 
+      {/*
+        Ground sequence. Each section owns its background, and no two adjacent
+        sections may share one — without that rule the page ran two pairs
+        together (services into "For Patricia", HMOs into testimonials) and
+        each pair read as a single over-long block with a stray heading in the
+        middle of it.
+
+          hero        cream (veil over the photo)
+          ribbon      navy
+          services    white
+          patricia    navy
+          about       white
+          hmo         cream   · white card
+          testimonials white   · secondary cards
+          blog        cream   · white card
+          newsletter  white   · navy panel
+          footer cta  cream
+          footer      navy
+
+        Cards invert against their section, so changing a section ground means
+        changing the cards inside it too. Check both neighbours before moving
+        anything here.
+      */}
       <HeroSection />
       <TrustRibbon />
       <ServicesGrid />

@@ -43,8 +43,16 @@ export function HeroSection() {
           expertise wrapped in compassionate care.
         </p>
 
+        {/*
+          `min-w`, not a fixed `w`. At 200px "Book Appointment" fills the pill
+          to within a few pixels of its 32px padding, and `size="pill"` carries
+          `whitespace-nowrap` — so a wider fallback font, the Neo Tech file when
+          it lands, or a browser with a larger default text size pushes the
+          label straight through the edge of the button. Letting it grow costs
+          nothing; clipping the primary CTA costs the conversion.
+        */}
         <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row">
-          <Button asChild size="pill" className="w-full sm:w-50">
+          <Button asChild size="pill" className="w-full sm:w-auto sm:min-w-50">
             <Link href="/book">Book Appointment</Link>
           </Button>
 
@@ -65,7 +73,7 @@ export function HeroSection() {
             asChild
             variant="outline"
             size="pill"
-            className="self-center px-8 sm:w-50 sm:self-auto sm:px-0"
+            className="self-center px-8 sm:w-auto sm:min-w-50 sm:self-auto"
           >
             <Link href="/services">Our Specialists</Link>
           </Button>

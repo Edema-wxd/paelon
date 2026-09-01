@@ -7,6 +7,7 @@ import { LocationsViewToggle } from "@/components/site/locations-view-toggle";
 import { PendingNote } from "@/components/site/pending-note";
 import { getLocations } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
+import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -22,12 +23,14 @@ export const metadata: Metadata = {
     title: "Branches | Paelon Memorial Hospital",
     description:
       "Addresses, phone numbers and directions for every Paelon Memorial Hospital branch in Lagos.",
+    images: OG_IMAGES,
   },
   twitter: {
     card: "summary_large_image",
     title: "Branches | Paelon Memorial Hospital",
     description:
       "Addresses, phone numbers and directions for every Paelon Memorial Hospital branch in Lagos.",
+    images: TWITTER_IMAGES,
   },
 };
 

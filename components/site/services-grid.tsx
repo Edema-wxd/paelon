@@ -41,7 +41,13 @@ export function ServicesGrid() {
         {/* Cards are 78vw rather than 85vw so the next one intrudes ~45px into
             the viewport — at 85vw the peek was under 20px and nothing
             signalled that four more cards existed. */}
-        <ul className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible">
+        {/* pt-1 is not spacing. `overflow-x: auto` forces the computed
+            `overflow-y` to `auto` as well, so the scroller clips its own
+            children vertically — and the focus ring is 2px of outline at a 2px
+            offset, which lands exactly in that clipped strip. Without the pad,
+            tabbing through the cards shows a ring with its top edge sliced off.
+            The existing pb-4 already covers the bottom. */}
+        <ul className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pt-1 pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pt-0">
           {services.map((service) => (
             <li
               key={service.id}

@@ -20,7 +20,7 @@ export function AboutPreview() {
   return (
     <section
       aria-labelledby="about-heading"
-      className="bg-background py-16 lg:py-25"
+      className="bg-surface py-16 lg:py-25"
     >
       <div className="mx-auto grid max-w-360 items-start gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-25">
         {/* TODO(asset): img-0237-1-10.png was not delivered. */}

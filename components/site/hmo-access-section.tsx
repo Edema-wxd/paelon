@@ -17,7 +17,7 @@ export function HmoAccessSection() {
       className="bg-background py-16 lg:py-24"
     >
       <div className="mx-auto max-w-360 px-4 sm:px-6 lg:px-25">
-        <div className="rounded-lg bg-background px-6 py-12 shadow-md lg:px-16">
+        <div className="rounded-lg bg-surface px-6 py-12 shadow-md lg:px-16">
           <h2
             id="accessing-care-heading"
             className="text-3xl text-primary lg:text-4xl"

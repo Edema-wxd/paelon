@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 import "@/styles/globals.css";
 
 // TODO(brand): swap to next/font/local with the Neo Tech .woff2 files (weights
@@ -16,6 +17,23 @@ export const metadata: Metadata = {
   },
   description:
     "Paelon Memorial Hospital: family healthcare, women and children's health, and specialist care in Lagos.",
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "Paelon Memorial Hospital",
+    title: "Paelon Memorial Hospital",
+    description:
+      "Paelon Memorial Hospital: family healthcare, women and children's health, and specialist care in Lagos.",
+    images: OG_IMAGES,
+    locale: "en_NG",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Paelon Memorial Hospital",
+    description:
+      "Paelon Memorial Hospital: family healthcare, women and children's health, and specialist care in Lagos.",
+    images: TWITTER_IMAGES,
+  },
 };
 
 export default function RootLayout({

@@ -14,6 +14,16 @@ import {
 
 type Status = "idle" | "submitting" | "success" | "error";
 
+/** Field names the server may return errors against, so an unexpected key from
+    the API can never be piped into `setError` as an unknown field. */
+const FIELD_NAMES = ["email", "consentNdpr"] as const;
+
+type FieldName = (typeof FIELD_NAMES)[number];
+
+function isFieldName(value: string): value is FieldName {
+  return (FIELD_NAMES as readonly string[]).includes(value);
+}
+
 /**
  * Newsletter signup ("Join the Paelon Community").
  *
@@ -32,6 +42,7 @@ export function NewsletterSignup() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<NewsletterInput>({
     resolver: zodResolver(newsletterSchema),
@@ -57,21 +68,49 @@ export function NewsletterSignup() {
         body: JSON.stringify(values),
       });
 
+      const body: unknown = await response.json().catch(() => null);
+
       if (!response.ok) {
-        const body: unknown = await response.json().catch(() => null);
-        const message =
-          body &&
-          typeof body === "object" &&
-          "message" in body &&
-          typeof body.message === "string"
-            ? body.message
-            : "We could not sign you up just now. Please try again.";
-        setServerError(message);
+        // The envelope is `{ ok: false, error: { message, fields } }` — see
+        // lib/api/response.ts. Reading `body.message` off the top level never
+        // matches, which silently swallowed every server message the route
+        // sends, including the 429.
+        const error =
+          body && typeof body === "object" && "error" in body
+            ? (body.error as {
+                message?: string;
+                fields?: Record<string, string[]>;
+              })
+            : null;
+
+        // The server is the authority on validation, so anything it rejects is
+        // pinned back onto the offending field rather than shown as one opaque
+        // banner, matching the contact form.
+        if (error?.fields) {
+          for (const [field, messages] of Object.entries(error.fields)) {
+            if (isFieldName(field) && messages[0]) {
+              setError(field, { type: "server", message: messages[0] });
+            }
+          }
+        }
+
+        setServerError(
+          error?.message ??
+            "We could not sign you up just now. Please try again.",
+        );
         setStatus("error");
         return;
       }
 
-      reset();
+      // Re-stamps `formRenderedAt` rather than resetting it to the mount time
+      // a bare `reset()` restores, so a second signup in the same session is
+      // timed from when this form became empty again.
+      reset({
+        email: "",
+        consentNdpr: false as unknown as true,
+        website: "",
+        formRenderedAt: Date.now(),
+      });
       setStatus("success");
     } catch {
       setServerError("We could not reach the server. Please try again.");
@@ -82,7 +121,7 @@ export function NewsletterSignup() {
   return (
     <section
       aria-labelledby="newsletter-heading"
-      className="bg-background py-16 lg:py-24"
+      className="bg-surface py-16 lg:py-24"
     >
       <div className="mx-auto max-w-360 px-4 sm:px-6 lg:px-25">
         <div className="rounded-xl bg-primary px-6 py-14 text-primary-foreground lg:px-16">
@@ -121,29 +160,48 @@ export function NewsletterSignup() {
             <input type="hidden" {...register("formRenderedAt", { valueAsNumber: true })} />
 
             {/*
-              DOM order is email → consent → submit, which is the order the
-              form should be completed in and the order it is tabbed in. On
-              `sm` and up the flex `order` utilities lift the button up beside
-              the input (the Figma desktop layout) and let the full-width
-              consent row wrap beneath. Stacked on mobile the source order
-              stands, so the required consent box can no longer end up below
-              the submit button where nobody sees it before tapping.
+              A visible label, not a placeholder standing in for one — CLAUDE.md
+              rules placeholder-as-label out, and a placeholder disappears the
+              moment the field has content, taking the only labelling with it.
+
+              The label sits above the whole input/button row rather than inside
+              the flex item. Putting it above just the input pushed the input
+              down and left the button floating half a line proud of it, and any
+              fix for that (self-end, a magic top margin) breaks again as soon
+              as the error message appears and changes the item's height.
             */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start">
-              <div className="order-1 flex-1">
-                <label htmlFor="newsletter-email" className="sr-only">
-                  Your email address
-                </label>
+            <label
+              htmlFor="newsletter-email"
+              className="block px-6 pb-2 text-sm text-primary-foreground"
+            >
+              Your email address
+            </label>
+
+            {/*
+              DOM order is email → consent → submit: the order the form is
+              filled in, and the order it tabs in, so the required consent box
+              can never be reached after the button that submits it.
+
+              Desktop lifts the button beside the input with explicit grid
+              placement rather than flex `order`, matching the approach in
+              not-found-content.tsx. Both sit in row 1, so `items-start` aligns
+              their tops however tall the email field's error message makes it.
+            */}
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              {/* min-w-0 lets the input shrink below its intrinsic width;
+                  without it the row overflows the panel on narrow tablets. */}
+              <div className="min-w-0 sm:col-start-1 sm:row-start-1">
                 <Input
                   id="newsletter-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="Your email address"
+                  inputMode="email"
+                  placeholder="name@example.com"
                   aria-invalid={Boolean(errors.email)}
                   aria-describedby={
                     errors.email ? "newsletter-email-error" : undefined
                   }
-                  className="h-15 rounded-full border-primary-foreground/50 bg-primary/70 px-6 text-sm text-primary-foreground placeholder:text-primary-foreground/80"
+                  className="h-15 rounded-full border-primary-foreground/50 bg-primary/70 px-6 text-base text-primary-foreground placeholder:text-primary-foreground/70"
                   {...register("email")}
                 />
                 {errors.email ? (
@@ -156,7 +214,7 @@ export function NewsletterSignup() {
                 ) : null}
               </div>
 
-              <div className="order-2 flex w-full items-start gap-3 sm:order-3 sm:mt-2">
+              <div className="flex items-start gap-3 sm:col-span-2 sm:row-start-2">
                 <input
                   id="newsletter-consent"
                   type="checkbox"
@@ -187,12 +245,17 @@ export function NewsletterSignup() {
                 </div>
               </div>
 
+              {/* min-w, not a fixed w: at 200px "Subscribe Now" already fills
+                  the pill to within a few pixels of its 32px padding, so any
+                  wider fallback font — or the Neo Tech file when it lands —
+                  pushes the label past the edge. Growing is safe; clipping is
+                  not. */}
               <Button
                 type="submit"
                 variant="accent"
                 size="pill"
                 disabled={status === "submitting"}
-                className="order-3 w-full sm:order-2 sm:w-50"
+                className="w-full sm:col-start-2 sm:row-start-1 sm:w-auto sm:min-w-50"
               >
                 {status === "submitting" ? "Subscribing…" : "Subscribe Now"}
               </Button>
