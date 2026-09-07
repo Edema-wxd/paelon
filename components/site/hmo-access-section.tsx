@@ -8,8 +8,8 @@ import { getHmos } from "@/lib/content";
  * The export shows the three access routes as an ordered list and the HMOs as
  * a static logo strip; the typeahead is additional.
  */
-export function HmoAccessSection() {
-  const hmos = getHmos();
+export async function HmoAccessSection() {
+  const hmos = await getHmos();
 
   return (
     <section

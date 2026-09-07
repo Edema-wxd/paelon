@@ -42,8 +42,8 @@ export const metadata: Metadata = {
  */
 export const revalidate = 300;
 
-export default function LocationsPage() {
-  const locations = getLocations();
+export default async function LocationsPage() {
+  const locations = await getLocations();
 
   const breadcrumbLd = {
     "@context": "https://schema.org",

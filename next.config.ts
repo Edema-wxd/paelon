@@ -13,6 +13,22 @@ const nextConfig: NextConfig = {
 
   images: {
     /**
+     * Editorial images uploaded through UploadThing (spec §10) are served from
+     * its CDN, so `next/image` has to be told the host is trusted — an
+     * unlisted remote host is a hard error, not a fallback.
+     *
+     * Scoped to `/f/` and `/a/`, the only paths UploadThing serves files from.
+     * A bare hostname would let any path on that domain through, which is a
+     * wider trust grant than this needs. The site's own design assets are
+     * local and are not affected — see lib/images.ts.
+     */
+    remotePatterns: [
+      { protocol: "https", hostname: "utfs.io", pathname: "/f/**" },
+      { protocol: "https", hostname: "*.ufs.sh", pathname: "/f/**" },
+      { protocol: "https", hostname: "*.ufs.sh", pathname: "/a/**" },
+    ],
+
+    /**
      * AVIF first, WebP as the fallback negotiation target. Next serves the
      * first format the browser advertises in its Accept header, so AVIF goes
      * to everything current and WebP covers the rest. AVIF is typically

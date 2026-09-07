@@ -56,6 +56,7 @@ only about implementation shape.**
 | WhatsApp provider | Undecided (master spec §18). Abstraction built, `NoopProvider` resolved. **Timing risk: Business API templates take days to approve — if launch confirmations are wanted, provider selection cannot wait for week three** |
 | Retention job | Decision captured in the schema; the job itself is Phase 2/3 |
 | Everything in Phase 2 | Auth, admin routes, server actions, UploadThing, booking workflow, rich text editor. Schema is in place, so Phase 2 is purely additive |
+| Admin editing for legal pages | Requested during Phase 1. Needs a `legal_pages` table, an `/admin/legal` surface that master spec §8's CRUD list does not contain, and the auth to protect it — three Phase 2 items. `/terms` ships reading `getLegalDocument()` in `lib/legal.ts`, already async, so Phase 2 repoints one function and neither the template nor the page changes. See `content/legal/README.md` |
 
 ---
 
@@ -94,3 +95,13 @@ Flagged rather than worked around:
   empty — a guessed redirect is worse than none, because it sends real traffic
   to the wrong page and hides the 404s that would reveal the mistake.
 - **Privacy policy wording**, which fixes the first real `CONSENT_TEXT_VERSION`.
+- **Terms of Service wording** (master spec §18, same legal review as the
+  privacy policy). `content/legal/terms.json` ships as a thirteen-section
+  skeleton with every body empty and `published: false`; the page renders a
+  pending notice and is served `noindex`. `lib/validation/legal.ts` refuses to
+  parse a document that is published while any section is still empty or has no
+  effective date, so it cannot go live half-written.
+- **`/privacy` has no page at all.** It is linked from the footer on every page
+  and listed in `app/sitemap.ts`, so it currently 404s. The template that
+  renders `/terms` is document-agnostic — adding it is a JSON file plus a page,
+  once the draft exists.

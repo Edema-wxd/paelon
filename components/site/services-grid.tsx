@@ -16,8 +16,8 @@ import { getServices } from "@/lib/content";
  * which is Corporate Healthcare. Rendered from seed data so switching sets is
  * a data edit, not a code change. Francis to confirm.
  */
-export function ServicesGrid() {
-  const services = getServices();
+export async function ServicesGrid() {
+  const services = await getServices();
 
   return (
     <section

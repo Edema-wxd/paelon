@@ -20,6 +20,7 @@ import {
   toWhatsAppHref,
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import { toOpeningHoursSpecification } from "@/lib/locations/hours-display";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
@@ -29,9 +30,19 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-/** Every published branch is known at build time in Phase 1. */
-export function generateStaticParams() {
-  return getLocations().map((location) => ({ slug: location.slug }));
+/**
+ * Every published branch is known at build time.
+ *
+ * Wrapped for the same reason as the blog's: an unreachable database during a
+ * build degrades to on-demand rendering instead of failing the deploy.
+ */
+export async function generateStaticParams() {
+  try {
+    return (await getLocations()).map((location) => ({ slug: location.slug }));
+  } catch (error) {
+    logger.warn("locations.static_params_failed", { error });
+    return [];
+  }
 }
 
 /** Matches the index: today's hours must not freeze at build time. */
@@ -41,7 +52,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const location = getLocationBySlug(slug);
+  const location = await getLocationBySlug(slug);
 
   if (!location) return { title: "Branch not found" };
 
@@ -71,7 +82,7 @@ export async function generateMetadata({
 
 export default async function LocationDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const location = getLocationBySlug(slug);
+  const location = await getLocationBySlug(slug);
 
   if (!location) notFound();
 

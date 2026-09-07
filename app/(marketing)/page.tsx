@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  const location = getPrimaryLocation();
+export default async function HomePage() {
+  const location = await getPrimaryLocation();
 
   /**
    * MedicalOrganization JSON-LD (spec §11).

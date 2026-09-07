@@ -10,8 +10,8 @@ import { getPrimaryLocation, toTelHref } from "@/lib/content";
  *
  * Absent from the Figma export, which is desktop-only — designed fresh here.
  */
-export function MobileBottomBar() {
-  const location = getPrimaryLocation();
+export async function MobileBottomBar() {
+  const location = await getPrimaryLocation();
   if (!location) return null;
 
   // TODO(seed): no WhatsApp number is seeded. Spec §10 wants a deep link with

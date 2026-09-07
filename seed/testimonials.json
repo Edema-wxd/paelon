@@ -1,16 +1,30 @@
 [
   {
-    "id": "f47b0d31-6e28-4c9a-85b3-1d70a9e62c48",
     "slug": "sarah-adenuga",
     "patient_name": "Sarah Adenuga",
     "name_format": "full",
     "avatar": null,
     "quote": "Choosing Paelon for my delivery was the best decision. The nurses were incredibly patient, and the postpartum care made me feel so supported. It wasn't just medical care; it was emotional support during such a big transition.",
-    "service_id": null,
-    "branch_id": null,
+    "service_slug": null,
+    "location_slug": null,
     "date_given": null,
     "featured": true,
     "order": 1,
-    "published": true
+    "published": true,
+    "consent_given": false
+  },
+  {
+    "slug": "preview-testimonial-placeholder",
+    "patient_name": "A. Placeholder",
+    "name_format": "initials",
+    "avatar": null,
+    "quote": "Placeholder quote, written to be roughly the length of a real testimonial so the two-up layout, the quote mark and the attribution line can all be judged before real, consented patient words are supplied. It says nothing about Paelon.",
+    "service_slug": null,
+    "location_slug": null,
+    "date_given": "2026-09-01",
+    "featured": true,
+    "order": 2,
+    "published": true,
+    "consent_given": true
   }
 ]

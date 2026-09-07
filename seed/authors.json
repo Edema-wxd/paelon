@@ -1,0 +1,12 @@
+[
+  {
+    "slug": "preview-author",
+    "name": "Preview Author",
+    "role": "Placeholder byline — not a real person",
+    "bio": "Placeholder biography. This author record exists so the blog templates can be reviewed before real editorial content arrives. Replace it, or delete it, before launch.",
+    "headshot": null,
+    "doctor_slug": null,
+    "order": 1,
+    "published": true
+  }
+]

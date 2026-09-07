@@ -23,9 +23,9 @@ const PATIENT_SUPPORT_LINKS = [
   { label: "Find a Doctor", href: "/services" },
 ] as const;
 
-export function Footer() {
-  const location = getPrimaryLocation();
-  const locations = getLocations();
+export async function Footer() {
+  const location = await getPrimaryLocation();
+  const locations = await getLocations();
 
   return (
     <footer className="bg-primary text-primary-foreground">

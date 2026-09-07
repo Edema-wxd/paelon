@@ -12,8 +12,8 @@ import { getPrimaryLocation, toTelHref } from "@/lib/content";
  * The emergency line is reachable in one tap from here on desktop; on mobile
  * it lives in the bottom bar instead, per spec §6.
  */
-export function Header() {
-  const location = getPrimaryLocation();
+export async function Header() {
+  const location = await getPrimaryLocation();
 
   return (
     <header className="sticky top-0 z-40 bg-background shadow-sm">

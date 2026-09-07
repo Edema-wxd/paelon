@@ -933,6 +933,11 @@ export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type CorporateEnquiry = typeof corporateEnquiries.$inferSelect;
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 
+/** Admin account. `password_hash` is on this type — never return one to a client. */
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type AuditEntry = typeof auditLog.$inferSelect;
+
 export type BookingStatus = (typeof bookingStatusEnum.enumValues)[number];
 export type ServiceFamily = (typeof serviceFamilyEnum.enumValues)[number];
 export type TimeWindow = (typeof timeWindowEnum.enumValues)[number];

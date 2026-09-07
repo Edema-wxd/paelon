@@ -55,9 +55,9 @@ const CONTACT_EMAIL = "contact@paelonmemorial.com";
 /** Pre-populated WhatsApp greeting (spec §10). */
 const WHATSAPP_GREETING = "Hello Paelon Memorial Hospital, I have a question.";
 
-export default function ContactPage() {
-  const locations = getLocations();
-  const primary = getPrimaryLocation();
+export default async function ContactPage() {
+  const locations = await getLocations();
+  const primary = await getPrimaryLocation();
 
   // The branch's own number wins; the site-wide number is the fallback so the
   // link still works before per-branch WhatsApp numbers are seeded.

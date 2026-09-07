@@ -38,9 +38,28 @@ const serverSchema = z
     AUTH_SECRET: optionalString,
     AUTH_URL: optionalString,
 
-    // --- Uploads (Phase 2) ---
-    UPLOADTHING_SECRET: optionalString,
-    UPLOADTHING_APP_ID: optionalString,
+    /*
+     * --- Uploads (UploadThing) ---
+     *
+     * v7 replaced the v6 pair (UPLOADTHING_SECRET + UPLOADTHING_APP_ID) with a
+     * single token that encodes the API key, the app id and the region. The old
+     * names are gone rather than kept as aliases: two ways to configure one
+     * thing is how an environment ends up half-migrated.
+     *
+     * Optional. Absent means the upload route refuses every request, which is
+     * the correct Phase 1 state — the site itself never uploads anything.
+     */
+    UPLOADTHING_TOKEN: optionalString,
+    /*
+     * Opens the upload endpoint while Phase 1 has no authentication.
+     *
+     * Fails closed by design: an unauthenticated upload route on a public
+     * hospital domain is free file hosting for whoever finds it. Set it only
+     * locally, to push editorial images before the admin panel exists. Phase 2
+     * deletes this and checks the Auth.js session instead — see
+     * lib/uploadthing/core.ts.
+     */
+    UPLOADTHING_UPLOADS_ENABLED: booleanFromString,
 
     // --- Email ---
     RESEND_ENABLED: booleanFromString,
@@ -87,6 +106,10 @@ const clientSchema = z.object({
   NEXT_PUBLIC_UMAMI_SCRIPT_URL: optionalString,
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: optionalString,
   NEXT_PUBLIC_WHATSAPP_NUMBER: optionalString,
+  // Read directly from process.env by lib/emergency.ts — the error boundaries
+  // cannot afford a parse that might throw. Declared here so a malformed value
+  // still fails at boot instead of on an error page.
+  NEXT_PUBLIC_EMERGENCY_LINE: optionalString,
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
@@ -102,6 +125,7 @@ export const clientEnv: ClientEnv = clientSchema.parse({
   NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
   NEXT_PUBLIC_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+  NEXT_PUBLIC_EMERGENCY_LINE: process.env.NEXT_PUBLIC_EMERGENCY_LINE,
 });
 
 let cached: ServerEnv | undefined;

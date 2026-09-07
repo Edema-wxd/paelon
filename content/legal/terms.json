@@ -1,0 +1,21 @@
+{
+  "slug": "terms",
+  "title": "Terms of Service",
+  "published": false,
+  "effective_date": null,
+  "sections": [
+    { "id": "about-these-terms", "heading": "About these terms", "body": [] },
+    { "id": "medical-disclaimer", "heading": "Medical disclaimer", "body": [] },
+    { "id": "emergencies", "heading": "Emergencies", "body": [] },
+    { "id": "appointment-requests", "heading": "Appointment requests", "body": [] },
+    { "id": "information-you-give-us", "heading": "Information you give us", "body": [] },
+    { "id": "acceptable-use", "heading": "Acceptable use of this website", "body": [] },
+    { "id": "intellectual-property", "heading": "Intellectual property", "body": [] },
+    { "id": "third-party-services", "heading": "Third-party links and services", "body": [] },
+    { "id": "website-availability", "heading": "Availability of this website", "body": [] },
+    { "id": "limitation-of-liability", "heading": "Limitation of liability", "body": [] },
+    { "id": "governing-law", "heading": "Governing law", "body": [] },
+    { "id": "changes-to-these-terms", "heading": "Changes to these terms", "body": [] },
+    { "id": "contact-us", "heading": "Contact us", "body": [] }
+  ]
+}

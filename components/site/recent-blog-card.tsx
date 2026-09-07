@@ -26,8 +26,8 @@ function formatPublishedAt(value: string): string | null {
  * Renders an empty state rather than nothing when no post is seeded, so the
  * section is visibly pending rather than silently missing during review.
  */
-export function RecentBlogCard() {
-  const post = getLatestBlogPost();
+export async function RecentBlogCard() {
+  const post = await getLatestBlogPost();
   const publishedLabel = post ? formatPublishedAt(post.published_at) : null;
 
   return (

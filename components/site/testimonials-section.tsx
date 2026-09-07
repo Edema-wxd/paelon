@@ -10,8 +10,8 @@ import { getFeaturedTestimonials } from "@/lib/content";
  * is seeded, so only one renders. A second needs a real name, quote, and
  * consent record from Francis. See seed/README.md.
  */
-export function TestimonialsSection() {
-  const testimonials = getFeaturedTestimonials();
+export async function TestimonialsSection() {
+  const testimonials = await getFeaturedTestimonials();
   if (testimonials.length === 0) return null;
 
   return (

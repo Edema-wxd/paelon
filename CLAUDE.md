@@ -62,6 +62,7 @@ Directory layout is specified in §3 of the spec. Follow it exactly.
 - Semantic HTML before `<div>`. Sequential heading hierarchy, no skips.
 - `next/image` with proper sizes and priority. `next/font/local` with `display: 'swap'`.
 - Lucide React icons only. No mixed icon sets.
+- Check every new or edited template against **Conversion & trust baseline** below before calling it done.
 - Update the spec when a decision changes.
 
 ## Never
@@ -97,9 +98,30 @@ The site must work end-to-end with `RESEND_ENABLED=false` — email destinations
 
 Lighthouse mobile Perf ≥ 90 · A11y ≥ 95 · SEO ≥ 95 · Best Practices 100 · LCP < 2.0s · FCP < 1.5s · TBT < 150ms · CLS < 0.05 · initial JS < 150 KB gzipped · homepage < 800 KB · any page < 1.5 MB
 
-**SEO:** unique title + meta description, OG/Twitter tags, and canonical on every page. JSON-LD per §11 (`MedicalOrganization`, `Hospital`, `Physician`, `MedicalProcedure`, `FAQPage`, `Article`, `BreadcrumbList`). Dynamic sitemap, robots blocking `/admin`, `/api`, `/book/confirmed`. Descriptive link text — never bare "Read more".
+**SEO:** unique title + meta description, OG/Twitter tags, and canonical on every page. JSON-LD per §11 (`MedicalOrganization`, `Hospital`, `Physician`, `MedicalProcedure`, `FAQPage`, `Article`, `BreadcrumbList`, `LocalBusiness`). Dynamic sitemap, robots blocking `/admin`, `/api`, `/book/confirmed`. Descriptive link text — never bare "Read more".
 
 **NDPR:** explicit, never pre-checked consent on every form collecting personal data. No cookie banner needed (Umami is cookieless).
+
+---
+
+## Conversion & trust baseline — required on every template it touches
+
+Phase 1 scope, not nice-to-haves. A template is not done until its applicable items below are met, and no change may remove one.
+
+1. **Thank-you page after every enquiry** — contact, corporate, newsletter, booking. A real route (`/contact/thank-you`, `/corporate/thank-you`, `/newsletter/confirmed`, `/book/confirmed`), reached by POST → redirect so a refresh never re-submits. `noindex`, restates what happens next plus the response-time promise, offers one onward link. An inline toast alone is not a thank-you page.
+2. **Breadcrumbs** — visible `<nav aria-label="Breadcrumb">` on every page below top level, driven by the same array that emits the `BreadcrumbList` JSON-LD. One shared `Breadcrumbs` component; never hand-rolled per page, never JSON-LD without the visible trail.
+3. **FAQ section** — homepage, every service page, every location page. Content from seed, `FAQPage` JSON-LD, native `<details>` accordion (no state library). Answers must exist as real text in the HTML, not injected on expand.
+4. **Response-time promise** — one stated turnaround, from a single constant in seed/config, shown beside every form's submit button and repeated on the matching thank-you page. Never re-worded per page. `TODO(seed)` until Francis confirms the number — do not invent one.
+5. **Sticky mobile CTA** — persistent bottom bar (call + book) across the marketing site on mobile. Respects safe-area insets, never covers a focused input or the footer's final action, contributes nothing to CLS. Hidden inside `/book`.
+6. **`robots.txt`** — `app/robots.ts`, blocking `/admin`, `/api`, `/book/confirmed` and every thank-you route, pointing at the sitemap. Never `Disallow: /` — gate preview environments with env-driven `noindex` instead.
+7. **Unique title, meta description and social share image per page** — no shared defaults, no duplicated or truncated copies. OG/Twitter image per template with a branded fallback, canonical always absolute. All of it through `lib/seo.ts`, not per-page literals.
+8. **Map + directions on every location** — lazy-loaded embedded map (no third-party script in the critical path), plain-text address, and a "Get directions" deep link built from branch coordinates. Landmark directions only where seed supplies them.
+9. **Real customer reviews only** — testimonials render from `/seed/testimonials.json` with attribution. Never write, extend, or tidy a patient quote. Empty seed means the section does not render.
+10. **Alt text on every image** — specific and descriptive; decorative images get `alt=""` and `aria-hidden`. A shipped image without alt text is a blocking failure, not a nit.
+11. **`LocalBusiness` schema** — per branch, alongside `MedicalOrganization`/`Hospital`: name, full `PostalAddress`, geo, phone, `openingHoursSpecification`, `url`, image. Emitted from branch seed data; never hand-typed, never asserting hours or services the seed does not contain.
+12. **Privacy policy page** — `/privacy`, live and linked from the footer and from every consent checkbox. NDPR content: what is collected, why, retention, DPO contact, DSAR route. Draft for legal review, `TODO` where blocked.
+13. **Custom 500 alongside the 404** — `app/error.tsx` and `app/global-error.tsx` brand-styled to match `not-found.tsx`. No stack traces or error text to the user, a phone number for urgent care, a retry action. Both must render with JS disabled.
+14. **Internal links in every blog post** — each post body carries at least two contextual links to real site routes (a service, a location, `/book`, or a related post), written as `[descriptive text](/path)` in the Markdown body and placed in the sentence they belong to — never a bare "Read more" and never a link block bolted on at the end. `related_slugs` must be populated with slugs that exist and resolve, and the article template renders them. A link to a route that does not exist is a broken build, not a TODO; if the right destination is not built yet, link the nearest real page or leave the sentence unlinked. Do not invent a destination, and do not add a link that makes a claim the target page does not support.
 
 ---
 
@@ -143,6 +165,7 @@ Assets and decisions not yet in the spec. Flag these rather than inventing aroun
 - WhatsApp Business API provider
 - Insta HMS API docs
 - Old WordPress URL list for 301 redirects
+- Stated response-time promise (how many working hours before a reply)
 - Branch email inboxes, NDPR DPO contact
 - Privacy Policy / Terms draft for legal review
 

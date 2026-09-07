@@ -22,3 +22,36 @@ export const OG_IMAGES = [OG_IMAGE];
 
 /** Spread into any page's `twitter`. */
 export const TWITTER_IMAGES = [OG_IMAGE.url];
+
+/**
+ * Deep link to Google's source preferences tool for this site.
+ *
+ * Google offers three implementations. This is the deeplink one, deliberately:
+ * the recommended `news.google.com/swg/js/v1/publisher.js` button is a
+ * third-party script on a content page, which the §13 budgets (initial JS
+ * < 150 KB gzipped, TBT < 150ms) have no room for and CLAUDE.md rules out of
+ * the critical path. The deeplink is a plain anchor — no script, no cookie, and
+ * it works with JavaScript off. The end-user flow is the same either way.
+ *
+ * Returns `null` when the configured site URL has no public host (localhost in
+ * development), because there is no domain a reader could add.
+ *
+ * @param siteUrl absolute site origin, normally `NEXT_PUBLIC_SITE_URL`
+ */
+export function preferredSourceUrl(siteUrl: string): string | null {
+  let host: string;
+
+  try {
+    host = new URL(siteUrl).hostname;
+  } catch {
+    return null;
+  }
+
+  // Only domains and subdomains are eligible; a hostless or loopback origin is
+  // not something Google's tool can resolve.
+  if (!host.includes(".") || host === "127.0.0.1" || host === "[::1]") {
+    return null;
+  }
+
+  return `https://www.google.com/preferences/source?q=${encodeURIComponent(host)}`;
+}

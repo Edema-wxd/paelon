@@ -41,8 +41,8 @@ const FAMILY_LABELS: Record<ServiceFamily, string> = {
  * `meta` string is real content — a service's family, a branch's city — never
  * an invented description, so the search has something honest to match on.
  */
-function getDestinations(): Destination[] {
-  const services: Destination[] = getServices().map((service) => ({
+async function getDestinations(): Promise<Destination[]> {
+  const services: Destination[] = (await getServices()).map((service) => ({
     href: `/services/${service.slug}`,
     label: service.name,
     meta: FAMILY_LABELS[service.family],
@@ -51,7 +51,7 @@ function getDestinations(): Destination[] {
   // Branches are usually named after the district they sit in, so "Branch,
   // Victoria Island" under a row labelled "Victoria Island" says nothing. The
   // city is only worth the space when it differs from the name.
-  const branches: Destination[] = getLocations().map((location) => ({
+  const branches: Destination[] = (await getLocations()).map((location) => ({
     href: `/locations/${location.slug}`,
     label: location.name,
     meta:
@@ -76,9 +76,9 @@ function getDestinations(): Destination[] {
   ];
 }
 
-export function NotFoundContent() {
-  const location = getPrimaryLocation();
-  const destinations = getDestinations();
+export async function NotFoundContent() {
+  const location = await getPrimaryLocation();
+  const destinations = await getDestinations();
 
   const telHref = location ? toTelHref(location.emergency_line) : null;
 

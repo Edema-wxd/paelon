@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "slug": "preview-post-layout-fixture",
+    "title": "Preview post — blog layout fixture",
+    "excerpt": "A placeholder article used to review the blog index card and the article template. It contains no real content and should be deleted before launch.",
+    "body": "This post is a **layout fixture**. It carries no information about Paelon, its\nservices, or its clinicians — it exists so the blog index and article templates\ncan be reviewed before real editorial content is written.\n\n## What this fixture exercises\n\nEvery element below is here to be looked at, not read. If one of them renders\nbadly, the template needs work.\n\n- An unordered list, of the kind a health article would use for symptoms or steps\n- A second item, long enough to wrap onto a second line on a narrow phone screen so line height and hanging indent can be judged properly\n- A third, short item\n\n### A third-level heading\n\nParagraph text under a subheading, with *emphasis*, **strong emphasis**, and an\n[internal link](/contact) so link colour and underline offset can be checked\nagainst the surrounding copy.\n\nCLAUDE.md requires at least two contextual internal links in every post body,\nand a link to a route that does not exist is a build failure — so a second one\npoints at the [branch directory](/locations). Both targets are routes that\nactually resolve today; when the fixture is replaced, the real article's links\nmust do the same.\n\n> A pull quote. Long-form health writing leans on these, so the template needs\n> one that holds its own against the body text without shouting.\n\n## An ordered list\n\n1. First step\n2. Second step, which is deliberately longer so that the marker alignment can be checked when the text wraps\n3. Third step\n\n## Closing section\n\nA final paragraph, so the spacing between the last block and the author card\nbelow is visible. Delete this post once real articles exist.",
+    "hero_image": null,
+    "author_slug": "preview-author",
+    "category": "family_health",
+    "tags": [
+      "placeholder",
+      "preview"
+    ],
+    "published_at": "2026-09-01",
+    "related_slugs": [],
+    "order": 1,
+    "published": true
+  }
+]

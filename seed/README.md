@@ -128,3 +128,38 @@ open question for Francis.
 filled, the backend falls back to the `BRANCH_*_EMAIL` env vars matched by slug.
 If neither is set, the booking is still saved but nobody is notified, and the
 backend logs `booking.branch_inbox_missing`.
+
+---
+
+## Preview fixtures — delete before launch
+
+Three seed records exist only so templates can be reviewed. None of them says
+anything about Paelon, and none may survive to production.
+
+| File | Record | Why it exists |
+|---|---|---|
+| `authors.json` | `preview-author` | `blog_posts.author_id` is NOT NULL, so a post cannot exist without an author row |
+| `blog-posts.json` | `preview-post-layout-fixture` | Exercises every Markdown block the article template renders. Two internal links, both to routes that resolve |
+| `testimonials.json` | `preview-testimonial-placeholder` | Gives the homepage a second card so the two-up layout can be judged |
+
+Delete all three together — removing the author alone breaks the seed run.
+
+## Testimonial consent — blocking
+
+`sarah-adenuga` carries `consent_given: false` and therefore **does not render**.
+
+The quote was transcribed from the Figma export. `testimonials.consent_given`
+gates public display because a testimonial is a real patient's words, and spec
+§6 permits real names only where consented. Nobody has recorded that Sarah
+Adenuga agreed to appear on the site, and assuming it is not something a seed
+file may do.
+
+Two things are needed from Francis:
+
+1. Confirmation that consent was given, and in what form. Then set
+   `consent_given: true` and fill `date_given` with the date it was given.
+2. Whether the name may appear in full, or should be shortened — `name_format`
+   accepts `full`, `first_only` or `initials`.
+
+Until then the homepage shows one testimonial (the placeholder). Spec §6 asks
+for two real ones.
