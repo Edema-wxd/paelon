@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 
 import { MediaGrid } from "@/components/admin/media-grid";
 import { MediaUploader } from "@/components/admin/media-uploader";
+import { NotPermitted } from "@/components/admin/not-permitted";
 import { can } from "@/lib/auth/policy";
-import { requireCan } from "@/lib/auth/session";
+import { requireAdminUser } from "@/lib/auth/session";
 import { listMedia } from "@/lib/uploadthing/api";
 
 /**
  * Media library — upload and delete editorial images.
  *
- * `requireCan` here is the page's own check, not an inherited one. It returns
- * the user, whose role then decides whether the delete controls render at all.
+ * The permission check here is the page's own, not an inherited one, and it
+ * renders a refusal rather than throwing — see components/admin/not-permitted.tsx.
+ * The role then decides whether the upload and delete controls render at all.
  *
  * Not cached, and `force-dynamic` for the same reason: a media library showing
  * a file someone deleted an hour ago is worse than a slow one.
@@ -28,7 +30,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminMediaPage() {
-  const user = await requireCan("read", "media");
+  const user = await requireAdminUser();
+
+  if (!can(user.role, "read", "media")) {
+    return <NotPermitted roleLabel={user.roleLabel} />;
+  }
+
   const { files, hasMore } = await listMedia({ limit: 60 });
 
   return (

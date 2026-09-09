@@ -18,9 +18,11 @@ Working instructions for Claude Code on this repo.
 
 Phase 1 is a **15 working day hard ceiling**. Never build a Phase 2 feature during Phase 1, even when it is one file away from a Phase 1 task. If a task appears to require it, stop and ask Francis.
 
-Phase 2 surfaces that stay empty in Phase 1: `app/(admin)/`, `components/admin/`, `lib/auth/`, the `users`/`sessions`/`accounts` tables, everything in spec §8.
+Phase 2 surfaces that were meant to stay empty in Phase 1: `app/(admin)/`, `components/admin/`, `lib/auth/`, the `users`/`sessions`/`accounts` tables, everything in spec §8.
 
-Phase 1 reads content from `/seed/*.json`. There is no CMS dependency for launch — but the Drizzle schema is written for Phase 2 from day one so no migration is needed to switch reads over.
+> **Breached, and not ratified.** `app/(admin)/` (dashboard + media library), `lib/auth/` (Auth.js v5, argon2id, role policy), `components/admin/` and `app/api/auth/` were built during Phase 1 — ~1,375 lines — to put an authenticated gate in front of the UploadThing endpoint. It is outside the 15-day budget, and `docs/decisions.md` still records admin work as declined. Francis decides whether it stays, ships disabled, or reverts. **Until then: do not extend it, and do not read it as licence for further Phase 2 work.**
+
+Content is read from **Postgres, not from JSON at runtime**. `/seed/*.json` is the input to `npm run db:seed`; templates read through `lib/content.ts`, which wraps the repositories in `lib/db/queries/*`. The site does not render — `next build` included — without a reachable, migrated, seeded database.
 
 ---
 
@@ -56,6 +58,7 @@ Directory layout is specified in §3 of the spec. Follow it exactly.
 ## Always
 
 - Server components by default. Client components only when interactivity requires it.
+- `lib/content.ts` is the content read path for every template. It maps DB rows onto the snake_case shapes components render, so a column rename does not ripple into fifteen files. Every getter is async. Client components may import **types** from it and nothing else — a value import drags the Neon driver into the browser bundle.
 - Zod at every boundary — form submissions, API inputs. Validate on client (UX) *and* server (truth).
 - Handle loading and error states explicitly. No silent failures.
 - JSDoc on exported functions with non-obvious behaviour.
@@ -109,14 +112,14 @@ Lighthouse mobile Perf ≥ 90 · A11y ≥ 95 · SEO ≥ 95 · Best Practices 100
 Phase 1 scope, not nice-to-haves. A template is not done until its applicable items below are met, and no change may remove one.
 
 1. **Thank-you page after every enquiry** — contact, corporate, newsletter, booking. A real route (`/contact/thank-you`, `/corporate/thank-you`, `/newsletter/confirmed`, `/book/confirmed`), reached by POST → redirect so a refresh never re-submits. `noindex`, restates what happens next plus the response-time promise, offers one onward link. An inline toast alone is not a thank-you page.
-2. **Breadcrumbs** — visible `<nav aria-label="Breadcrumb">` on every page below top level, driven by the same array that emits the `BreadcrumbList` JSON-LD. One shared `Breadcrumbs` component; never hand-rolled per page, never JSON-LD without the visible trail.
+2. **Breadcrumbs** — visible `<nav aria-label="Breadcrumb">` on every page below top level, driven by the same array that emits the `BreadcrumbList` JSON-LD. Use `components/site/breadcrumbs.tsx`, which emits both from one `Crumb[]` and prepends Home itself; never hand-roll per page, never JSON-LD without the visible trail. Only `/blog/[slug]` uses it so far. `/locations/[slug]` hand-rolls both halves; **`/terms` emits the JSON-LD with no visible trail at all**, which this rule forbids. Move both over when next touched.
 3. **FAQ section** — homepage, every service page, every location page. Content from seed, `FAQPage` JSON-LD, native `<details>` accordion (no state library). Answers must exist as real text in the HTML, not injected on expand.
 4. **Response-time promise** — one stated turnaround, from a single constant in seed/config, shown beside every form's submit button and repeated on the matching thank-you page. Never re-worded per page. `TODO(seed)` until Francis confirms the number — do not invent one.
 5. **Sticky mobile CTA** — persistent bottom bar (call + book) across the marketing site on mobile. Respects safe-area insets, never covers a focused input or the footer's final action, contributes nothing to CLS. Hidden inside `/book`.
 6. **`robots.txt`** — `app/robots.ts`, blocking `/admin`, `/api`, `/book/confirmed` and every thank-you route, pointing at the sitemap. Never `Disallow: /` — gate preview environments with env-driven `noindex` instead.
 7. **Unique title, meta description and social share image per page** — no shared defaults, no duplicated or truncated copies. OG/Twitter image per template with a branded fallback, canonical always absolute. All of it through `lib/seo.ts`, not per-page literals.
 8. **Map + directions on every location** — lazy-loaded embedded map (no third-party script in the critical path), plain-text address, and a "Get directions" deep link built from branch coordinates. Landmark directions only where seed supplies them.
-9. **Real customer reviews only** — testimonials render from `/seed/testimonials.json` with attribution. Never write, extend, or tidy a patient quote. Empty seed means the section does not render.
+9. **Real customer reviews only** — testimonials come from the `testimonials` table, seeded from `/seed/testimonials.json`, with attribution. Never write, extend, or tidy a patient quote. A row is public only when `consent_given` is true: consent is a recorded fact about a real patient, never an assumption, and an unconsented quote stays invisible. No consented rows means the section does not render.
 10. **Alt text on every image** — specific and descriptive; decorative images get `alt=""` and `aria-hidden`. A shipped image without alt text is a blocking failure, not a nit.
 11. **`LocalBusiness` schema** — per branch, alongside `MedicalOrganization`/`Hospital`: name, full `PostalAddress`, geo, phone, `openingHoursSpecification`, `url`, image. Emitted from branch seed data; never hand-typed, never asserting hours or services the seed does not contain.
 12. **Privacy policy page** — `/privacy`, live and linked from the footer and from every consent checkbox. NDPR content: what is collected, why, retention, DPO contact, DSAR route. Draft for legal review, `TODO` where blocked.
@@ -129,19 +132,26 @@ Phase 1 scope, not nice-to-haves. A template is not done until its applicable it
 
 ```bash
 npm install
-cp .env.example .env.local     # then fill in
+cp .env.example .env.local     # then fill in — DATABASE_URL is required
+npm run db:push                # create tables; nothing renders before this
+npm run db:seed                # load /seed/*.json, then print the gap report
 npm run dev
 
 npm run typecheck              # tsc --noEmit
 npm run lint                   # eslint (not `next lint` — deprecated in 15.5)
+npm run test                   # vitest, unit
 npm run build
 ```
 
-Not wired yet — these arrive with their packages, which need approval first (§16): `db:push`, `db:seed`, `db:generate`, `db:studio` (drizzle-kit + tsx), `test` (vitest), `format` (prettier).
+Also wired: `db:generate` · `db:migrate` · `db:studio` · `seed:report` (content gaps without a DB round trip) · `test:watch` · `test:integration` · `test:e2e` and `test:e2e:ui` (Playwright — needs a seeded DB and a dev server) · `images`, `images:force`, `images:check` (local asset pipeline) · `og` (share card) · `upload` (push one editorial image to UploadThing and print its CDN URL).
+
+Still not wired: `format` (prettier — needs approval).
 
 Run typecheck and tests after every meaningful change. Every env var goes in `.env.example` (§14).
 
 Testing floor for Phase 1: Vitest unit tests for utilities and **every** form submission Zod schema (accept + reject cases), plus one Playwright E2E for the booking happy path. No visual regression testing in Phase 1.
+
+**The booking E2E does not exist** — `/book` has not been built. It is the first spec to add when the flow lands; `tests/e2e/README.md` lists what it must cover.
 
 ---
 
@@ -168,5 +178,23 @@ Assets and decisions not yet in the spec. Flag these rather than inventing aroun
 - Stated response-time promise (how many working hours before a reply)
 - Branch email inboxes, NDPR DPO contact
 - Privacy Policy / Terms draft for legal review
+- **Testimonial consent.** `sarah-adenuga` is the only real quote seeded and carries `consent_given: false`, so it does not render. Confirm consent was given, in what form, and whether the name may appear in full (`name_format`: `full` · `first_only` · `initials`). Until then the homepage shows one placeholder where §6 wants two real ones
+- **Whether the Phase 2 admin panel stays** — see the phase-boundary note above
+
+## Live gaps — true as of 2026-09-08
+
+Not blocked on anyone. Fix when the area is next touched.
+
+- **`npm run db:push` and `npm run db:seed` do not load `.env.local`, so both fail on a missing `DATABASE_URL`.** `drizzle.config.ts` claims drizzle-kit reads the file itself; drizzle-kit only auto-loads `.env`, and `lib/db/seed.ts` runs under bare `tsx`. `upload` is the only script wired with `--env-file`. Until the scripts are fixed — a `package.json`/config change, so ask first — run them as `node --env-file=.env.local ./node_modules/.bin/drizzle-kit push` and `node --env-file=.env.local ./node_modules/.bin/tsx lib/db/seed.ts`. The dev Neon database was pushed and seeded that way on 2026-09-08 (25 tables); `next build` prerenders all 24 routes against it.
+- **The Vercel project has no environment variables set**, which is what broke the 2026-09-07 deploy: `serverEnv()` parses the whole schema at once, and `/_not-found` renders `Header`/`Footer`, which read the DB through `lib/content.ts`, so the prerender throws on `DATABASE_URL` and `RATE_LIMIT_SALT` together. Production and Preview each need `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `RATE_LIMIT_SALT`, `NEXT_PUBLIC_SITE_URL` and `CONSENT_TEXT_VERSION`, plus `AUTH_SECRET`/`AUTH_URL` if the admin panel is meant to work there. `NEXT_PUBLIC_SITE_URL` is the dangerous one — it defaults to `http://localhost:3000`, so a build without it succeeds and ships a sitemap and canonicals pointing at localhost. Only Francis has Vercel access.
+- **`/privacy` has no page but is linked everywhere** — the footer, the contact and newsletter consent checkboxes, the error page and `app/sitemap.ts` all point at it, so an NDPR consent link currently 404s. `/terms` already renders from `content/legal/*.json` through a document-agnostic template; `/privacy` is a JSON file plus a page once the draft exists.
+- **8 of the 15 templates in §6 are unbuilt**, one is half-built. Done: `/`, `/locations`, `/locations/[slug]`, `/blog` + `/blog/[slug]`, `/contact`, 404 (plus a 500, which §6 does not count). Outstanding: `/about`, `/services`, `/services/[slug]`, `/for-corporates`, `/book`, `/hmo-check`, `/book/confirmed`, `/newsletter/confirmed` — and `/privacy`, the missing half of the privacy-and-terms template. The thank-you routes in baseline item 1 are on top of that count.
+- **`/book` is the priority path and has no UI at all.** `POST /api/booking` is built, tested and dispatching to destinations; the six-step flow in §7 is not started.
+- **Blog bodies are Markdown, not MDX.** Spec §5 says the `body` column is MDX, but no MDX compiler is on the §2 approved list. `lib/markdown.ts` parses the subset long-form health writing uses into a typed AST and `components/site/article-body.tsx` builds React elements from it — nothing goes through `dangerouslySetInnerHTML`, and unsafe hrefs degrade to text. Stored source stays valid MDX, so Phase 2 replaces the renderer, not the content.
+- **Three `preview-*` seed records are layout fixtures** — one author, one blog post, one testimonial. They say nothing about Paelon and must be deleted together before launch; removing the author alone breaks the seed run. See `seed/README.md`.
+- **`UPLOADTHING_UPLOADS_ENABLED` is dead config** — declared in `lib/env.ts` and `.env.example`, read by nothing since the upload route moved to a session check. Remove it with the phase-boundary decision.
+- **`connect-src` in `middleware.ts` has no UploadThing origin**, so a browser-side uploader will be blocked by CSP once the policy is enforced. `img-src` already allows the CDN.
+
+---
 
 Spec gaps worth resolving when they come up: `/hmo-check` and `/newsletter/confirmed` are specified as templates in §6 but missing from the §3 directory tree; the "every content type has `slug`/`published`/`order`" preamble in §5 does not sensibly apply to `bookings`, `contact_submissions`, `corporate_enquiries`, or `newsletter_subscribers`.

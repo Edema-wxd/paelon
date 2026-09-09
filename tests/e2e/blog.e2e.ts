@@ -7,9 +7,6 @@ import { expect, test } from "@playwright/test";
  * in the database is a layout fixture that will be deleted, so anything keyed
  * to its wording would fail the moment real editorial content lands. What is
  * asserted here is what must hold for *any* post.
- *
- * CLAUDE.md's testing floor also wants a booking happy-path spec. It is not
- * here because `/book` does not exist yet — see tests/e2e/README.md.
  */
 
 test.describe("blog index", () => {

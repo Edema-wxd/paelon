@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import privacyJson from "@/content/legal/privacy.json";
 import termsJson from "@/content/legal/terms.json";
 import { legalDocumentSchema } from "@/lib/validation/legal";
 
@@ -77,6 +78,50 @@ describe("legalDocumentSchema", () => {
     expect(result.error?.issues[0]?.path).toEqual(["effective_date"]);
   });
 
+  // The guard that stops placeholder prose going live. Empty-section checking
+  // cannot catch this: placeholder text is non-empty, so without this flag a
+  // document full of unreviewed wording would publish cleanly.
+  it("rejects publishing while the text is still marked placeholder", () => {
+    const result = legalDocumentSchema.safeParse({
+      ...skeleton(),
+      published: true,
+      placeholder: true,
+      effective_date: "2026-01-01",
+      sections: [
+        {
+          id: "about-these-terms",
+          heading: "About these terms",
+          body: ["Text."],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["placeholder"]);
+  });
+
+  it("allows publishing once the placeholder flag is cleared", () => {
+    const result = legalDocumentSchema.safeParse({
+      ...skeleton(),
+      published: true,
+      placeholder: false,
+      effective_date: "2026-01-01",
+      sections: [
+        {
+          id: "about-these-terms",
+          heading: "About these terms",
+          body: ["Text."],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("defaults placeholder to false", () => {
+    expect(legalDocumentSchema.parse(skeleton()).placeholder).toBe(false);
+  });
+
   it("rejects a document with no sections", () => {
     expect(
       legalDocumentSchema.safeParse({ ...skeleton(), sections: [] }).success,
@@ -106,5 +151,29 @@ describe("content/legal/terms.json", () => {
   it("has unique section ids", () => {
     const ids = legalDocumentSchema.parse(termsJson).sections.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("content/legal/privacy.json", () => {
+  it("parses, so a malformed file fails the build rather than the page", () => {
+    expect(legalDocumentSchema.safeParse(privacyJson).success).toBe(true);
+  });
+
+  it("ships unpublished and marked placeholder, so it cannot go live by accident", () => {
+    const doc = legalDocumentSchema.parse(privacyJson);
+    expect(doc.published).toBe(false);
+    expect(doc.placeholder).toBe(true);
+  });
+
+  it("has unique section ids", () => {
+    const ids = legalDocumentSchema
+      .parse(privacyJson)
+      .sections.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("has a body in every section, since it is placeholder text not a skeleton", () => {
+    const doc = legalDocumentSchema.parse(privacyJson);
+    expect(doc.sections.every((s) => s.body.length > 0)).toBe(true);
   });
 });

@@ -43,10 +43,15 @@ export function LegalDocumentView({
       ) : null}
 
       {/*
-        The draft state is stated once, at the top, at full width. CLAUDE.md
-        forbids inventing hospital content and this is a legal instrument, so
-        the honest empty state is the deliverable until counsel supplies the
-        text — see content/legal/README.md.
+        The not-in-force state is stated once, at the top, at full width.
+        CLAUDE.md forbids inventing hospital content and these are legal
+        instruments, so the honest state is the deliverable until counsel
+        supplies the text — see content/legal/README.md.
+
+        Two documents reach this in different conditions: one is an empty
+        skeleton, the other is placeholder prose. Placeholder prose is the more
+        dangerous of the two because it reads as finished, so it says so
+        plainly rather than sharing a vague "draft" wording with the skeleton.
       */}
       {isDraft ? (
         <PendingNote
@@ -60,10 +65,24 @@ export function LegalDocumentView({
             </Link>
           }
         >
-          These terms are with Paelon&rsquo;s legal counsel and are not in force
-          yet. The section headings below show what the finished document will
-          cover. Nothing on this page is binding until it is published with an
-          effective date.
+          {document.placeholder ? (
+            <>
+              <strong className="font-medium">
+                The wording below is placeholder text.
+              </strong>{" "}
+              It has not been written or reviewed by a lawyer, and it is not in
+              force. It is here so the page can be reviewed in layout while
+              Paelon&rsquo;s legal counsel prepares the real document. Passages
+              marked {"[TO CONFIRM]"} are facts nobody has supplied yet.
+            </>
+          ) : (
+            <>
+              This document is with Paelon&rsquo;s legal counsel and is not in
+              force yet. The section headings below show what the finished
+              document will cover. Nothing on this page is binding until it is
+              published with an effective date.
+            </>
+          )}
         </PendingNote>
       ) : null}
 

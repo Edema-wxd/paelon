@@ -101,7 +101,13 @@ Flagged rather than worked around:
   pending notice and is served `noindex`. `lib/validation/legal.ts` refuses to
   parse a document that is published while any section is still empty or has no
   effective date, so it cannot go live half-written.
-- **`/privacy` has no page at all.** It is linked from the footer on every page
-  and listed in `app/sitemap.ts`, so it currently 404s. The template that
-  renders `/terms` is document-agnostic — adding it is a JSON file plus a page,
-  once the draft exists.
+- **Privacy policy wording — the page now exists but the text is placeholder.**
+  `/privacy` was built with stand-in prose so the layout could be reviewed
+  before counsel delivers. `content/legal/privacy.json` carries
+  `placeholder: true` alongside `published: false`, and the schema refuses to
+  publish while that flag is set: empty-section checking cannot catch
+  placeholder text, because it is not empty. The wording tracks what the system
+  actually does rather than being invented wholesale, and unsupplied facts are
+  marked `[TO CONFIRM]` inline — registered entity details, DPO contact,
+  international transfer mechanism, DSAR response window. **None of it has been
+  read by a lawyer.**

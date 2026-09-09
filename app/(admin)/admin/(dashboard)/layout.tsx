@@ -8,6 +8,13 @@ import { requireAdminUser } from "@/lib/auth/session";
  * `/admin/login` is deliberately a sibling of this group, not a child, so the
  * login page is reachable signed out.
  *
+ * Signed-out visitors are redirected from here, before the page runs, so they
+ * always land back on `/admin` after signing in rather than on the page they
+ * asked for. A layout cannot see the requested pathname; preserving it would
+ * take middleware, which is not worth adding to a panel this size.
+ * `requireAdminUser` and the login page both support a `?next=` path for when
+ * one is available.
+ *
  * This check is the first line, not the only one. A Next.js layout does not
  * re-run for a server action, so every action and route handler under here
  * calls `requireCan()` for itself — the nav below hides links a role cannot
@@ -22,12 +29,12 @@ import { requireAdminUser } from "@/lib/auth/session";
  * Still to build, each gated on the resource named beside it:
  *   /admin/content    content CRUD          blog_posts, services, locations
  *   /admin/enquiries  patient submissions   bookings
- *   /admin/users      staff accounts        users
  *   /admin/audit      audit log viewer      audit_log
  */
 const NAV: Array<AdminNavItem & { action: Action; resource: Resource }> = [
   { href: "/admin", label: "Overview", action: "read", resource: "media" },
   { href: "/admin/media", label: "Media", action: "read", resource: "media" },
+  { href: "/admin/users", label: "Staff", action: "read", resource: "users" },
 ];
 
 export default async function AdminDashboardLayout({

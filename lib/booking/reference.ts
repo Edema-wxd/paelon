@@ -18,6 +18,19 @@ import { sql } from "drizzle-orm";
 
 const REFERENCE_PAD = 6;
 
+/**
+ * A reference as `formatReference` writes one.
+ *
+ * Exported so the confirmation page can tell a real reference from whatever
+ * else arrives in `?ref=`. React escapes the value either way; the check is
+ * about not showing a visitor a booking reference that was never issued.
+ */
+const REFERENCE_PATTERN = /^PMH-\d{4}-\d{6,}$/;
+
+export function isBookingReference(value: string): boolean {
+  return REFERENCE_PATTERN.test(value);
+}
+
 /** Minimal shape needed to draw from the sequence — either db client satisfies it. */
 type SequenceReader = {
   execute: (query: ReturnType<typeof sql>) => Promise<unknown>;

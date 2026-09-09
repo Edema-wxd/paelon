@@ -10,9 +10,15 @@ import {
   getLocationBySlug as getLocationRow,
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
-import { getPublishedServices } from "@/lib/db/queries/services";
+import { getFaqsByCategory as getFaqRows } from "@/lib/db/queries/faqs";
+import {
+  getPublishedServices,
+  getRelatedServices as getRelatedServiceRows,
+  getServiceBySlug as getServiceRow,
+} from "@/lib/db/queries/services";
 import { getFeaturedTestimonials as getFeaturedTestimonialRows } from "@/lib/db/queries/testimonials";
 import type {
+  Faq as FaqRow,
   Hmo as HmoRow,
   Location as LocationRow,
   Service as ServiceRow,
@@ -47,10 +53,27 @@ export interface Service {
   slug: string;
   name: string;
   family: ServiceFamily;
+  /** Null when the seed has not supplied one — see `isSeedGap`. */
   short_description: string | null;
   featured_image: string | null;
   order: number;
   published: boolean;
+  /** Prose for the detail page. Null until the seed supplies it. */
+  what_to_expect: string | null;
+  /** Bullet list. Empty until the seed supplies one. */
+  who_its_for: string[];
+  /** Bullet list. Empty until the seed supplies one. */
+  how_to_access: string[];
+  typical_wait_time: string | null;
+  gallery_images: string[];
+}
+
+export interface Faq {
+  id: string;
+  slug: string;
+  question: string;
+  answer: string;
+  category: "general" | "booking" | "services" | "insurance" | "emergencies";
 }
 
 export interface Hmo {
@@ -144,16 +167,61 @@ export interface BlogPost {
 /* Row mappers                                                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The literal string the seed files use to mark a field nobody has written yet.
+ *
+ * `seed/services.json` ships `"short_description": "TODO(seed)"` rather than
+ * omitting the key, because `what_to_expect` is `NOT NULL` and the row has to
+ * exist for the service to appear at all. That sentinel reaches the database
+ * verbatim, so without this guard a template renders the words "TODO(seed)" to
+ * a patient reading about a fertility clinic.
+ *
+ * Normalising it to `null` here — at the one boundary every template reads
+ * through — means a page cannot leak it by forgetting to check, and the empty
+ * state a template already has to handle is the state it gets.
+ */
+const SEED_SENTINEL = /^\s*TODO\(seed\)\s*$/i;
+
+/** True when `value` is absent or is an unwritten seed placeholder. */
+export function isSeedGap(value: string | null | undefined): boolean {
+  return value === null || value === undefined || value.trim() === "" || SEED_SENTINEL.test(value);
+}
+
+/** `value`, or null when it is absent or an unwritten seed placeholder. */
+function realOrNull(value: string | null): string | null {
+  return isSeedGap(value) ? null : value;
+}
+
+/** Drops unwritten placeholders from a seeded list. */
+function realEntries(values: string[]): string[] {
+  return values.filter((value) => !isSeedGap(value));
+}
+
 function toService(row: ServiceRow): Service {
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
     family: row.family,
-    short_description: row.shortDescription,
+    short_description: realOrNull(row.shortDescription),
     featured_image: row.featuredImage,
     order: row.order,
     published: row.published,
+    what_to_expect: realOrNull(row.whatToExpect),
+    who_its_for: realEntries(row.whoItsFor),
+    how_to_access: realEntries(row.howToAccess),
+    typical_wait_time: realOrNull(row.typicalWaitTime),
+    gallery_images: realEntries(row.galleryImages),
+  };
+}
+
+function toFaq(row: FaqRow): Faq {
+  return {
+    id: row.id,
+    slug: row.slug,
+    question: row.question,
+    answer: row.answer,
+    category: row.category,
   };
 }
 
@@ -211,6 +279,27 @@ function toLocation(row: LocationRow): Location {
 }
 
 /**
+ * Timestamp from a cached repository row, as an ISO string.
+ *
+ * The row types say `Date`, and on a cache miss that is what Drizzle returns.
+ * On a hit it is not: `cachedRead` wraps `unstable_cache`, which serialises its
+ * result to JSON, and JSON has no Date — so the same field arrives as an ISO
+ * string. TypeScript cannot see the round trip and keeps claiming `Date`, which
+ * is why this takes `unknown` and narrows rather than trusting the declared
+ * type.
+ *
+ * Belongs here rather than in the queries: `lib/content.ts` is the seam between
+ * database shapes and what components render, and this is exactly a database
+ * shape not surviving the trip.
+ */
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return new Date(value).toISOString();
+
+  throw new TypeError("Expected a Date or an ISO date string");
+}
+
+/**
  * `publishedAt` is `timestamp | null` on the row, but every query that produces
  * a `BlogPostWithAuthor` filters on `published_at IS NOT NULL`. The fallback to
  * `createdAt` exists so this mapper is total rather than throwing, and is
@@ -226,7 +315,7 @@ function toBlogPost(row: BlogPostWithAuthor): BlogPost {
     hero_image: row.heroImage,
     category: row.category,
     tags: row.tags,
-    published_at: (row.publishedAt ?? row.createdAt).toISOString(),
+    published_at: toIsoString(row.publishedAt ?? row.createdAt),
     author_name: row.authorName,
     author_slug: row.authorSlug,
   };
@@ -239,6 +328,31 @@ function toBlogPost(row: BlogPostWithAuthor): BlogPost {
 /** Published services, in display order. */
 export async function getServices(): Promise<Service[]> {
   return (await getPublishedServices()).map(toService);
+}
+
+/** One published service by slug, or null when the slug is unknown. */
+export async function getServiceBySlug(slug: string): Promise<Service | null> {
+  const row = await getServiceRow(slug);
+  return row ? toService(row) : null;
+}
+
+/** Published services explicitly related to the given one, in display order. */
+export async function getRelatedServices(
+  serviceId: string,
+): Promise<Service[]> {
+  return (await getRelatedServiceRows(serviceId)).map(toService);
+}
+
+/**
+ * Published FAQs in one category.
+ *
+ * FAQs are categorised, not attached to individual services, so every service
+ * page shows the same `services` set. That is what the schema supports; a
+ * per-service FAQ is a Phase 2 relation, not something to fake by filtering on
+ * question text.
+ */
+export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
+  return (await getFaqRows(category)).map(toFaq);
 }
 
 /** Published HMOs, in display order. */

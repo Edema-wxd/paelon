@@ -1,0 +1,135 @@
+{
+  "slug": "privacy",
+  "title": "Privacy Policy",
+  "published": false,
+  "placeholder": true,
+  "effective_date": null,
+  "sections": [
+    {
+      "id": "about-this-policy",
+      "heading": "About this policy",
+      "body": [
+        "This policy explains how Paelon Memorial Hospital handles personal information collected through this website. It covers the booking form, the contact form, the corporate enquiry form and the newsletter signup.",
+        "It does not cover your clinical records. Medical records are held under the hospital's separate clinical records policy and are not accessible through this website.",
+        "This policy is written to align with the Nigeria Data Protection Regulation (NDPR). [TO CONFIRM]: whether the hospital is also within scope of any sector-specific rules that need naming here."
+      ]
+    },
+    {
+      "id": "who-we-are",
+      "heading": "Who we are",
+      "body": [
+        "Paelon Memorial Hospital is the data controller for the information described in this policy. [TO CONFIRM]: registered entity name, RC number and registered address.",
+        "Our branch addresses and phone numbers are listed on the locations page of this website."
+      ]
+    },
+    {
+      "id": "information-we-collect",
+      "heading": "Information we collect",
+      "body": [
+        "When you request an appointment we collect your name, phone number, email address, date of birth, the branch and service you selected, your preferred date and time, whether you are an existing patient, your HMO details if you give them, and the reason for your visit if you choose to describe it.",
+        "When you use the contact form or the corporate enquiry form we collect your name, email address, phone number, and the content of your message. Corporate enquiries also include your organisation name and the size of your workforce.",
+        "When you subscribe to the newsletter we collect your email address only.",
+        "We do not ask for payment details anywhere on this website."
+      ]
+    },
+    {
+      "id": "how-we-use-it",
+      "heading": "How we use your information",
+      "body": [
+        "We use appointment requests to contact you, confirm a time, and prepare for your visit. An appointment request is a request, not a confirmed booking, until a member of staff contacts you.",
+        "We use contact and corporate enquiries to answer you. We use your newsletter subscription to send the newsletter, and nothing else.",
+        "We do not sell your information, and we do not use it for automated decision-making or profiling."
+      ]
+    },
+    {
+      "id": "legal-basis",
+      "heading": "Legal basis for processing",
+      "body": [
+        "We rely on your consent for the newsletter, and on the steps necessary to provide care you have asked for in the case of appointment requests and enquiries. [TO CONFIRM]: counsel to confirm the correct NDPR lawful basis for each form.",
+        "Where we rely on consent you can withdraw it at any time, and withdrawing it does not affect anything we did before you withdrew it."
+      ]
+    },
+    {
+      "id": "consent",
+      "heading": "Consent",
+      "body": [
+        "Every form on this website that collects personal information has a consent checkbox that is never ticked for you. You have to tick it yourself before the form will submit.",
+        "We record which version of this policy was in force when you gave consent, so that we can tell you later exactly what you agreed to."
+      ]
+    },
+    {
+      "id": "who-we-share-with",
+      "heading": "Who we share your information with",
+      "body": [
+        "Your information is handled by hospital staff at the branch you selected, and by the service providers that run this website on our behalf: our database host, our email delivery provider, and our hosting provider.",
+        "[TO CONFIRM]: counsel to confirm whether each provider needs naming individually, and whether a data processing agreement is in place with each.",
+        "We share information with third parties outside this list only where the law requires it."
+      ]
+    },
+    {
+      "id": "international-transfers",
+      "heading": "International transfers",
+      "body": [
+        "Some of the service providers that run this website store data outside Nigeria. [TO CONFIRM]: counsel to confirm the transfer mechanism relied on and the destinations to disclose."
+      ]
+    },
+    {
+      "id": "how-long-we-keep-it",
+      "heading": "How long we keep your information",
+      "body": [
+        "We keep appointment requests for twelve months after the appointment date. After that we remove the personal details and keep only anonymous records for planning purposes.",
+        "[TO CONFIRM]: retention periods for contact enquiries, corporate enquiries and newsletter subscriptions.",
+        "You can ask us to delete your information sooner. See your rights below."
+      ]
+    },
+    {
+      "id": "how-we-protect-it",
+      "heading": "How we protect your information",
+      "body": [
+        "Information you submit is sent over an encrypted connection and stored in an access-controlled database. Access is limited to staff who need it to do their job.",
+        "The reason-for-visit field you may fill in when booking is treated as health information: it is stored with your booking and is never included in notification emails or in our system logs."
+      ]
+    },
+    {
+      "id": "your-rights",
+      "heading": "Your rights",
+      "body": [
+        "Under the NDPR you can ask us for a copy of the information we hold about you, ask us to correct it if it is wrong, ask us to delete it, object to how we are using it, or ask us to restrict its use.",
+        "To make any of these requests, email us at the address in the contact section below. We will respond within [TO CONFIRM] days. There is no charge.",
+        "Requests are reviewed by a member of staff rather than handled automatically, so please give us enough detail to find your records."
+      ]
+    },
+    {
+      "id": "cookies-and-analytics",
+      "heading": "Cookies and analytics",
+      "body": [
+        "This website does not use advertising or tracking cookies, and it does not show a cookie banner because it does not need your consent for anything it stores.",
+        "We measure how the site is used with privacy-focused analytics that do not set cookies and do not collect personal information. We can see that a page was viewed; we cannot see who viewed it."
+      ]
+    },
+    {
+      "id": "childrens-privacy",
+      "heading": "Children's privacy",
+      "body": [
+        "We treat information about children with the same care as any other patient information. Appointment requests for a child should be made by a parent or guardian. [TO CONFIRM]: counsel to confirm the age threshold and consent wording that applies."
+      ]
+    },
+    {
+      "id": "changes-to-this-policy",
+      "heading": "Changes to this policy",
+      "body": [
+        "If we change this policy we will update the effective date at the top of this page. Where the change is significant we will say so on the website.",
+        "We keep previous versions so that we can tell you which one applied when you gave consent."
+      ]
+    },
+    {
+      "id": "contact-us",
+      "heading": "Contact us and complaints",
+      "body": [
+        "[TO CONFIRM]: name and email address of the hospital's Data Protection Officer. This is required in the footer of every page under the NDPR and is still outstanding.",
+        "If you are not satisfied with how we have handled your information, you can complain to the Nigeria Data Protection Commission.",
+        "For anything else, use the contact form on this website or call the branch you dealt with."
+      ]
+    }
+  ]
+}

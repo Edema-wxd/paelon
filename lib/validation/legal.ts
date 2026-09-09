@@ -34,6 +34,15 @@ export const legalDocumentSchema = z
      * omission — see the refinement below.
      */
     published: z.boolean().default(false),
+    /**
+     * True while the bodies are placeholder prose rather than counsel's text.
+     *
+     * The empty-section guard below cannot catch this on its own: placeholder
+     * text is non-empty, so a document full of it would otherwise satisfy every
+     * other check and publish cleanly. Clearing this flag is the deliberate act
+     * that says a lawyer has read the words.
+     */
+    placeholder: z.boolean().default(false),
     effective_date: isoDate.nullable().default(null),
     sections: z.array(legalSectionSchema).min(1),
   })
@@ -46,6 +55,15 @@ export const legalDocumentSchema = z
    */
   .superRefine((doc, ctx) => {
     if (!doc.published) return;
+
+    if (doc.placeholder) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["placeholder"],
+        message:
+          "Cannot publish placeholder text. Replace the bodies with counsel's wording, then set placeholder to false.",
+      });
+    }
 
     const empty = doc.sections
       .filter((section) => section.body.length === 0)

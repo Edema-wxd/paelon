@@ -1,3 +1,4 @@
+import privacyJson from "@/content/legal/privacy.json";
 import termsJson from "@/content/legal/terms.json";
 import {
   legalDocumentSchema,
@@ -24,12 +25,13 @@ import {
 
 export type { LegalDocument, LegalSection };
 
-/** Slugs with a file behind them. `privacy` joins this when its draft lands. */
-export const LEGAL_SLUGS = ["terms"] as const;
+/** Slugs with a file behind them. */
+export const LEGAL_SLUGS = ["privacy", "terms"] as const;
 
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
 
 const DOCUMENTS: Record<LegalSlug, LegalDocument> = {
+  privacy: legalDocumentSchema.parse(privacyJson),
   terms: legalDocumentSchema.parse(termsJson),
 };
 

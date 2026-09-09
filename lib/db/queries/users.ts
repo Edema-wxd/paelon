@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 
+import type { Role } from "@/lib/auth/policy";
 import { db } from "@/lib/db/client";
 import { auditLog, users, type User } from "@/lib/db/schema";
 
@@ -139,4 +140,126 @@ export async function writeAuditEntry(entry: {
       message: error instanceof Error ? error.message : "unknown",
     });
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Staff account management                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** A staff account as the admin panel shows it. Never carries `password_hash`. */
+export interface StaffAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  lastLoginAt: Date | null;
+  lockedUntil: Date | null;
+  failedAttempts: number;
+  createdAt: Date;
+  deletedAt: Date | null;
+}
+
+/**
+ * Every staff account, deactivated ones included, oldest first.
+ *
+ * The column list is written out rather than `select()` so `password_hash` can
+ * never reach a client component by someone spreading the row into props. A
+ * hash is not a secret you can rotate quietly — it is the password, offline.
+ */
+export async function listStaffAccounts(): Promise<StaffAccount[]> {
+  return db()
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      lastLoginAt: users.lastLoginAt,
+      lockedUntil: users.lockedUntil,
+      failedAttempts: users.failedAttempts,
+      createdAt: users.createdAt,
+      deletedAt: users.deletedAt,
+    })
+    .from(users)
+    .orderBy(users.createdAt);
+}
+
+/**
+ * How many active super admins exist.
+ *
+ * Guards the one irreversible mistake this panel can make: the last super admin
+ * demoting, deactivating or locking themselves out, after which nobody can
+ * manage accounts and recovery means running a script against production.
+ */
+export async function countActiveSuperAdmins(): Promise<number> {
+  const rows = await db()
+    .select({ count: sql<number>`count(*)::int` })
+    .from(users)
+    .where(and(eq(users.role, "admin"), isNull(users.deletedAt)));
+
+  return rows[0]?.count ?? 0;
+}
+
+/** Create a staff account. Throws on a duplicate email — the unique index is the check. */
+export async function createStaffAccount(input: {
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: Role;
+}): Promise<{ id: string }> {
+  const rows = await db()
+    .insert(users)
+    .values({
+      name: input.name,
+      email: input.email.toLowerCase(),
+      passwordHash: input.passwordHash,
+      role: input.role,
+    })
+    .returning({ id: users.id });
+
+  // `returning` on an insert of one row cannot come back empty.
+  return rows[0] as { id: string };
+}
+
+/** Change a staff account's role. */
+export async function setStaffRole(userId: string, role: Role): Promise<void> {
+  await db()
+    .update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Deactivate an account.
+ *
+ * A soft delete, so the audit log's `user_id` foreign key still resolves and
+ * "who changed this booking" keeps answering after someone leaves. `getUserByEmail`
+ * and `getUserById` both filter on `deleted_at`, so the account cannot sign in
+ * and its next session re-check drops the role.
+ */
+export async function deactivateStaffAccount(userId: string): Promise<void> {
+  await db()
+    .update(users)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+/** Reactivate a deactivated account, clearing any lockout it carried. */
+export async function reactivateStaffAccount(userId: string): Promise<void> {
+  await db()
+    .update(users)
+    .set({
+      deletedAt: null,
+      failedAttempts: 0,
+      lockedUntil: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
+
+/** Clear a lockout without touching the password. */
+export async function unlockStaffAccount(userId: string): Promise<void> {
+  await db()
+    .update(users)
+    .set({ failedAttempts: 0, lockedUntil: null, updatedAt: new Date() })
+    .where(eq(users.id, userId));
 }

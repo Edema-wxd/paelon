@@ -25,10 +25,16 @@ editorial content arrives. The one exception is the direct
 `/blog/preview-post-layout-fixture` navigation, which exists to exercise every
 Markdown block type; when the fixture goes, point those specs at a real post.
 
-## Still missing
+## Booking writes to the database
 
-CLAUDE.md's testing floor requires one E2E for the **booking happy path**. It is
-not written because `/book` does not exist yet. It is the first spec to add when
-the booking flow lands, and should cover: deep link pre-fill, back navigation
-without state loss, the `aria-live` step announcement, and the
-`PMH-YYYY-NNNNNN` reference on `/book/confirmed`.
+`tests/e2e/booking.e2e.ts` covers the happy path CLAUDE.md's testing floor
+requires: deep-link pre-fill, back navigation without state loss, the
+`aria-live` step announcement, and the `PMH-YYYY-NNNNNN` reference on
+`/book/confirmed`.
+
+The submit spec posts to the real `/api/booking`, so it inserts a `bookings` row
+named "Playwright Test Patient" and advances `booking_reference_seq`. That is
+the point — a mocked endpoint would test the wizard against a fiction — but it
+means the suite belongs against a development database, never production. The
+rate limit is 5 submissions per hour per IP, so repeated local runs will
+eventually get a 429 rather than a confirmation page.

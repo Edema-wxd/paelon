@@ -6,14 +6,25 @@ rather than in the database: they are not CMS content, they have no table in
 
 ## Status
 
-`terms.json` is a **skeleton**. Every `body` is empty and `published` is
-`false`. The headings are a structure for Paelon's legal counsel to fill in;
-they make no claims about the hospital. Spec §18 lists the Terms and Privacy
-drafts as outstanding, and Phase 1 does not invent them.
+Spec §18 lists both drafts as outstanding. Neither document is in force, and
+both pages render a notice saying so and are served `noindex`.
 
-`privacy.json` does not exist yet. `/privacy` is linked from the footer and
-listed in `app/sitemap.ts`, so it currently 404s. The template that renders
-`/terms` is document-agnostic, so adding it is a JSON file plus a page.
+`terms.json` is a **skeleton**: every `body` is empty and `published` is
+`false`. The headings are a structure for counsel to fill in; they make no
+claims about the hospital.
+
+`privacy.json` is **placeholder prose**, requested so the page could be
+reviewed in layout before counsel delivers. It carries `placeholder: true` as
+well as `published: false`. The wording is shaped to match what the system
+actually does — the four forms, the consent checkbox, the twelve-month booking
+retention, cookieless analytics — rather than being invented wholesale, so
+counsel has a real starting point. Facts nobody has supplied are marked
+`[TO CONFIRM]` inline: registered entity details, the DPO contact, transfer
+mechanisms, response windows.
+
+**`placeholder` exists because the empty-section guard cannot catch this
+case.** Placeholder text is non-empty, so without the flag a document full of
+unreviewed wording would satisfy every other check and publish cleanly.
 
 ## Filling one in
 
@@ -21,11 +32,15 @@ listed in `app/sitemap.ts`, so it currently 404s. The template that renders
    they are — section anchors get quoted in correspondence, so they must stay
    stable even when a heading is reworded.
 2. Set `effective_date` to an ISO date (`YYYY-MM-DD`).
-3. Set `published` to `true`.
+3. Set `placeholder` to `false`, if it was true. This is the step that says a
+   lawyer has read the words.
+4. Set `published` to `true`.
 
-`lib/validation/legal.ts` refuses to publish a document that still has an empty
-section or no effective date, so step 3 cannot be taken out of order. Until
-`published` is true the page renders a pending notice and is served `noindex`.
+`lib/validation/legal.ts` refuses to parse a published document that still has
+an empty section, is still marked `placeholder`, or has no effective date — so
+the last step cannot be taken out of order, and a mistake fails the build rather
+than reaching a patient. Until `published` is true the page renders a notice and
+is served `noindex`.
 
 ## When the CMS arrives (Phase 2)
 

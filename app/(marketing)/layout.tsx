@@ -1,6 +1,7 @@
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import { MobileBottomBar } from "@/components/site/mobile-bottom-bar";
+import { StickyCtaSlot } from "@/components/site/sticky-cta-slot";
 
 export default function MarketingLayout({
   children,
@@ -14,7 +15,9 @@ export default function MarketingLayout({
         {children}
       </main>
       <Footer />
-      <MobileBottomBar />
+      <StickyCtaSlot>
+        <MobileBottomBar />
+      </StickyCtaSlot>
     </>
   );
 }

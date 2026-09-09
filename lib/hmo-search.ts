@@ -1,4 +1,13 @@
-import type { Hmo } from "@/lib/content";
+/**
+ * The only two fields matching actually reads. Declared structurally so a
+ * caller holding a trimmed view of an HMO — the booking wizard passes just
+ * slug, name and aliases, to keep whole records out of the client bundle —
+ * can search without reconstructing a full `Hmo`.
+ */
+export interface SearchableHmo {
+  name: string;
+  aliases?: string[];
+}
 
 /**
  * Client-side HMO name matching for the Phase 1 typeahead.
@@ -158,7 +167,7 @@ function tokenMatches(queryToken: string, candidateToken: string): boolean {
  * Aliases are scored alongside the canonical name and the best wins, so an
  * HMO that trades under more than one name resolves to a single record.
  */
-function scoreHmo(hmo: Hmo, queryTokens: string[]): number {
+function scoreHmo(hmo: SearchableHmo, queryTokens: string[]): number {
   const candidates = [hmo.name, ...(hmo.aliases ?? [])];
   let best = 0;
 
@@ -221,7 +230,10 @@ function scoreHmo(hmo: Hmo, queryTokens: string[]): number {
  * state, not an error. Ties fall back to the seeded display order, which is
  * already the order the caller passed in.
  */
-export function searchHmos(hmos: readonly Hmo[], query: string): Hmo[] {
+export function searchHmos<T extends SearchableHmo>(
+  hmos: readonly T[],
+  query: string,
+): T[] {
   const queryTokens = tokenise(query);
   if (queryTokens.length === 0) return [];
 
