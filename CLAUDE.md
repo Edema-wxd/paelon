@@ -65,6 +65,7 @@ Directory layout is specified in §3 of the spec. Follow it exactly.
 - Semantic HTML before `<div>`. Sequential heading hierarchy, no skips.
 - `next/image` with proper sizes and priority. `next/font/local` with `display: 'swap'`.
 - Lucide React icons only. No mixed icon sets.
+- Long text (bio, description, blog body) is Markdown, not MDX (spec §5, §8). It renders through `lib/markdown.ts` into a typed AST and `components/site/article-body.tsx` into React elements — never `dangerouslySetInnerHTML`, and unsafe hrefs degrade to text. The admin editor preview must use the same renderer (D1). No MDX compiler.
 - Check every new or edited template against **Conversion & trust baseline** below before calling it done.
 - Update the spec when a decision changes.
 
@@ -179,6 +180,7 @@ Assets and decisions not yet in the spec. Flag these rather than inventing aroun
 - Branch email inboxes, NDPR DPO contact
 - Privacy Policy / Terms draft for legal review
 - **Testimonial consent.** `sarah-adenuga` is the only real quote seeded and carries `consent_given: false`, so it does not render. Confirm consent was given, in what form, and whether the name may appear in full (`name_format`: `full` · `first_only` · `initials`). Until then the homepage shows one placeholder where §6 wants two real ones
+- **Phase 2 rows B1 and B3** in `docs/phase-2-decisions.md` were taken as defaults, not rulings. B1: UI role labels match the enum, since no request for other names is on record. B3: assumes "media personnel" is a real Paelon role; if not, contributors revert to own-rows-only on every content type (§8 Roles). Confirm both before building role UI or the contributor policy
 
 ## Live gaps — true as of 2026-09-15
 
@@ -187,7 +189,6 @@ Not blocked on anyone. Fix when the area is next touched.
 - **`npm run db:push` and `npm run db:seed` do not load `.env.local`, so both fail on a missing `DATABASE_URL`.** `drizzle.config.ts` claims drizzle-kit reads the file itself; drizzle-kit only auto-loads `.env`, and `lib/db/seed.ts` runs under bare `tsx`. `upload` is the only script wired with `--env-file`. Until the scripts are fixed — a `package.json`/config change, so ask first — run them as `node --env-file=.env.local ./node_modules/.bin/drizzle-kit push` and `node --env-file=.env.local ./node_modules/.bin/tsx lib/db/seed.ts`. The dev Neon database was pushed and seeded that way on 2026-09-08 (25 tables); `next build` prerenders all 24 routes against it.
 - **The Vercel project has no environment variables set**, which is what broke the 2026-09-07 deploy: `serverEnv()` parses the whole schema at once, and `/_not-found` renders `Header`/`Footer`, which read the DB through `lib/content.ts`, so the prerender throws on `DATABASE_URL` and `RATE_LIMIT_SALT` together. Production and Preview each need `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `RATE_LIMIT_SALT`, `NEXT_PUBLIC_SITE_URL` and `CONSENT_TEXT_VERSION`, plus `AUTH_SECRET` and `AUTH_URL` for the admin panel. `NEXT_PUBLIC_SITE_URL` is the dangerous one — it defaults to `http://localhost:3000`, so a build without it succeeds and ships a sitemap and canonicals pointing at localhost. Only Francis has Vercel access.
 - **4 of the 15 templates in §6 are unbuilt.** Done: `/`, `/services`, `/services/[slug]`, `/locations`, `/locations/[slug]`, `/blog` + `/blog/[slug]`, `/book`, `/book/confirmed`, `/contact`, `/privacy` + `/terms`, 404 (plus a 500, which §6 does not count). Outstanding: `/about`, `/for-corporates`, `/hmo-check`, `/newsletter/confirmed`. The thank-you routes in baseline item 1 (`/contact/thank-you`, `/corporate/thank-you`) are on top of that count and also unbuilt.
-- **Blog bodies are Markdown, not MDX.** Spec §5 says the `body` column is MDX, but no MDX compiler is on the §2 approved list. `lib/markdown.ts` parses the subset long-form health writing uses into a typed AST and `components/site/article-body.tsx` builds React elements from it — nothing goes through `dangerouslySetInnerHTML`, and unsafe hrefs degrade to text. Stored source stays valid MDX, so Phase 2 replaces the renderer, not the content.
 - **Three `preview-*` seed records are layout fixtures** — one author, one blog post, one testimonial. They say nothing about Paelon and must be deleted together before launch; removing the author alone breaks the seed run. See `seed/README.md`.
 - **`UPLOADTHING_UPLOADS_ENABLED` is dead config** — declared in `lib/env.ts` and `.env.example`, read by nothing since the upload route moved to a session check. Removal is part of row A8 in `docs/phase-2-decisions.md`.
 - **`connect-src` in `middleware.ts` has no UploadThing origin**, so a browser-side uploader will be blocked by CSP once the policy is enforced. `img-src` already allows the CDN.

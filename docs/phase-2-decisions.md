@@ -1,4 +1,4 @@
-# Phase 2 decisions — open
+# Phase 2 decisions
 
 Every place the admin code built during Phase 1 disagrees with
 `paelon-website-spec.md`, and every Phase 2 choice the spec leaves open. Drafted
@@ -6,13 +6,17 @@ Every place the admin code built during Phase 1 disagrees with
 `app/(admin)/`, `components/admin/`, `lib/auth/`, `lib/uploadthing/`. Line
 references are from commit `8847e46`.
 
-**How to use this file.** Fill in the Decision column. Where a decision changes
-the spec, amend the spec (CLAUDE.md: "Update the spec when a decision changes")
-and move the row into `docs/decisions.md`. **P1 comes first.** Until it is
-decided, nothing below authorises building, and the rows describe code whose
-future is undecided.
+**Status: decided 2026-09-15.** Every row has a Decision, and each is folded
+into `paelon-website-spec.md` and listed under its "Amendments since 1.0". The
+spec is the source of truth from here; this file keeps the reasoning and the
+options that were rejected. It is the Phase 2 counterpart to
+`docs/decisions.md`, which stays the Phase 1 record. A decision that changes
+later is amended in the spec and noted in the row, not deleted.
 
-Recommendations are the drafter's view, not decisions.
+B1 and B3 were taken as defaults rather than rulings and are awaiting
+Francis's confirmation (CLAUDE.md, Blocked on Francis).
+
+Recommendations are the drafter's view; the Decision column is what stands.
 
 ---
 
@@ -94,7 +98,7 @@ Recommendations are the drafter's view, not decisions.
 
 ## Found while reading — not decisions
 
-Fix these when the area is next touched, whichever way P1 goes:
+Fix these when the area is next touched:
 
 - `lib/uploadthing/core.ts:73-75` reads `contentType` and `slug` from the query
   string, but `components/admin/media-uploader.tsx` never sends them, so every
