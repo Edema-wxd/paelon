@@ -14,6 +14,8 @@ import {
   updatePasswordHash,
   writeAuditEntry,
 } from "@/lib/db/queries/users";
+import { logger } from "@/lib/logger";
+import { checkRateLimit, clientIpFrom, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Auth.js v5 configuration for the admin panel.
@@ -36,7 +38,16 @@ import {
  * this", and `lib/auth/session.ts` joins them. Route protection is enforced in
  * the admin layout and again in every server action — never in middleware
  * alone, which has a history of being bypassable and cannot make a database
- * call to check whether an account is still active.
+ * call to check whether an account is still active. `middleware.ts` only
+ * redirects requests with no session cookie at all (spec §8 Access).
+ *
+ * ## Session cookie
+ *
+ * Auth.js defaults the session cookie to `HttpOnly` and `SameSite=Lax`, but
+ * derives `Secure` from the request URL's protocol. Behind a TLS-terminating
+ * proxy that does not forward the protocol, that reads `http:` and the cookie
+ * ships without `Secure`. `useSecureCookies` pins it to the environment instead
+ * (spec §14 Auth), which also gives the cookie its `__Secure-` prefix.
  */
 
 declare module "next-auth" {
@@ -87,6 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/admin/login", error: "/admin/login" },
   trustHost: true,
+  useSecureCookies: process.env.NODE_ENV === "production",
 
   providers: [
     Credentials({
@@ -103,8 +115,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * same `null` and the same generic message on the login page. The
        * specifics go to the audit log, where staff can see them and an attacker
        * cannot.
+       *
+       * The per-IP rate limit runs first, here rather than in `loginAction`, so
+       * it also covers direct POSTs to `/api/auth/callback/credentials`. A
+       * limited attempt writes no audit row — the limit exists partly to stop
+       * the audit table being flooded — and never reaches the password check.
        */
-      async authorize(raw) {
+      async authorize(raw, request) {
+        const limit = await checkRateLimit(
+          RATE_LIMITS.login,
+          clientIpFrom(request.headers),
+        );
+        if (!limit.allowed) {
+          logger.warn("auth.login_rate_limited", {});
+          return null;
+        }
+
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 

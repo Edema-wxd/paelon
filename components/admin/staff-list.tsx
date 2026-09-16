@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { ROLE_LABELS, type Role } from "@/lib/auth/policy";
 import { staffRowAction, type StaffActionState } from "@/lib/auth/user-actions";
 import type { StaffAccount } from "@/lib/db/queries/users";
+import { PASSWORD_MIN_LENGTH, staffPassword } from "@/lib/validation/password";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -49,6 +50,17 @@ function StaffRow({
   const [resetting, setResetting] = useState(false);
   const [state, formAction] = useActionState<StaffActionState, FormData>(
     async (prev, formData) => {
+      // The password rule runs here too, against the same schema as the server.
+      if (formData.get("intent") === "password") {
+        const password = staffPassword.safeParse({
+          email: account.email,
+          password: formData.get("password") ?? "",
+        });
+        if (!password.success) {
+          return { error: password.error.issues[0]?.message ?? "Choose a different password." };
+        }
+      }
+
       const result = await staffRowAction(prev, formData);
       if (result.message) setResetting(false);
       return result;
@@ -189,7 +201,7 @@ function StaffRow({
               htmlFor={`password-${account.id}`}
               className="block text-xs text-muted-foreground"
             >
-              New password (at least 12 characters)
+              New password (at least {PASSWORD_MIN_LENGTH} characters)
             </label>
             <Input
               id={`password-${account.id}`}

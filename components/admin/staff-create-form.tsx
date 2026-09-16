@@ -8,6 +8,7 @@ import { createStaffAction, type StaffActionState } from "@/lib/auth/user-action
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ROLE_LABELS, type Role } from "@/lib/auth/policy";
+import { PASSWORD_MIN_LENGTH, staffPassword } from "@/lib/validation/password";
 
 /**
  * Add a staff account.
@@ -45,6 +46,16 @@ export function StaffCreateForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState<StaffActionState, FormData>(
     async (prev, formData) => {
+      // Same schema the server runs, so a short password fails without a round
+      // trip. The server check is still the one that counts.
+      const password = staffPassword.safeParse({
+        email: formData.get("email") ?? "",
+        password: formData.get("password") ?? "",
+      });
+      if (!password.success) {
+        return { error: password.error.issues[0]?.message ?? "Choose a different password." };
+      }
+
       const result = await createStaffAction(prev, formData);
       if (result.message) formRef.current?.reset();
       return result;
@@ -141,7 +152,8 @@ export function StaffCreateForm() {
             aria-describedby="staff-password-hint"
           />
           <p id="staff-password-hint" className="text-xs text-muted-foreground">
-            At least 12 characters. Give it to them directly — it is not emailed.
+            At least {PASSWORD_MIN_LENGTH} characters, not containing their email
+            address. Give it to them directly — it is not emailed.
           </p>
         </div>
       </div>

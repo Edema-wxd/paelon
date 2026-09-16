@@ -12,10 +12,15 @@ import { auditLog, users, type User } from "@/lib/db/schema";
  * open door, and `unstable_cache` would happily serve one for an hour.
  */
 
-/** Consecutive failures before an account is locked. */
-export const MAX_FAILED_ATTEMPTS = 5;
+/**
+ * Consecutive failures before an account is locked (spec §14 Auth, decision A2).
+ *
+ * Deliberately higher than the per-IP login limit: the IP limit stops online
+ * guessing, and this only has to catch attempts spread across many IPs.
+ */
+export const MAX_FAILED_ATTEMPTS = 10;
 
-/** How long a lockout lasts. */
+/** How long a lockout lasts. It expires on its own; an `admin` can clear it early. */
 export const LOCKOUT_MINUTES = 15;
 
 /**
@@ -39,7 +44,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   return rows[0] ?? null;
 }
 
-/** Look up an active account by id. Used to re-check the session's role on every request. */
+/** Look up an active account by id. Used to re-check the session's role at most every 5 minutes. */
 export async function getUserById(id: string): Promise<User | null> {
   const rows = await db()
     .select()
@@ -59,18 +64,26 @@ export function isLockedOut(user: Pick<User, "lockedUntil">): boolean {
  * Record a failed login and lock the account once the threshold is reached.
  *
  * The increment and the lock are one statement so two simultaneous attempts
- * cannot both read `attempts = 4` and each write `5`, leaving the account
- * unlocked after six failures.
+ * cannot both read `attempts = 9` and each write `10`, leaving the account
+ * unlocked after eleven failures.
+ *
+ * A failure after an expired lock starts a fresh count at 1. Without that the
+ * counter would still read 10, and a single typo after the lock lifted would
+ * lock the account again — which is not "10 consecutive failures".
  */
 export async function recordFailedLogin(userId: string): Promise<void> {
+  const lockExpired = sql`(${users.lockedUntil} is not null and ${users.lockedUntil} <= now())`;
+  const nextAttempts = sql`case when ${lockExpired} then 1 else ${users.failedAttempts} + 1 end`;
+
   await db()
     .update(users)
     .set({
-      failedAttempts: sql`${users.failedAttempts} + 1`,
+      failedAttempts: nextAttempts,
       lockedUntil: sql`
         case
-          when ${users.failedAttempts} + 1 >= ${MAX_FAILED_ATTEMPTS}
+          when ${nextAttempts} >= ${MAX_FAILED_ATTEMPTS}
           then now() + interval '${sql.raw(String(LOCKOUT_MINUTES))} minutes'
+          when ${lockExpired} then null
           else ${users.lockedUntil}
         end
       `,

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   canChangeRole,
   canDeactivate,
-  validatePassword,
   type StaffChangeContext,
 } from "@/lib/auth/staff-guards";
 
@@ -72,33 +71,5 @@ describe("canDeactivate", () => {
     expect(
       canDeactivate({ ...base, targetRole: "admin", activeSuperAdmins: 2 }).ok,
     ).toBe(true);
-  });
-});
-
-describe("validatePassword", () => {
-  it("accepts a long passphrase", () => {
-    expect(validatePassword("correct horse battery staple", "kemi@paelon.test").ok).toBe(
-      true,
-    );
-  });
-
-  it("rejects anything under 12 characters", () => {
-    expect(validatePassword("short", "kemi@paelon.test").ok).toBe(false);
-    expect(validatePassword("elevenchars", "kemi@paelon.test").ok).toBe(false);
-    expect(validatePassword("twelvechars!", "kemi@paelon.test").ok).toBe(true);
-  });
-
-  it("rejects a password containing the email local part", () => {
-    const result = validatePassword("kemi-is-my-password", "kemi@paelon.test");
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/email address/i);
-  });
-
-  it("ignores a local part too short to be meaningful", () => {
-    expect(validatePassword("ab-long-enough-password", "ab@paelon.test").ok).toBe(true);
-  });
-
-  it("rejects an absurdly long password rather than hashing it", () => {
-    expect(validatePassword("x".repeat(2000), "kemi@paelon.test").ok).toBe(false);
   });
 });

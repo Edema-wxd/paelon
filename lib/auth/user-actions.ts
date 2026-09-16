@@ -9,7 +9,6 @@ import { requireCan } from "@/lib/auth/session";
 import {
   canChangeRole,
   canDeactivate,
-  validatePassword,
   type StaffChangeContext,
 } from "@/lib/auth/staff-guards";
 import {
@@ -24,6 +23,7 @@ import {
   writeAuditEntry,
 } from "@/lib/db/queries/users";
 import { userRoleEnum } from "@/lib/db/schema";
+import { staffPassword } from "@/lib/validation/password";
 
 /**
  * Staff account management.
@@ -55,6 +55,12 @@ const createSchema = z.object({
   role: z.enum(ROLES),
   password: z.string().min(1, "Enter a password."),
 });
+
+/** Same schema the forms run client-side; the server result is the one that counts. */
+function passwordError(email: string, password: string): string | null {
+  const result = staffPassword.safeParse({ email, password });
+  return result.success ? null : (result.error.issues[0]?.message ?? "Choose a different password.");
+}
 
 const idSchema = z.object({ userId: z.string().uuid() });
 
@@ -123,8 +129,8 @@ export async function createStaffAction(
 
     const { name, email, role, password } = parsed.data;
 
-    const strength = validatePassword(password, email);
-    if (!strength.ok) return { error: strength.reason };
+    const invalidPassword = passwordError(email, password);
+    if (invalidPassword) return { error: invalidPassword };
 
     const passwordHash = await hashPassword(password);
 
@@ -242,7 +248,7 @@ export async function reactivateStaffAction(
   });
 }
 
-/** Clear a lockout after five failed sign-ins, without changing the password. */
+/** Clear a lockout before it expires on its own, without changing the password. */
 export async function unlockStaffAction(
   _prev: StaffActionState,
   formData: FormData,
@@ -288,8 +294,8 @@ export async function resetPasswordAction(
     const target = await getUserById(parsed.data.userId);
     if (!target) return { error: "That account no longer exists." };
 
-    const strength = validatePassword(parsed.data.password, target.email);
-    if (!strength.ok) return { error: strength.reason };
+    const invalidPassword = passwordError(target.email, parsed.data.password);
+    if (invalidPassword) return { error: invalidPassword };
 
     await updatePasswordHash(
       parsed.data.userId,

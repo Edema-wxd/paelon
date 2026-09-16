@@ -60,10 +60,12 @@ export async function loginAction(
     });
   } catch (error) {
     // A successful signIn throws a redirect, which must reach Next untouched.
+    // One message for every failure — wrong password, unknown email, locked
+    // account, rate-limited IP — and no thresholds quoted (spec §14 Auth).
     if (error instanceof AuthError) {
       return {
         error:
-          "Those details did not match an active account. After five failed attempts an account is locked for 15 minutes.",
+          "Those details did not match an active account. If you cannot sign in, ask an admin.",
       };
     }
     throw error;

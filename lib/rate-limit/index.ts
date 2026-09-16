@@ -36,6 +36,8 @@ export const RATE_LIMITS = {
   newsletter: { name: "newsletter", limit: 5, windowSeconds: 3600 },
   newsletterToken: { name: "newsletter_token", limit: 10, windowSeconds: 3600 },
   hmoSearch: { name: "hmo_search", limit: 30, windowSeconds: 60 },
+  /** Admin sign-in, per IP (spec §14 Auth). Checked in `authorize()`. */
+  login: { name: "login", limit: 5, windowSeconds: 900 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export interface RateLimitResult {
