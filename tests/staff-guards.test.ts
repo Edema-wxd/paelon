@@ -31,7 +31,7 @@ describe("canChangeRole", () => {
       "editor",
     );
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/only super admin/i);
+    expect(result.ok === false && result.reason).toMatch(/only admin/i);
   });
 
   it("allows demoting a super admin when another one remains", () => {

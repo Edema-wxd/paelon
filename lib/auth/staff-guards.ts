@@ -48,7 +48,7 @@ export function canChangeRole(
   if (context.actorId === context.targetId) {
     return {
       ok: false,
-      reason: "You cannot change your own role. Ask another super admin.",
+      reason: "You cannot change your own role. Ask another admin.",
     };
   }
 
@@ -60,7 +60,7 @@ export function canChangeRole(
     return {
       ok: false,
       reason:
-        "This is the only super admin. Promote someone else before changing this role.",
+        "This is the only admin. Promote someone else before changing this role.",
     };
   }
 
@@ -80,7 +80,7 @@ export function canDeactivate(context: StaffChangeContext): GuardResult {
     return {
       ok: false,
       reason:
-        "This is the only super admin. Promote someone else before deactivating this account.",
+        "This is the only admin. Promote someone else before deactivating this account.",
     };
   }
 
