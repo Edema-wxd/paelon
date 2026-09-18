@@ -49,7 +49,7 @@ const NAV: ReadonlyArray<
   { href: "/admin/faqs", label: "FAQs", gate: { action: "read", resource: "faqs" }, built: false },
   { href: "/admin/media", label: "Media", gate: { action: "read", resource: "media" }, built: true },
   { href: "/admin/users", label: "Staff", gate: { action: "read", resource: "users" }, built: true },
-  { href: "/admin/audit", label: "Audit log", gate: { action: "read", resource: "audit_log" }, built: false },
+  { href: "/admin/audit", label: "Audit log", gate: { action: "read", resource: "audit_log" }, built: true },
   { href: "/admin/analytics", label: "Analytics", gate: { action: "read", resource: "analytics" }, built: false },
 ];
 
