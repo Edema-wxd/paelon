@@ -17,24 +17,40 @@ import { requireAdminUser } from "@/lib/auth/session";
  *
  * This check is the first line, not the only one. A Next.js layout does not
  * re-run for a server action, so every action and route handler under here
- * calls `requireCan()` for itself — the nav below hides links a role cannot
- * use, but hiding a button has never stopped anyone from POSTing to it.
+ * runs its own check (`adminAction` or `requireCan()`) — the nav below hides
+ * links a role cannot use, but hiding a button has never stopped anyone from
+ * POSTing to it.
  */
 
 /**
- * Only routes that exist. A nav link to an unbuilt page is a 404 with extra
- * steps, and in a back office it reads as something being broken rather than
- * unfinished.
+ * Every admin route in spec §8, in spec order.
  *
- * Still to build, each gated on the resource named beside it:
- *   /admin/content    content CRUD          blog_posts, services, locations
- *   /admin/enquiries  patient submissions   bookings
- *   /admin/audit      audit log viewer      audit_log
+ * `built: false` keeps a route out of the nav. A link to an unbuilt page is a
+ * 404 with extra steps, and in a back office it reads as something broken
+ * rather than unfinished. Shipping a route means flipping its flag.
+ *
+ * `gate` is the permission the destination page itself checks. Omitted only for
+ * the overview, which every signed-in role may see.
  */
-const NAV: Array<AdminNavItem & { action: Action; resource: Resource }> = [
-  { href: "/admin", label: "Overview", action: "read", resource: "media" },
-  { href: "/admin/media", label: "Media", action: "read", resource: "media" },
-  { href: "/admin/users", label: "Staff", action: "read", resource: "users" },
+const NAV: ReadonlyArray<
+  AdminNavItem & { gate?: { action: Action; resource: Resource }; built: boolean }
+> = [
+  { href: "/admin", label: "Overview", built: true },
+  { href: "/admin/bookings", label: "Bookings", gate: { action: "read", resource: "bookings" }, built: false },
+  { href: "/admin/contact", label: "Contact", gate: { action: "read", resource: "contact_submissions" }, built: false },
+  { href: "/admin/corporate-enquiries", label: "Corporate enquiries", gate: { action: "read", resource: "corporate_enquiries" }, built: false },
+  { href: "/admin/services", label: "Services", gate: { action: "read", resource: "services" }, built: false },
+  { href: "/admin/doctors", label: "Doctors", gate: { action: "read", resource: "doctors" }, built: false },
+  { href: "/admin/locations", label: "Locations", gate: { action: "read", resource: "locations" }, built: false },
+  { href: "/admin/hmos", label: "HMOs", gate: { action: "read", resource: "hmos" }, built: false },
+  { href: "/admin/testimonials", label: "Testimonials", gate: { action: "read", resource: "testimonials" }, built: false },
+  { href: "/admin/blog", label: "Blog", gate: { action: "read", resource: "blog_posts" }, built: false },
+  { href: "/admin/awards", label: "Awards", gate: { action: "read", resource: "awards" }, built: false },
+  { href: "/admin/faqs", label: "FAQs", gate: { action: "read", resource: "faqs" }, built: false },
+  { href: "/admin/media", label: "Media", gate: { action: "read", resource: "media" }, built: true },
+  { href: "/admin/users", label: "Staff", gate: { action: "read", resource: "users" }, built: true },
+  { href: "/admin/audit", label: "Audit log", gate: { action: "read", resource: "audit_log" }, built: false },
+  { href: "/admin/analytics", label: "Analytics", gate: { action: "read", resource: "analytics" }, built: false },
 ];
 
 export default async function AdminDashboardLayout({
@@ -42,8 +58,10 @@ export default async function AdminDashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await requireAdminUser();
 
-  const items = NAV.filter((item) =>
-    can(user.role, item.action, item.resource),
+  const items = NAV.filter(
+    (item) =>
+      item.built &&
+      (!item.gate || can(user.role, item.gate.action, item.gate.resource)),
   ).map(({ href, label }) => ({ href, label }));
 
   return (

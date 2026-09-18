@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { MediaGrid } from "@/components/admin/media-grid";
 import { MediaUploader } from "@/components/admin/media-uploader";
 import { NotPermitted } from "@/components/admin/not-permitted";
-import { can } from "@/lib/auth/policy";
+import { can, canOnRow } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 import { listMedia } from "@/lib/uploadthing/api";
 
@@ -61,7 +61,9 @@ export default async function AdminMediaPage() {
           Library
         </h2>
         <div className="mt-4">
-          <MediaGrid files={files} canDelete={can(user.role, "delete", "media")} />
+          {/* Same check the action runs: no file has a recorded owner yet, so a
+              contributor gets no delete controls rather than ones that always refuse. */}
+          <MediaGrid files={files} canDelete={canOnRow(user, "delete", "media", {})} />
         </div>
         {hasMore ? (
           <p className="mt-4 text-sm text-muted-foreground">

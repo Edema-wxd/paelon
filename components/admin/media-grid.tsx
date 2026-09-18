@@ -4,8 +4,9 @@ import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { deleteMediaAction, type MediaActionState } from "@/lib/uploadthing/actions";
+import { deleteMediaAction, type MediaState } from "@/lib/uploadthing/actions";
 import type { MediaFile } from "@/lib/uploadthing/api";
+import { MEDIA_DELETE_MAX } from "@/lib/uploadthing/limits";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -30,7 +31,11 @@ function DeleteButton({ count }: { count: number }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" variant="destructive" disabled={pending || count === 0}>
+    <Button
+      type="submit"
+      variant="destructive"
+      disabled={pending || count === 0 || count > MEDIA_DELETE_MAX}
+    >
       <Trash2 aria-hidden />
       {pending ? "Deleting…" : `Delete ${count} selected`}
     </Button>
@@ -46,16 +51,16 @@ export function MediaGrid({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
-  const [state, formAction] = useActionState<MediaActionState, FormData>(
+  const [state, formAction] = useActionState<MediaState, FormData>(
     async (prev, formData) => {
       const result = await deleteMediaAction(prev, formData);
-      if (!result.error) {
+      if (result.ok) {
         setSelected(new Set());
         setConfirming(false);
       }
       return result;
     },
-    {},
+    null,
   );
 
   if (files.length === 0) {
@@ -65,6 +70,8 @@ export function MediaGrid({
       </p>
     );
   }
+
+  const overLimit = selected.size > MEDIA_DELETE_MAX;
 
   function toggle(key: string) {
     setSelected((current) => {
@@ -78,20 +85,22 @@ export function MediaGrid({
   return (
     <form action={formAction}>
       <div aria-live="polite" className="mb-4 empty:mb-0">
-        {state.message ? (
+        {state?.ok ? (
           <p className="rounded-md border-l-2 border-accent bg-white px-4 py-3 text-sm text-primary">
-            {state.message}
+            {state.data.message}
           </p>
         ) : null}
-        {state.error ? (
+        {state && !state.ok ? (
           <div
             role="alert"
             className="rounded-md border-l-2 border-destructive bg-white px-4 py-3 text-sm text-destructive"
           >
-            <p>{state.error}</p>
-            {state.references?.length ? (
+            {/* The grid has no fields to highlight, so a validation failure shows
+                the field's own message instead of the generic one. */}
+            <p>{state.fields.keys?.[0] ?? state.error}</p>
+            {state.details?.references.length ? (
               <ul className="mt-2 list-disc space-y-1 pl-5">
-                {state.references.map((reference, index) => (
+                {state.details.references.map((reference, index) => (
                   <li key={`${reference.table}-${index}`}>
                     {reference.label} <span className="opacity-70">({reference.table})</span>
                   </li>
@@ -123,13 +132,20 @@ export function MediaGrid({
             <Button
               type="button"
               variant="outline"
-              disabled={selected.size === 0}
+              disabled={selected.size === 0 || overLimit}
+              aria-describedby={overLimit ? "media-delete-limit" : undefined}
               onClick={() => setConfirming(true)}
             >
               <Trash2 aria-hidden />
               Delete {selected.size > 0 ? `${selected.size} selected` : "selected"}
             </Button>
           )}
+          {overLimit ? (
+            <p id="media-delete-limit" className="text-sm text-destructive">
+              You can delete up to {MEDIA_DELETE_MAX} files at a time. Deselect{" "}
+              {selected.size - MEDIA_DELETE_MAX} to continue.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

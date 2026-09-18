@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { can } from "@/lib/auth/policy";
+import { can, canOnRow, type Action, type Resource } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 
 /**
@@ -18,17 +18,41 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+type Access = "allowed" | "own" | "denied";
+
+const ACCESS_TEXT: Record<Access, string> = {
+  allowed: "Allowed",
+  own: "Only items you created",
+  denied: "Not permitted",
+};
+
 export default async function AdminOverviewPage() {
   const user = await requireAdminUser();
 
-  const capabilities = [
-    { label: "Upload media", allowed: can(user.role, "create", "media") },
-    { label: "Delete media", allowed: can(user.role, "delete", "media") },
-    { label: "Edit content", allowed: can(user.role, "update", "blog_posts") },
-    { label: "Publish content", allowed: can(user.role, "publish", "blog_posts") },
-    { label: "View patient enquiries", allowed: can(user.role, "read", "bookings") },
-    { label: "Delete patient data", allowed: can(user.role, "delete", "bookings") },
-    { label: "Manage staff accounts", allowed: can(user.role, "update", "users") },
+  /**
+   * `can()` says yes when *some* rows qualify; `canOnRow()` against an unowned
+   * row says whether *every* row does. The gap between them is an ownership
+   * limit, and it is stated rather than rounded up to "Allowed".
+   */
+  function access(action: Action, resource: Resource): Access {
+    if (!can(user.role, action, resource)) return "denied";
+    return canOnRow(user, action, resource, {}) ? "allowed" : "own";
+  }
+
+  const capabilities: { label: string; access: Access }[] = [
+    { label: "Upload media", access: access("create", "media") },
+    // A contributor may delete only files they uploaded, and no file records an
+    // uploader until the `media` table exists (D3). The actions refuse the
+    // delete outright, so say so rather than promising "your own files".
+    {
+      label: "Delete media",
+      access: canOnRow(user, "delete", "media", {}) ? "allowed" : "denied",
+    },
+    { label: "Edit content", access: access("update", "blog_posts") },
+    { label: "Publish content", access: access("publish", "blog_posts") },
+    { label: "View patient enquiries", access: access("read", "bookings") },
+    { label: "Delete patient data", access: access("delete", "bookings") },
+    { label: "Manage staff accounts", access: access("update", "users") },
   ];
 
   return (
@@ -52,10 +76,10 @@ export default async function AdminOverviewPage() {
                 state indicator (CLAUDE.md, accessibility gates). */}
             <span
               className={
-                capability.allowed ? "text-primary" : "text-muted-foreground"
+                capability.access === "denied" ? "text-muted-foreground" : "text-primary"
               }
             >
-              {capability.allowed ? "Allowed" : "Not permitted"}
+              {ACCESS_TEXT[capability.access]}
             </span>
           </li>
         ))}
