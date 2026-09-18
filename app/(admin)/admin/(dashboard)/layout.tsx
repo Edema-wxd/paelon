@@ -36,7 +36,7 @@ const NAV: ReadonlyArray<
   AdminNavItem & { gate?: { action: Action; resource: Resource }; built: boolean }
 > = [
   { href: "/admin", label: "Overview", built: true },
-  { href: "/admin/bookings", label: "Bookings", gate: { action: "read", resource: "bookings" }, built: false },
+  { href: "/admin/bookings", label: "Bookings", gate: { action: "read", resource: "bookings" }, built: true },
   { href: "/admin/contact", label: "Contact", gate: { action: "read", resource: "contact_submissions" }, built: false },
   { href: "/admin/corporate-enquiries", label: "Corporate enquiries", gate: { action: "read", resource: "corporate_enquiries" }, built: false },
   { href: "/admin/services", label: "Services", gate: { action: "read", resource: "services" }, built: false },
