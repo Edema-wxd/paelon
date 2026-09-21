@@ -61,35 +61,61 @@ export function isLockedOut(user: Pick<User, "lockedUntil">): boolean {
 }
 
 /**
- * Record a failed login and lock the account once the threshold is reached.
+ * Count this login attempt against the account before its password is checked,
+ * and report whether the account was already locked.
  *
- * The increment and the lock are one statement so two simultaneous attempts
- * cannot both read `attempts = 9` and each write `10`, leaving the account
- * unlocked after eleven failures.
+ * Counting up front is what makes the lockout hold under load. Reading
+ * `locked_until`, verifying a password for ~50ms and only then recording the
+ * failure leaves every attempt that arrives inside those 50ms looking at the
+ * same pre-attempt state, so a hundred parallel guesses all pass a limit of
+ * ten. Here the increment, the lock and the read of the previous lock state are
+ * one statement, ordered by the database.
+ *
+ * A verified password calls `recordSuccessfulLogin`, which resets the counter —
+ * so a legitimate sign-in gives its attempt straight back, and "10 consecutive
+ * failures" still means consecutive.
  *
  * A failure after an expired lock starts a fresh count at 1. Without that the
  * counter would still read 10, and a single typo after the lock lifted would
- * lock the account again — which is not "10 consecutive failures".
+ * lock the account again.
  */
-export async function recordFailedLogin(userId: string): Promise<void> {
+export async function reserveLoginAttempt(
+  userId: string,
+): Promise<{ lockedOut: boolean }> {
   const lockExpired = sql`(${users.lockedUntil} is not null and ${users.lockedUntil} <= now())`;
   const nextAttempts = sql`case when ${lockExpired} then 1 else ${users.failedAttempts} + 1 end`;
 
-  await db()
-    .update(users)
-    .set({
-      failedAttempts: nextAttempts,
-      lockedUntil: sql`
-        case
+  // `previous` reads and locks the row; the update's `locked_until` is derived
+  // from it, so the value returned is the one from before this attempt.
+  const rows = await db().execute(sql`
+    with previous as (
+      select ${users.id} as id, ${users.lockedUntil} as locked_until
+      from ${users}
+      where ${eq(users.id, userId)}
+      for update
+    )
+    update ${users}
+    set failed_attempts = ${nextAttempts},
+        locked_until = case
           when ${nextAttempts} >= ${MAX_FAILED_ATTEMPTS}
           then now() + interval '${sql.raw(String(LOCKOUT_MINUTES))} minutes'
           when ${lockExpired} then null
           else ${users.lockedUntil}
-        end
-      `,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId));
+        end,
+        updated_at = now()
+    from previous
+    where ${users.id} = previous.id
+    returning previous.locked_until as was_locked_until
+  `);
+
+  const list = Array.isArray(rows) ? rows : (rows as { rows: unknown[] }).rows;
+  const first = list[0] as { was_locked_until: string | Date | null } | undefined;
+  const wasLockedUntil = first?.was_locked_until ?? null;
+
+  return {
+    lockedOut:
+      wasLockedUntil !== null && new Date(wasLockedUntil).getTime() > Date.now(),
+  };
 }
 
 /** Clear the failure counter and stamp the login. Called only after a verified password. */

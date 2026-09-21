@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { BookingFilters } from "@/components/admin/booking-filters";
+import { BookingsEmpty } from "@/components/admin/bookings-empty";
 import { BookingsTable } from "@/components/admin/bookings-table";
 import { NotPermitted } from "@/components/admin/not-permitted";
 import {
@@ -65,8 +66,8 @@ export default async function AdminBookingsPage({
     <div className="mx-auto max-w-6xl">
       <h1 className="text-2xl font-bold text-primary">Bookings</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Appointment requests, newest work first. A request is not a reserved
-        slot — the branch confirms the time by phone.
+        Appointment requests, soonest requested date first. A request is not a
+        reserved slot — the branch confirms the time by phone.
       </p>
 
       <section aria-labelledby="filters-heading" className="mt-8">
@@ -96,11 +97,15 @@ export default async function AdminBookingsPage({
         </div>
 
         <div className="mt-4">
-          <BookingsTable
-            rows={list.rows}
-            query={query}
-            canAct={can(user.role, "update", "bookings")}
-          />
+          {list.rows.length === 0 ? (
+            <BookingsEmpty isFiltered={Object.keys(query.filters).length > 0} />
+          ) : (
+            <BookingsTable
+              rows={list.rows}
+              query={query}
+              canAct={can(user.role, "update", "bookings")}
+            />
+          )}
         </div>
 
         {pages.pages > 1 ? (

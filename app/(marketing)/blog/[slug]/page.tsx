@@ -51,7 +51,22 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
 
-  if (!post) return { title: "Article not found" };
+  /*
+   * `notFound()` rather than a "not found" title, so the missing case is handled
+   * the same way in both places and the page inherits the real not-found
+   * metadata instead of a bespoke title.
+   *
+   * It does not fix the *status*, and neither would moving it: an unknown slug
+   * still answers HTTP 200 with the not-found body — a soft 404, which search
+   * engines index as a real page. The cause is `app/(marketing)/loading.tsx`
+   * (and `blog/loading.tsx`): a `loading.tsx` above a dynamic segment makes Next
+   * flush the shell before the page runs, and the status is already sent by the
+   * time `notFound()` is reached. Verified — deleting those boundaries makes all
+   * three detail routes 404 correctly, with `revalidate` left as it is, and the
+   * trade is the route-level loading fallbacks. `/services/[slug]` and
+   * `/locations/[slug]` are identical. Awaiting a decision on which to keep.
+   */
+  if (!post) notFound();
 
   const url = new URL(`/blog/${post.slug}`, siteUrl).toString();
 

@@ -7,7 +7,6 @@ import { useFormStatus } from "react-dom";
 import {
   ariaSort,
   BOOKING_SORT_LABELS,
-  BOOKING_STATUS_LABELS,
   sortHref,
   type BookingQuery,
 } from "@/lib/admin/booking-view";
@@ -19,6 +18,8 @@ import {
   type BulkState,
 } from "@/lib/admin/bookings-actions";
 import type { BookingListRow, BookingSortColumn } from "@/lib/db/queries/bookings";
+import { BookingStatusBadge } from "@/components/admin/booking-status-badge";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -87,6 +88,33 @@ function BulkButton({
   );
 }
 
+/**
+ * "Mark cancelled", behind a confirmation. Split out so it can read
+ * `useFormStatus`, which only reports the enclosing form from a child.
+ */
+function BulkCancelButton({ count }: { count: number }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <ConfirmDialog
+      triggerLabel="Mark cancelled"
+      title={count === 1 ? "Cancel this booking?" : `Cancel ${count} bookings?`}
+      description={
+        <>
+          The {count === 1 ? "patient" : "patients"} will not be expected at the
+          branch. Only an admin can reverse this, and they will have to record a
+          reason.
+        </>
+      }
+      confirmLabel={count === 1 ? "Cancel booking" : `Cancel ${count} bookings`}
+      cancelLabel="Keep them"
+      name="intent"
+      value="cancelled"
+      disabled={count === 0 || pending}
+    />
+  );
+}
+
 export function BookingsTable({
   rows,
   query,
@@ -141,14 +169,6 @@ export function BookingsTable({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <p className="rounded-xl border border-border bg-white px-6 py-10 text-center text-sm text-muted-foreground">
-        No bookings match these filters.
-      </p>
-    );
-  }
-
   return (
     <form action={formAction}>
       <div aria-live="polite" className="mb-4 empty:mb-0">
@@ -191,9 +211,10 @@ export function BookingsTable({
           <BulkButton intent="contacted" disabled={selected.size === 0}>
             Mark contacted
           </BulkButton>
-          <BulkButton intent="cancelled" disabled={selected.size === 0}>
-            Mark cancelled
-          </BulkButton>
+          {/* Cancelling is the one bulk action with no way back for an editor:
+              `cancelled` has no forward edges, so undoing it is an admin-only
+              backward move that needs a note. It asks first. */}
+          <BulkCancelButton count={selected.size} />
         </div>
       ) : null}
 
@@ -209,7 +230,7 @@ export function BookingsTable({
                 <th scope="col" className="w-10 p-3">
                   <input
                     type="checkbox"
-                    checked={selected.size === rows.length}
+                    checked={rows.length > 0 && selected.size === rows.length}
                     onChange={toggleAll}
                     aria-label="Select all bookings on this page"
                     className="size-4 rounded border-input accent-[var(--brand-maroon)]"
@@ -263,7 +284,7 @@ export function BookingsTable({
                 <td className="p-3">
                   <Link
                     href={`/admin/bookings/${row.id}`}
-                    className="font-medium text-accent underline underline-offset-4 hover:no-underline"
+                    className="font-mono text-[13px] font-medium tracking-tight text-accent underline underline-offset-4 hover:no-underline"
                   >
                     {row.reference}
                   </Link>
@@ -274,8 +295,10 @@ export function BookingsTable({
                   </span>
                 </td>
                 <td className="p-3">{formatDate(row.preferredDate)}</td>
-                {/* Status as a word, never a colour alone. */}
-                <td className="p-3">{BOOKING_STATUS_LABELS[row.status]}</td>
+                {/* Status as a word first; the badge's colour only repeats it. */}
+                <td className="p-3">
+                  <BookingStatusBadge status={row.status} />
+                </td>
                 <td className="p-3">{formatDate(row.createdAt)}</td>
                 <td className="p-3">{row.locationName}</td>
                 <td className="p-3 text-muted-foreground">

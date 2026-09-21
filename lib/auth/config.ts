@@ -1,21 +1,9 @@
 import NextAuth, { type DefaultSession, type Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
-import { z } from "zod";
-
-import { hashPassword, needsRehash, verifyPassword } from "@/lib/auth/password";
+import { authorizeCredentials } from "@/lib/auth/authorize";
 import type { Role } from "@/lib/auth/policy";
-import {
-  getUserByEmail,
-  getUserById,
-  isLockedOut,
-  recordFailedLogin,
-  recordSuccessfulLogin,
-  updatePasswordHash,
-  writeAuditEntry,
-} from "@/lib/db/queries/users";
-import { logger } from "@/lib/logger";
-import { checkRateLimit, clientIpFrom, RATE_LIMITS } from "@/lib/rate-limit";
+import { getUserById, isLockedOut } from "@/lib/db/queries/users";
 
 /**
  * Auth.js v5 configuration for the admin panel.
@@ -78,22 +66,6 @@ const SESSION_RECHECK_MS = 5 * 60 * 1000;
 /** Admin sessions are short. This is a hospital back office, not a consumer app. */
 const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
-/**
- * A real argon2id hash of a value nobody knows, verified against whenever the
- * email is unknown.
- *
- * Without it, a login for a non-existent account returns in microseconds while
- * a real one takes ~50ms, and that difference is a free account-enumeration
- * oracle against a hospital's staff list.
- */
-const DUMMY_HASH =
-  "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHR2YWx1ZQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG";
-
-const credentialsSchema = z.object({
-  email: z.string().email().max(320),
-  password: z.string().min(1).max(1024),
-});
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/admin/login", error: "/admin/login" },
@@ -107,95 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
 
-      /**
-       * Returns a user on success and `null` on every failure.
-       *
-       * Every failure path is indistinguishable to the caller — unknown email,
-       * wrong password, locked account and soft-deleted account all produce the
-       * same `null` and the same generic message on the login page. The
-       * specifics go to the audit log, where staff can see them and an attacker
-       * cannot.
-       *
-       * The per-IP rate limit runs first, here rather than in `loginAction`, so
-       * it also covers direct POSTs to `/api/auth/callback/credentials`. A
-       * limited attempt writes no audit row — the limit exists partly to stop
-       * the audit table being flooded — and never reaches the password check.
-       */
-      async authorize(raw, request) {
-        const limit = await checkRateLimit(
-          RATE_LIMITS.login,
-          clientIpFrom(request.headers),
-        );
-        if (!limit.allowed) {
-          logger.warn("auth.login_rate_limited", {});
-          return null;
-        }
-
-        const parsed = credentialsSchema.safeParse(raw);
-        if (!parsed.success) return null;
-
-        const { email, password } = parsed.data;
-        const user = await getUserByEmail(email);
-
-        if (!user) {
-          // Burn the same time a real verify would, then fail.
-          await verifyPassword(DUMMY_HASH, password);
-          await writeAuditEntry({
-            userId: null,
-            action: "auth.login_failed",
-            entityType: "users",
-            metadata: { reason: "unknown_email" },
-          });
-          return null;
-        }
-
-        if (isLockedOut(user)) {
-          await writeAuditEntry({
-            userId: user.id,
-            action: "auth.login_blocked",
-            entityType: "users",
-            entityId: user.id,
-            metadata: { reason: "locked_out" },
-          });
-          return null;
-        }
-
-        const ok = await verifyPassword(user.passwordHash, password);
-
-        if (!ok) {
-          await recordFailedLogin(user.id);
-          await writeAuditEntry({
-            userId: user.id,
-            action: "auth.login_failed",
-            entityType: "users",
-            entityId: user.id,
-            metadata: { reason: "bad_password" },
-          });
-          return null;
-        }
-
-        // Transparently upgrade a hash made with weaker parameters. This is the
-        // only moment the plaintext is available to do it.
-        if (needsRehash(user.passwordHash)) {
-          await updatePasswordHash(user.id, await hashPassword(password));
-        }
-
-        await recordSuccessfulLogin(user.id);
-        await writeAuditEntry({
-          userId: user.id,
-          action: "auth.login",
-          entityType: "users",
-          entityId: user.id,
-        });
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role,
-        };
-      },
+      authorize: (raw, request) => authorizeCredentials(raw, request.headers),
     }),
   ],
 
