@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
+import { isUniqueViolation } from "@/lib/db/errors";
 import { rateLimitHits } from "@/lib/db/schema";
 import { serverEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -36,6 +37,8 @@ export const RATE_LIMITS = {
   newsletter: { name: "newsletter", limit: 5, windowSeconds: 3600 },
   newsletterToken: { name: "newsletter_token", limit: 10, windowSeconds: 3600 },
   hmoSearch: { name: "hmo_search", limit: 30, windowSeconds: 60 },
+  /** Failed admin sign-ins, per IP (spec §14 Auth). Checked in `authorize()`. */
+  login: { name: "login", limit: 5, windowSeconds: 900 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export interface RateLimitResult {
@@ -48,6 +51,9 @@ export interface RateLimitResult {
 
 /** Rows older than this are pruned. Retention is a compliance limit, not a tidiness one. */
 const RETENTION_HOURS = 24;
+
+/** Attempts to place one hit before giving up. See `recordHit()`. */
+const HIT_INSERT_ATTEMPTS = 5;
 
 /** Roughly 1 request in 50 also prunes, so cleanup needs no scheduler. */
 const CLEANUP_PROBABILITY = 0.02;
@@ -95,7 +101,7 @@ export async function checkRateLimit(
   const windowStart = sql`now() - make_interval(secs => ${rule.windowSeconds})`;
 
   try {
-    await db().insert(rateLimitHits).values({ key });
+    await recordHit(key);
 
     const rows = await db()
       .select({ count: sql<number>`count(*)::int` })
@@ -119,6 +125,87 @@ export async function checkRateLimit(
       retryAfterSeconds: rule.windowSeconds,
     };
   }
+}
+
+/**
+ * Insert one hit, working around the `(key, hit_at)` primary key.
+ *
+ * Two concurrent hits on the same key can land on the same microsecond, and the
+ * collision would otherwise surface as a database error — which `checkRateLimit`
+ * fails open on, letting a parallel burst through the limit it exists to hold.
+ * Each retry nudges the timestamp forward by a microsecond, which is far below
+ * any window this table measures.
+ */
+async function recordHit(key: string): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await db()
+        .insert(rateLimitHits)
+        .values({
+          key,
+          hitAt: sql`clock_timestamp() + make_interval(secs => ${attempt * 0.000001})`,
+        });
+      return;
+    } catch (error) {
+      if (attempt >= HIT_INSERT_ATTEMPTS - 1 || !isUniqueViolation(error)) throw error;
+    }
+  }
+}
+
+/** A recorded attempt that can be handed back. See `reserveRateLimitSlot()`. */
+export interface RateLimitReservation extends RateLimitResult {
+  /**
+   * Give the attempt back, so it does not count against the budget. Safe to
+   * call on a refused reservation, where it does nothing.
+   */
+  release(): Promise<void>;
+}
+
+/**
+ * Record an attempt, then report whether it was within budget.
+ *
+ * For limits that count failures rather than requests: reserve before doing
+ * the work, and `release()` when the work turns out to have succeeded. The
+ * login limit works this way, so staff sharing one public IP are not locked
+ * out by each other's successful sign-ins.
+ *
+ * Recording first and releasing after — rather than checking first and
+ * recording on the failure path — is what makes a burst safe. Twenty parallel
+ * guesses that each read the counter before any of them writes would all see
+ * room; here the twenty writes are what they read.
+ *
+ * `release()` deletes the exact row this reservation inserted, by `ctid`
+ * because the table has no surrogate key, and fails soft: an un-released hit
+ * costs one attempt, which beats a successful sign-in ending in an error.
+ */
+export async function reserveRateLimitSlot(
+  rule: RateLimitRule,
+  identifier: string,
+): Promise<RateLimitReservation> {
+  const result = await checkRateLimit(rule, identifier);
+  const key = `${rule.name}:${hashIdentifier(identifier)}`;
+
+  return {
+    ...result,
+    release: async () => {
+      // A refused reservation has nothing to give back: releasing then would
+      // refund a hit the limit had already counted against someone else.
+      if (!result.allowed) return;
+      try {
+        await db().execute(sql`
+          DELETE FROM rate_limit_hits
+          WHERE ctid IN (
+            SELECT ctid FROM rate_limit_hits
+            WHERE key = ${key}
+            ORDER BY hit_at DESC
+            LIMIT 1
+          )
+        `);
+      } catch (error) {
+        logger.warn("rate_limit.release_failed", { rule: rule.name, error });
+      }
+    },
+  };
 }
 
 /**

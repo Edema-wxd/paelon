@@ -12,8 +12,21 @@ import { BLOG_CATEGORY_LABELS, type BlogPost } from "@/lib/content";
  * a category would be announced as one long, unhelpful label; spec §11 also
  * requires descriptive link text, so the heading carries the link and the card
  * carries the context.
+ *
+ * `headingLevel` exists because the same card sits at two different depths and
+ * a heading level is a property of the page, not of the component. On
+ * `/blog/[slug]` the grid sits under "Read next", an `h2`, so `h3` is right and
+ * is the default. On `/blog` the grid sits directly under the page `h1`, where
+ * `h3` skips a level — which CLAUDE.md forbids outright.
  */
-export function BlogPostCard({ post }: { post: BlogPost }) {
+export function BlogPostCard({
+  post,
+  headingLevel = 3,
+}: {
+  post: BlogPost;
+  headingLevel?: 2 | 3;
+}) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const published = new Date(post.published_at);
   const validDate = !Number.isNaN(published.getTime());
 
@@ -37,14 +50,14 @@ export function BlogPostCard({ post }: { post: BlogPost }) {
           ) : null}
         </p>
 
-        <h3 className="text-xl text-primary">
+        <Heading className="text-xl text-primary">
           <Link
             href={`/blog/${post.slug}`}
             className="rounded-sm underline-offset-4 hover:underline"
           >
             {post.title}
           </Link>
-        </h3>
+        </Heading>
 
         <p className="text-base text-foreground/80">{post.excerpt}</p>
 

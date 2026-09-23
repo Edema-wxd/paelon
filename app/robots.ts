@@ -9,8 +9,8 @@ import { clientEnv } from "@/lib/env";
  * of endpoints that have no crawlable content. Every endpoint still validates,
  * rate-limits, and authorises on its own.
  *
- * `/book/confirmed` is excluded because it is a per-submission page carrying a
- * booking reference in the query string; it has no business in an index.
+ * `/book/confirmed` and `/contact/thank-you` are excluded because they are
+ * per-submission pages with no business in an index.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -18,7 +18,13 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api", "/book/confirmed", "/newsletter/"],
+        disallow: [
+          "/admin",
+          "/api",
+          "/book/confirmed",
+          "/contact/thank-you",
+          "/newsletter/",
+        ],
       },
     ],
     sitemap: new URL("/sitemap.xml", clientEnv.NEXT_PUBLIC_SITE_URL).toString(),

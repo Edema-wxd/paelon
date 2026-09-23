@@ -12,10 +12,15 @@ import { auditLog, users, type User } from "@/lib/db/schema";
  * open door, and `unstable_cache` would happily serve one for an hour.
  */
 
-/** Consecutive failures before an account is locked. */
-export const MAX_FAILED_ATTEMPTS = 5;
+/**
+ * Consecutive failures before an account is locked (spec §14 Auth, decision A2).
+ *
+ * Deliberately higher than the per-IP login limit: the IP limit stops online
+ * guessing, and this only has to catch attempts spread across many IPs.
+ */
+export const MAX_FAILED_ATTEMPTS = 10;
 
-/** How long a lockout lasts. */
+/** How long a lockout lasts. It expires on its own; an `admin` can clear it early. */
 export const LOCKOUT_MINUTES = 15;
 
 /**
@@ -39,7 +44,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   return rows[0] ?? null;
 }
 
-/** Look up an active account by id. Used to re-check the session's role on every request. */
+/** Look up an active account by id. Used to re-check the session's role at most every 5 minutes. */
 export async function getUserById(id: string): Promise<User | null> {
   const rows = await db()
     .select()
@@ -56,27 +61,61 @@ export function isLockedOut(user: Pick<User, "lockedUntil">): boolean {
 }
 
 /**
- * Record a failed login and lock the account once the threshold is reached.
+ * Count this login attempt against the account before its password is checked,
+ * and report whether the account was already locked.
  *
- * The increment and the lock are one statement so two simultaneous attempts
- * cannot both read `attempts = 4` and each write `5`, leaving the account
- * unlocked after six failures.
+ * Counting up front is what makes the lockout hold under load. Reading
+ * `locked_until`, verifying a password for ~50ms and only then recording the
+ * failure leaves every attempt that arrives inside those 50ms looking at the
+ * same pre-attempt state, so a hundred parallel guesses all pass a limit of
+ * ten. Here the increment, the lock and the read of the previous lock state are
+ * one statement, ordered by the database.
+ *
+ * A verified password calls `recordSuccessfulLogin`, which resets the counter —
+ * so a legitimate sign-in gives its attempt straight back, and "10 consecutive
+ * failures" still means consecutive.
+ *
+ * A failure after an expired lock starts a fresh count at 1. Without that the
+ * counter would still read 10, and a single typo after the lock lifted would
+ * lock the account again.
  */
-export async function recordFailedLogin(userId: string): Promise<void> {
-  await db()
-    .update(users)
-    .set({
-      failedAttempts: sql`${users.failedAttempts} + 1`,
-      lockedUntil: sql`
-        case
-          when ${users.failedAttempts} + 1 >= ${MAX_FAILED_ATTEMPTS}
+export async function reserveLoginAttempt(
+  userId: string,
+): Promise<{ lockedOut: boolean }> {
+  const lockExpired = sql`(${users.lockedUntil} is not null and ${users.lockedUntil} <= now())`;
+  const nextAttempts = sql`case when ${lockExpired} then 1 else ${users.failedAttempts} + 1 end`;
+
+  // `previous` reads and locks the row; the update's `locked_until` is derived
+  // from it, so the value returned is the one from before this attempt.
+  const rows = await db().execute(sql`
+    with previous as (
+      select ${users.id} as id, ${users.lockedUntil} as locked_until
+      from ${users}
+      where ${eq(users.id, userId)}
+      for update
+    )
+    update ${users}
+    set failed_attempts = ${nextAttempts},
+        locked_until = case
+          when ${nextAttempts} >= ${MAX_FAILED_ATTEMPTS}
           then now() + interval '${sql.raw(String(LOCKOUT_MINUTES))} minutes'
+          when ${lockExpired} then null
           else ${users.lockedUntil}
-        end
-      `,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId));
+        end,
+        updated_at = now()
+    from previous
+    where ${users.id} = previous.id
+    returning previous.locked_until as was_locked_until
+  `);
+
+  const list = Array.isArray(rows) ? rows : (rows as { rows: unknown[] }).rows;
+  const first = list[0] as { was_locked_until: string | Date | null } | undefined;
+  const wasLockedUntil = first?.was_locked_until ?? null;
+
+  return {
+    lockedOut:
+      wasLockedUntil !== null && new Date(wasLockedUntil).getTime() > Date.now(),
+  };
 }
 
 /** Clear the failure counter and stamp the login. Called only after a verified password. */

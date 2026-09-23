@@ -55,8 +55,8 @@ only about implementation shape.**
 | Insta HMS integration | Master spec §7 and §10 both say stub only, docs outstanding. Class exists, `enabled = false`, `send()` throws |
 | WhatsApp provider | Undecided (master spec §18). Abstraction built, `NoopProvider` resolved. **Timing risk: Business API templates take days to approve — if launch confirmations are wanted, provider selection cannot wait for week three** |
 | Retention job | Decision captured in the schema; the job itself is Phase 2/3 |
-| Everything in Phase 2 | Auth, admin routes, server actions, UploadThing, booking workflow, rich text editor. Schema is in place, so Phase 2 is purely additive |
-| Admin editing for legal pages | Requested during Phase 1. Needs a `legal_pages` table, an `/admin/legal` surface that master spec §8's CRUD list does not contain, and the auth to protect it — three Phase 2 items. `/terms` ships reading `getLegalDocument()` in `lib/legal.ts`, already async, so Phase 2 repoints one function and neither the template nor the page changes. See `content/legal/README.md` |
+| Everything in Phase 2 | Auth, admin routes, server actions, UploadThing, booking workflow, rich text editor. Schema is in place, so Phase 2 is purely additive. **Superseded:** auth, `/admin/media` and `/admin/users` were built during Phase 1 and ratified as the Phase 2 base (P1), and the rich text editor was replaced by a Markdown textarea (D1). See `docs/phase-2-decisions.md` |
+| Admin editing for legal pages | Requested during Phase 1. Needs a `legal_pages` table, an `/admin/legal` surface that master spec §8's CRUD list does not contain, and the auth to protect it — three Phase 2 items. `/terms` ships reading `getLegalDocument()` in `lib/legal.ts`, already async, so Phase 2 repoints one function and neither the template nor the page changes. See `content/legal/README.md`. **Superseded:** Phase 2 keeps legal pages as JSON in git, not editable in the panel (`docs/phase-2-decisions.md` C3) |
 
 ---
 

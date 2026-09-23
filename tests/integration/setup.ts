@@ -33,6 +33,8 @@ export function configureTestDatabase(): void {
 const MUTABLE_TABLES = [
   "booking_status_history",
   "bookings",
+  "audit_log",
+  "users",
   "contact_submissions",
   "corporate_enquiries",
   "newsletter_subscribers",
@@ -76,6 +78,49 @@ export async function seedLocation(slug = "victoria-island"): Promise<string> {
   const first = list[0] as { id: string } | undefined;
   if (!first) throw new Error("Failed to seed location");
   return first.id;
+}
+
+/** A staff account. The hash is a placeholder; these tests never sign in. */
+export async function seedUser(
+  role: "admin" | "editor" | "contributor",
+  options: { name?: string; deleted?: boolean } = {},
+): Promise<string> {
+  const name = options.name ?? `${role} user`;
+  const email = `${role}-${crypto.randomUUID()}@example.test`;
+  const rows = await dbTx().execute(sql`
+    INSERT INTO users (name, email, password_hash, role, deleted_at)
+    VALUES (${name}, ${email}, 'not-a-real-hash', ${role},
+            ${options.deleted ? sql`now()` : sql`NULL`})
+    RETURNING id
+  `);
+
+  const list = Array.isArray(rows) ? rows : (rows as { rows: unknown[] }).rows;
+  const first = list[0] as { id: string } | undefined;
+  if (!first) throw new Error("Failed to seed user");
+  return first.id;
+}
+
+/** A `new` booking with its initial history row, through the real insert path. */
+export async function seedBooking(
+  locationId: string,
+  overrides: { preferredDate?: string; patientName?: string } = {},
+): Promise<string> {
+  const { createBooking } = await import("@/lib/db/queries/bookings");
+  const booking = await createBooking({
+    locationId,
+    serviceFamily: "family_healthcare",
+    preferredDate:
+      overrides.preferredDate ?? new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+    preferredTimeWindow: "morning",
+    patientName: overrides.patientName ?? "Ada Obi",
+    patientPhone: "+2348012345678",
+    patientEmail: "ada@example.test",
+    reasonForVisit: "Persistent headache",
+    internalNotes: "Seeded note",
+    consentNdpr: true,
+    consentTextVersion: "test-v1",
+  });
+  return booking.id;
 }
 
 export { closePool };

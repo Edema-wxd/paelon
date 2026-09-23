@@ -7,35 +7,49 @@ import type { userRoleEnum } from "@/lib/db/schema";
  * data and pure functions — no database, no Auth.js, no React — so it can be
  * imported by a server action, a route handler, a server component and a test
  * without dragging any of those into each other. Every permission check in the
- * admin panel goes through `can()`; a component that decides for itself whether
- * to show a delete button is a bug, because the button is not the thing that
- * enforces anything.
+ * admin panel goes through `can()` or `canOnRow()`; a component that decides
+ * for itself whether to show a delete button is a bug, because the button is
+ * not the thing that enforces anything.
  *
- * ## The roles
+ * ## The roles (spec §8 Roles, decisions B1–B3)
  *
- * The database enum is `admin | editor | contributor` (lib/db/schema.ts). Those
- * names predate the panel and are kept rather than migrated, so the mapping
- * onto how the team actually talks is written down here once:
+ * Labelled in the UI by their enum names (B1).
  *
- * | enum          | the team calls this | may do                                    |
- * |---------------|---------------------|-------------------------------------------|
- * | `admin`       | super admin         | everything, including deleting sensitive   |
- * | `editor`      | admin               | edit everything, delete non-sensitive      |
- * | `contributor` | media personnel     | edit content and manage media, delete none |
+ * | role          | content¹         | media                          | patient data² | users | audit log, analytics |
+ * |---------------|------------------|--------------------------------|---------------|-------|----------------------|
+ * | `admin`       | all              | all                            | all           | all   | read                 |
+ * | `editor`      | all              | all                            | read, update  | none  | none                 |
+ * | `contributor` | editorial³ only: | read, create,                  | none          | none  | none                 |
+ * |               | read, create,    | update own, delete own         |               |       |                      |
+ * |               | update own       |                                |               |       |                      |
+ *
+ * ¹ services, doctors, locations, hmos, testimonials, authors, blog_posts,
+ *   awards, faqs. "All" means read, create, update, publish, delete.
+ * ² bookings, contact_submissions, corporate_enquiries, newsletter_subscribers.
+ * ³ blog_posts, authors, faqs, awards. Never publish, never delete.
+ *
+ * ## Two checks, because ownership is a fact about a row
+ *
+ * `can(role, action, resource)` answers "may this role ever do this to this
+ * kind of thing". For a contributor's update it returns `true`, because some
+ * rows qualify — that is what the nav and the dashboard need.
+ *
+ * `canOnRow(user, action, resource, row)` answers "may this user do this to
+ * this row". It is `can()` plus the ownership rule, and it is the check every
+ * write against an existing row must use. Calling `can()` alone before
+ * updating a specific row lets a contributor edit anyone's post.
  *
  * ## What "sensitive" means
  *
- * Four groups, chosen deliberately (see `SENSITIVE_RESOURCES`): patient-
- * submitted data, published clinical content, testimonials, and user accounts.
- * Only a super admin may delete any of them. The reasoning is not uniform —
- * patient data is an NDPR obligation, clinical content deletion takes a live
- * page off a hospital site, testimonials carry consent records, and user
- * accounts are the privilege-escalation surface — but the rule is, so it is
- * expressed once instead of four times.
+ * Patient-submitted data and user accounts (`SENSITIVE_RESOURCES`). Only an
+ * `admin` may delete them. Patient data is an NDPR obligation; user accounts
+ * are the privilege-escalation surface. Content is deliberately not on the
+ * list (B2 option C): an editor can already take a page off the site by
+ * unpublishing it, and every content delete is soft, so blocking the delete
+ * protects little.
  *
  * Deletes across the whole panel are soft (`deleted_at`), except UploadThing
- * objects, which are genuinely destroyed by the CDN and so are treated as a
- * non-sensitive resource an editor may remove.
+ * objects, which the CDN genuinely destroys.
  */
 
 /** The database's `user_role` enum, as a type. */
@@ -64,18 +78,12 @@ export type Resource =
   // Operational
   | "media"
   | "users"
-  | "audit_log";
+  | "audit_log"
+  | "analytics";
 
 export type Action = "read" | "create" | "update" | "delete" | "publish";
 
-/**
- * Resources only a super admin may delete.
- *
- * Deliberately broad. The failure mode of an over-restrictive list is an
- * annoyed editor asking someone else to press the button; the failure mode of
- * an under-restrictive one is a deleted patient record or a clinical page that
- * silently 404s for everyone who had the link.
- */
+/** Resources only an `admin` may delete. */
 export const SENSITIVE_RESOURCES = new Set<Resource>([
   // Patient-submitted data — NDPR. Retention is a policy decision, not an
   // editor's judgement call.
@@ -83,18 +91,19 @@ export const SENSITIVE_RESOURCES = new Set<Resource>([
   "contact_submissions",
   "corporate_enquiries",
   "newsletter_subscribers",
-  // Published clinical content — deleting one takes a live page off a hospital
-  // site and breaks every inbound link to it.
-  "services",
-  "doctors",
-  "locations",
-  // Real patient quotes with consent recorded against them.
-  "testimonials",
   // Privilege escalation.
   "users",
 ]);
 
-/** Resources `contributor` (media personnel) may touch at all. */
+/** Patient-submitted data. Editors work the queue; contributors never see it. */
+const PATIENT_DATA_RESOURCES = new Set<Resource>([
+  "bookings",
+  "contact_submissions",
+  "corporate_enquiries",
+  "newsletter_subscribers",
+]);
+
+/** Resources a `contributor` may touch at all (B3 allow-list). */
 const CONTRIBUTOR_RESOURCES = new Set<Resource>([
   "media",
   "blog_posts",
@@ -103,15 +112,33 @@ const CONTRIBUTOR_RESOURCES = new Set<Resource>([
   "awards",
 ]);
 
+/**
+ * Actions a `contributor` may take only on rows they own, per resource. An
+ * action absent here is decided by `can()` alone.
+ *
+ * Media delete is owner-only rather than denied: the allow-list B3 kept let
+ * media personnel remove files, and spec §8 applies ownership to media "likewise".
+ */
+const CONTRIBUTOR_OWNED_ACTIONS: Partial<Record<Resource, ReadonlySet<Action>>> = {
+  blog_posts: new Set(["update"]),
+  authors: new Set(["update"]),
+  faqs: new Set(["update"]),
+  awards: new Set(["update"]),
+  media: new Set(["update", "delete"]),
+};
+
 /** Read-only for everyone. Written by the system, never by a person. */
 const APPEND_ONLY_RESOURCES = new Set<Resource>(["audit_log"]);
 
 /**
  * May `role` perform `action` on `resource`?
  *
- * The only permission check in the codebase. Deny is the default: an unknown
- * role or an unlisted combination returns `false` rather than falling through
- * to a permissive branch.
+ * Deny is the default: an unknown role or an unlisted combination returns
+ * `false` rather than falling through to a permissive branch.
+ *
+ * For a `contributor` updating editorial content or updating/deleting media
+ * this returns `true` because *some* rows qualify. Before acting on a specific
+ * row, use `canOnRow()`.
  */
 export function can(role: Role, action: Action, resource: Resource): boolean {
   // Nothing is ever written to the audit log through the panel — it would stop
@@ -120,29 +147,83 @@ export function can(role: Role, action: Action, resource: Resource): boolean {
     return action === "read" && role === "admin";
   }
 
+  // The Umami dashboard embed (spec §8 `/admin/analytics`). There is nothing to
+  // write, and traffic figures are an admin-only view.
+  if (resource === "analytics") {
+    return action === "read" && role === "admin";
+  }
+
   switch (role) {
     case "admin":
       return true;
 
     case "editor":
-      // Everything except deleting sensitive resources, and except touching
-      // user accounts at all — an editor who can re-role an account can make
-      // themselves a super admin.
-      if (resource === "users") return action === "read";
+      // No staff list and no account changes (B2 A′) — an editor who can
+      // re-role an account can make themselves an admin.
+      if (resource === "users") return false;
       if (action === "delete") return !SENSITIVE_RESOURCES.has(resource);
+      // Submissions arrive from public forms; staff read them and move them
+      // through the workflow, they do not author or publish them.
+      if (PATIENT_DATA_RESOURCES.has(resource)) {
+        return action === "read" || action === "update";
+      }
       return true;
 
     case "contributor":
       if (!CONTRIBUTOR_RESOURCES.has(resource)) return false;
-      // Media personnel curate the media library, including removing files
-      // they uploaded by mistake. Everything else they can draft and edit, but
-      // publishing and deleting are someone else's call.
-      if (resource === "media") return action !== "publish";
-      return action === "read" || action === "create" || action === "update";
+      if (action === "read" || action === "create") return true;
+      return CONTRIBUTOR_OWNED_ACTIONS[resource]?.has(action) ?? false;
 
     default:
       return false;
   }
+}
+
+/** The acting user, as far as ownership is concerned. */
+export interface PolicyUser {
+  id: string;
+  role: Role;
+}
+
+/**
+ * The ownership columns of a row, in Drizzle's camelCase. Content tables carry
+ * `createdByUserId` (`created_by_user_id`); the `media` table carries
+ * `uploadedBy` (`uploaded_by`). `null` means nobody owns it — a seeded row.
+ */
+export interface OwnedRow {
+  createdByUserId?: string | null;
+  uploadedBy?: string | null;
+}
+
+/** Which column records ownership, per resource. */
+function ownerOf(resource: Resource, row: OwnedRow): string | null {
+  const owner = resource === "media" ? row.uploadedBy : row.createdByUserId;
+  return owner ?? null;
+}
+
+/**
+ * May `user` perform `action` on this specific `row` of `resource`?
+ *
+ * `can()` plus the contributor ownership rule (spec §8 Roles, B3 option C). A
+ * row with no recorded owner is owned by nobody, so a contributor may not
+ * update it; nor may a user with an empty id, which guards against a
+ * half-built session matching an unowned row.
+ *
+ * For `create` there is no row yet — pass the row being inserted, or `{}`; the
+ * answer is `can()`'s either way.
+ */
+export function canOnRow(
+  user: PolicyUser,
+  action: Action,
+  resource: Resource,
+  row: OwnedRow,
+): boolean {
+  if (!can(user.role, action, resource)) return false;
+  if (user.role !== "contributor") return true;
+  if (!CONTRIBUTOR_OWNED_ACTIONS[resource]?.has(action)) return true;
+
+  const owner = ownerOf(resource, row);
+  return user.id !== "" && owner !== null && owner === user.id;
 }
 
 /**
@@ -162,6 +243,18 @@ export function assertCan(
   }
 }
 
+/** Throwing form of `canOnRow()`. Same message rules as `assertCan`. */
+export function assertCanOnRow(
+  user: PolicyUser,
+  action: Action,
+  resource: Resource,
+  row: OwnedRow,
+): void {
+  if (!canOnRow(user, action, resource, row)) {
+    throw new ForbiddenError(`Not permitted: ${action} on ${resource}.`);
+  }
+}
+
 /** Thrown by `assertCan`. Mapped to a 403 by the admin route handlers. */
 export class ForbiddenError extends Error {
   readonly status = 403 as const;
@@ -172,9 +265,9 @@ export class ForbiddenError extends Error {
   }
 }
 
-/** Human-readable role label for the admin UI. Never used for a check. */
+/** Role label for the admin UI — the enum name (B1). Never used for a check. */
 export const ROLE_LABELS: Record<Role, string> = {
-  admin: "Super admin",
-  editor: "Admin",
-  contributor: "Media",
+  admin: "Admin",
+  editor: "Editor",
+  contributor: "Contributor",
 };

@@ -79,7 +79,7 @@ Every technology below is locked. Do not substitute without asking.
 | Database | Neon (Postgres) | Serverless Postgres. Move to self-hosted post-launch. |
 | ORM | Drizzle ORM | Type-safe, lightweight, works well with Neon. |
 | File uploads | UploadThing | For the demo. Self-hosted alternative evaluated post-launch. |
-| Auth | Auth.js (v5, previously NextAuth) with Credentials provider | Email + password; sessions stored in Postgres. |
+| Auth | Auth.js (v5, previously NextAuth) with Credentials provider | Email + password; JWT sessions with a periodic DB re-check (§8 Access). |
 | Email (transactional) | Resend (optional) | Wire it up so it can be enabled with an env var; do not hard-depend on it. |
 | Analytics | Umami (self-hosted) | Deployed alongside the app on Vercel. Dashboard embedded in admin. |
 | Hosting (Phase 1) | Vercel | Preview deploys per PR; production on `main`. |
@@ -98,6 +98,7 @@ tailwindcss
 drizzle-orm
 @neondatabase/serverless
 next-auth@beta (v5)
+@node-rs/argon2 (Phase 2, argon2id)
 uploadthing @uploadthing/react
 zod
 react-hook-form
@@ -161,7 +162,7 @@ clsx tailwind-merge
 │   ├── email/
 │   ├── analytics/
 │   └── utils.ts
-├── content/                    # MDX for legal pages if any
+├── content/                    # Legal pages as JSON (content/legal/)
 ├── seed/                       # Static JSON seed data for Phase 1
 │   ├── services.json
 │   ├── doctors.json
@@ -408,7 +409,7 @@ featured          boolean
 title             string
 slug              string, unique
 excerpt           string (up to 300 chars)
-body              text (MDX)
+body              text (Markdown; see §8 Content editing)
 hero_image        string
 author_id         uuid, references authors
 category          enum: seasonal_alerts | family_health | women_and_children | corporate_wellness
@@ -583,7 +584,7 @@ Fifteen templates. Each has an owning group per the timeline in section 1. Do no
 
 #### Blog index `/blog` + Blog post `/blog/[slug]`
 - Index: filterable by category, paginated.
-- Post: MDX body, hero image, author card, related posts, share buttons.
+- Post: Markdown body, hero image, author card, related posts, share buttons.
 
 ### Functional (4 templates)
 
@@ -602,7 +603,7 @@ See section 7 (Booking Flow) for full spec.
 - On no match: "we may still be able to help, contact us" with link to contact form.
 
 #### Privacy Policy `/privacy` and Terms `/terms`
-- MDX content.
+- JSON content in `content/legal/`, rendered by one document-agnostic template.
 - NDPR-aligned. Draft to be reviewed by Paelon's legal counsel before launch.
 
 ### Utility (3 templates)
@@ -714,27 +715,31 @@ Both deep links skip the pre-filled step and land on the next step directly.
 
 ## 8. CMS and Admin Panel
 
-**Phase 2 only.** Do not build any of this during Phase 1.
+**Phase 2.** The admin code built during Phase 1 (`app/(admin)/`, `components/admin/`, `lib/auth/`, `app/api/auth/`) is ratified as the base for this phase.
 
 ### Access
 
 - Auth: Auth.js v5 with Credentials provider (email + password).
-- Sessions stored in Postgres.
-- All admin routes protected by middleware.
-- Password requirements: min 12 chars, complexity checks via Zod.
+- Sessions are JWTs (`strategy: "jwt"`, 8-hour `maxAge`); the Credentials provider does not issue database sessions. Role and lock state are re-read from Postgres at most every 5 minutes, so a demoted or locked account loses access within 5 minutes, and there is no "sign out everywhere". Move to an opaque session id checked against `sessions` only if Paelon's incident process needs instant revocation.
+- Authorisation is enforced server-side: `requireAdminUser()` in the dashboard layout and `requireCan()` in every server action and route handler. Middleware also redirects `/admin/*` to `/admin/login?next=…` when no session cookie is present. That redirect is defence in depth only, because the edge cannot read role or lock state.
+- Passwords: 12–1024 characters and must not contain the email's local part. No composition rules (NIST SP 800-63B). The rule is a Zod refinement on every form that sets a password.
+- Accounts: the first `admin` is created with `npm run admin:create`, and passwords are reset from the command line with `npm run admin:passwd`; both run with `--env-file` against the target database. An `admin` can also set a staff member's password in the panel. Any password set by someone other than its owner sets `must_change_password`, which forces a change at next sign-in. There is no self-service reset, because no email provider is available.
+- Login rate limit and account lockout: see §14 Auth.
 
 ### Roles
 
-Role stored on the `users` table. Three roles:
+Role stored on the `users` table. Three roles, labelled in the UI by their enum names:
 
-- **`admin`** — Full CRUD on all content, user management, settings.
-- **`editor`** — CRUD on content, no user management.
-- **`contributor`** — Create and edit their own content only. Publish requires an editor or admin.
+- **`admin`** — Full CRUD on all content, including deleting patient data (bookings, contact submissions, corporate enquiries). User management. Audit log.
+- **`editor`** — Create, update, publish and soft-delete content. Reads patient submissions, but cannot delete them. No access to the staff list or user management.
+- **`contributor`** — Limited to `blog_posts`, `authors`, `faqs`, `awards` and media. May create rows of those types and update only rows they created (`created_by_user_id`, written on insert and checked alongside `can()`); media likewise, through `uploaded_by` on the `media` table. Publish requires an editor or admin. No access to services, doctors, locations, HMOs, testimonials or patient data.
+
+All content deletes are soft deletes.
 
 ### Admin routes
 
 - `/admin/login` — Public.
-- `/admin` — Dashboard: recent bookings, recent contact submissions, quick stats.
+- `/admin` — Dashboard: recent bookings, recent contact submissions, quick stats. The signed-in user's capabilities are listed below.
 - `/admin/bookings` — Booking workflow interface (see below).
 - `/admin/contact` — Contact submissions.
 - `/admin/corporate-enquiries` — Corporate enquiries.
@@ -743,22 +748,31 @@ Role stored on the `users` table. Three roles:
 - `/admin/locations` — Location CRUD.
 - `/admin/hmos` — HMO CRUD.
 - `/admin/testimonials` — Testimonial CRUD.
-- `/admin/blog` — Blog post CRUD with MDX editor.
+- `/admin/blog` — Blog post CRUD with Markdown editor.
 - `/admin/awards` — Award CRUD.
 - `/admin/faqs` — FAQ CRUD.
+- `/admin/media` — Media library: uploads, alt text, where each file is referenced.
 - `/admin/users` — User management (admin only).
-- `/admin/analytics` — Umami dashboard iframe embed.
-- `/admin/settings` — Site settings, feature flags.
+- `/admin/audit` — Read-only audit log (admin only).
+- `/admin/analytics` — Umami dashboard iframe embed (admin only).
+
+There is no `/admin/settings`. Settings stay in env and seed, and change by deploy. Add a narrow `site_settings` table for non-secret display values only if Paelon names a value that must change without a deploy.
+
+There is no `/admin/legal`. See Content editing.
 
 ### Booking workflow
 
 Booking status transitions:
 
 ```
-new → contacted → confirmed → completed
-                ↘ cancelled
-                ↘ no_show
+new ──────→ contacted ──→ confirmed ──→ completed
+ │              │              │
+ └→ cancelled   ├→ cancelled   ├→ cancelled
+                └→ no_show     └→ no_show
 ```
+
+- Allowed transitions live in one transition map in `lib/booking/`.
+- Backward moves (for example `confirmed → contacted`) are `admin` only and require a note.
 
 Interface features:
 
@@ -766,20 +780,28 @@ Interface features:
 - Sortable columns.
 - Bulk actions: assign to me, mark contacted, mark cancelled.
 - Detail view per booking with:
-  - Patient details.
+  - Patient details. `reason_for_visit` is visible to `editor` and `admin` only.
   - Timeline of status changes with actor and timestamp.
-  - Internal notes (rich text, visible to staff only).
-  - Assignment dropdown (users with `editor` or `admin` role).
+  - Internal notes (plain text, visible to staff only).
+  - Assignment dropdown (users with `editor` or `admin` role), populated by its own query rather than the staff list.
 - Every status change writes to a `booking_status_history` table with `booking_id`, `from_status`, `to_status`, `changed_by_user_id`, `changed_at`, `note`.
+
+### Audit log
+
+- `audit_log` records sign-ins, staff account changes, media deletes, and each open of a booking, contact submission or corporate enquiry detail page. List views are not logged.
+- The IP address is stored as a salted hash, using the same scheme as the rate limiter. It is never stored raw.
+- Readable by `admin` only, at `/admin/audit`.
+- Retention period: `TODO`, set by counsel together with the §14 retention periods.
 
 ### Content editing
 
-- Rich text where sensible (bio, description, blog body) via a lightweight editor. Recommendation: Lexical or Tiptap. Confirm before installing.
-- MDX for blog posts (with a preview pane).
-- Image uploads via UploadThing.
+- Long text (bio, description, blog body) is Markdown. It is edited in a textarea with a toolbar that inserts syntax, and a live preview rendered by `lib/markdown.ts`, the same renderer the marketing site uses. No rich-text editor library. Revisit Tiptap only if editors struggle with Markdown after a trial.
+- Blog bodies are Markdown, not MDX. No MDX compiler: running code from a CMS field is a risk with no benefit here.
+- Image uploads via UploadThing (§10). Each upload is a row in a `media` table (`key`, `url`, `alt`, `uploaded_by`, `created_at`), and content rows reference it by foreign key. Alt text lives on the media row. Headshots and logos may derive alt text from their row (doctor name, award name) instead. In the media grid, thumbnails use `alt=""` because the filename is shown next to them.
 - Slug auto-generated from title, editable, uniqueness enforced.
 - Draft / published toggle.
-- "Preview" button that opens the marketing site in draft mode showing the unpublished state.
+- "Preview" button that opens the marketing site in Next's `draftMode()`, showing the unpublished state. The route that enables draft mode calls `requireCan("read", resource)`. In draft mode, content getters skip `cachedRead` and the published filter (§5: never cache authenticated queries).
+- Legal pages are not editable in the panel. They stay as JSON in `content/legal/` and change by PR after counsel review, with `CONSENT_TEXT_VERSION` bumped in the same deploy. Git history is the record of which wording each consent version refers to.
 
 ---
 
@@ -789,8 +811,8 @@ Umami, self-hosted alongside the app.
 
 ### Deployment
 
-- Deploy Umami as a separate Vercel project pointing at the same Postgres database (Umami has its own schema; run migrations in a separate namespace or DB).
-- Alternatively, run Umami on the same Vercel project as a route group. Investigate what is cleaner; default to a separate deployment.
+- Deploy Umami as a separate Vercel project with its own Neon database. It does not share Paelon's database. This keeps Umami out of the app's migrations (drizzle-kit diffs `public`), gives a clean backup and restore boundary, and moves to the self-hosted box post-launch without untangling schemas.
+- Not a route group (Umami is its own Next.js app), and not Umami Cloud (§2 requires self-hosting).
 
 ### Tracking
 
@@ -802,7 +824,7 @@ Umami, self-hosted alongside the app.
 
 ### Dashboard integration
 
-Umami is embedded via iframe in `/admin/analytics`. Grant admin users access via Umami's share URLs or SSO.
+Umami is embedded in `/admin/analytics` as an iframe of an Umami share URL, visible to `admin` only. A share URL is a bearer link: anyone who has it can see the stats. That is acceptable because the stats contain no PII. Framing is allowed only on `/admin/analytics` (§14 Headers). Confirm at build time that Umami's share page allows itself to be framed.
 
 ---
 
@@ -829,8 +851,9 @@ Feature-flag Resend via `RESEND_ENABLED=true|false` env var. If false, all email
 
 - Configure UploadThing for image uploads in the admin panel (Phase 2).
 - Public images accessed via UploadThing's CDN.
-- Types allowed: `jpeg`, `png`, `webp`.
-- Max size: 5 MB per image (transcode larger uploads server-side to WebP).
+- Types allowed: `jpeg`, `png`, `webp`, enforced on the server by using the `image/jpeg`, `image/png` and `image/webp` route keys rather than the generic `image` key. SVG is rejected because it can carry script.
+- Max size: 5 MB per image. Larger files are rejected with a clear message; there is no transcoding. Files go straight from the browser to UploadThing, so the server never holds the bytes. If editors regularly hit the cap with phone photos, add an in-browser downscale and WebP re-encode before upload.
+- Every upload creates a `media` row (§8 Content editing).
 
 ### Insta HMS (future)
 
@@ -882,7 +905,7 @@ Implement JSON-LD for:
 
 ## 12. Accessibility Requirements
 
-Target: WCAG 2.1 AA across every template. Not "mostly". Every.
+Target: WCAG 2.1 AA across every template. Not "mostly". Every. This includes the admin panel: staff are users too.
 
 ### Semantics
 
@@ -920,7 +943,7 @@ Target: WCAG 2.1 AA across every template. Not "mostly". Every.
 
 ## 13. Performance Budgets
 
-Hard limits. If a change would push a metric past its budget, stop and ask.
+Hard limits. If a change would push a metric past its budget, stop and ask. The budgets cover the public site only, not `/admin`; §12 still applies there.
 
 | Metric | Budget |
 |---|---|
@@ -955,7 +978,7 @@ Hard limits. If a change would push a metric past its budget, stop and ask.
 
 Configure via Next.js middleware:
 
-- `Content-Security-Policy` — strict, allow only trusted sources.
+- `Content-Security-Policy` — strict, allow only trusted sources. Two policies: marketing routes keep the tight one. `/admin/*` adds the UploadThing ingest origins to `connect-src` (exact hosts taken from UploadThing's docs for the app's region, not guessed), and `/admin/analytics` adds the Umami origin to `frame-src`.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`.
 - `X-Frame-Options: DENY`.
 - `X-Content-Type-Options: nosniff`.
@@ -964,11 +987,12 @@ Configure via Next.js middleware:
 
 ### Auth (Phase 2)
 
-- Passwords hashed with argon2id.
+- Passwords hashed with argon2id, via `@node-rs/argon2`.
 - Session cookies `HttpOnly`, `Secure`, `SameSite=Lax`.
 - CSRF protection via Auth.js.
-- Rate-limit login endpoint (5 attempts per 15 minutes per IP).
-- Lock account after 10 failed attempts pending admin unlock.
+- Rate-limit login: 5 attempts per 15 minutes per IP, using the salted-IP-hash limiter. The check runs inside `authorize()`, so it covers both `loginAction` and direct POSTs to `/api/auth/callback/credentials`. A limited attempt returns the same generic failure as every other login error.
+- Lock an account for 15 minutes after 10 consecutive failed attempts. The lock expires on its own, and an `admin` can clear it early. Login error messages do not quote these thresholds.
+- `trustHost: true`, for self-hosting behind a proxy. `AUTH_URL` is therefore required in production; without it, callback URLs are built from the request's host headers.
 
 ### NDPR compliance
 
@@ -978,7 +1002,8 @@ Configure via Next.js middleware:
 - NDPR-required Data Protection Officer contact in footer.
 - Cookie banner not required (Umami is cookieless, no marketing cookies).
 - Data subject access request flow: email to a documented address triggers manual review. No automated deletion in Phase 1.
-- Data retention: booking submissions retained for 12 months after appointment date, then archived.
+- Data retention: bookings are anonymised in place 12 months after `preferred_date`. Retention periods for contact submissions, corporate enquiries and newsletter subscribers: `TODO`, set by counsel.
+- Retention job: `POST /api/jobs/retention`, guarded by `JOBS_SECRET` and idempotent. It also nulls `internal_notes` and `booking_status_history.note`. Scheduled by Vercel Cron now and by system cron once self-hosted. It must ship before the first booking reaches 12 months past its `preferred_date`.
 
 ### Env vars
 
@@ -989,9 +1014,9 @@ DATABASE_URL=
 DATABASE_URL_UNPOOLED=
 AUTH_SECRET=
 AUTH_URL=
+JOBS_SECRET=
 
-UPLOADTHING_SECRET=
-UPLOADTHING_APP_ID=
+UPLOADTHING_TOKEN=
 
 RESEND_ENABLED=false
 RESEND_API_KEY=
@@ -1010,6 +1035,8 @@ UMAMI_SCRIPT_URL=
 
 NEXT_PUBLIC_SITE_URL=
 ```
+
+`AUTH_SECRET` and `AUTH_URL` are required in production, enforced by a `superRefine` the same way as the Resend vars. `UPLOADTHING_TOKEN` is UploadThing v7's single token, replacing the v6 `UPLOADTHING_SECRET`/`UPLOADTHING_APP_ID` pair. `UPLOADTHING_UPLOADS_ENABLED` is removed.
 
 **Never log env vars.** **Never commit `.env.local`.**
 
@@ -1174,3 +1201,31 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
 - `next.config.ts` sets `images.formats` to AVIF then WebP, with `deviceSizes`
   and `imageSizes` tuned to the 1440px layout container. `dangerouslyAllowSVG`
   stays off; SVG is served straight from `/public` with the optimizer bypassed.
+- Phase 2 decisions, 2026-09-15. Row IDs refer to `docs/phase-2-decisions.md`.
+  - P1: the admin code built during Phase 1 is ratified as the Phase 2 base (§8).
+  - A1: login rate limit of 5 per 15 minutes per IP, checked inside `authorize()` (§14 Auth).
+  - A2: 10 failures lock an account for 15 minutes, auto-expiring, and an `admin` can clear it early. Replaces "pending admin unlock" (§14 Auth).
+  - A3: JWT sessions with a 5-minute DB re-check replace "sessions stored in Postgres". `@auth/drizzle-adapter` is to be removed (§2, §8 Access).
+  - A4: length-based password rule, no composition rules, expressed as a Zod refinement (§8 Access).
+  - A5: authorisation lives in layouts, actions and route handlers. Middleware adds a session-cookie redirect as defence in depth (§8 Access).
+  - A6: `admin:create` and `admin:passwd` CLI scripts, plus a `must_change_password` column (§8 Access).
+  - A7: `@node-rs/argon2` approved (§2, §14 Auth).
+  - A8: `UPLOADTHING_TOKEN` replaces the v6 pair, `UPLOADTHING_UPLOADS_ENABLED` removed, `AUTH_SECRET`/`AUTH_URL` required in production, `trustHost` kept (§14).
+  - B1: UI role labels match the enum names (§8 Roles).
+  - B2: editors may soft-delete content. Patient-data deletes and the staff list are `admin` only (§8 Roles).
+  - B3: contributors keep a resource allow-list and may update only rows they created (§8 Roles).
+  - B4: audit log added: detail-page opens of patient records are logged, IPs stored as salted hashes, `/admin/audit` for `admin`, retention `TODO` (§8 Audit log).
+  - C1: the spec's per-type admin routes stand, with `/admin/media` and `/admin/audit` added (§8 Admin routes).
+  - C2: `/admin/settings` removed; settings stay in env and seed (§8 Admin routes).
+  - C3: legal pages stay as JSON in git and are not editable in the panel (§3, §6, §8 Content editing).
+  - C4: preview uses `draftMode()`, and draft reads bypass the cache (§8 Content editing).
+  - C5: booking transition map redrawn, backward moves `admin` only with a note, internal notes plain text, `reason_for_visit` visible to editors and admins only (§8 Booking workflow).
+  - D1: Markdown textarea with toolbar and live preview; no rich-text library (§8 Content editing).
+  - D2: blog bodies are Markdown, not MDX (§5, §6, §8).
+  - D3: `media` table holding alt text and uploader, referenced by foreign key (§8 Content editing).
+  - E1: 5 MB cap with rejection instead of transcoding; typed route keys enforce jpeg, png and webp on the server (§10 UploadThing).
+  - E2: Umami runs as a separate Vercel project with its own database (§9 Deployment).
+  - E3: Umami share-URL iframe, `admin` only (§9 Dashboard integration).
+  - E4: separate CSP for `/admin/*` (§14 Headers).
+  - E5: retention is anonymise-in-place, 12 months from `preferred_date`, run by a `JOBS_SECRET`-guarded job endpoint; other periods `TODO` with counsel (§14 NDPR, env vars).
+  - F1: WCAG 2.1 AA applies to the admin panel; performance budgets do not (§12, §13).

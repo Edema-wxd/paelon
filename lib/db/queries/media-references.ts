@@ -44,8 +44,18 @@ const SCALAR_COLUMNS: Array<{ table: string; column: string; label: string }> = 
   { table: "testimonials", column: "avatar", label: "patient_name" },
   { table: "authors", column: "headshot", label: "name" },
   { table: "blog_posts", column: "hero_image", label: "title" },
-  { table: "awards", column: "logo", label: "name" },
-  { table: "awards", column: "certificate_image", label: "name" },
+];
+
+/**
+ * Tables that reference `media.id` by foreign key rather than holding a URL.
+ *
+ * These need a join to reach the key, so they cannot go through the substring
+ * match above. As each content table migrates onto `media`, its entry moves
+ * from `SCALAR_COLUMNS` to here.
+ */
+const FOREIGN_KEY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
+  { table: "awards", column: "logo_id", label: "name" },
+  { table: "awards", column: "certificate_image_id", label: "name" },
 ];
 
 const ARRAY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
@@ -70,6 +80,20 @@ export async function findMediaReferences(
       select id, ${sql.raw(label)}::text as label
       from ${sql.raw(table)}
       where ${sql.raw(column)} like ${pattern}
+    `);
+
+    for (const row of rows.rows) {
+      found.push({ table, column, rowId: row.id, label: row.label ?? "(untitled)" });
+    }
+  }
+
+  // An exact join on the key, not a substring: these columns hold a `media.id`.
+  for (const { table, column, label } of FOREIGN_KEY_COLUMNS) {
+    const rows = await db().execute<{ id: string; label: string | null }>(sql`
+      select t.id, t.${sql.raw(label)}::text as label
+      from ${sql.raw(table)} t
+      join media m on m.id = t.${sql.raw(column)}
+      where m.key = ${key}
     `);
 
     for (const row of rows.rows) {

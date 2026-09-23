@@ -140,7 +140,8 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
               {posts.map((post) => (
                 <li key={post.id} className="flex">
                   <div className="flex w-full">
-                    <BlogPostCard post={post} />
+                    {/* Directly under the page `h1`, so `h2` — see the card. */}
+                    <BlogPostCard post={post} headingLevel={2} />
                   </div>
                 </li>
               ))}
