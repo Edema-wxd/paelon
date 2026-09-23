@@ -1,11 +1,9 @@
-import Link from "next/link";
-
 import {
   BOOKING_STATUSES,
   BOOKING_STATUS_LABELS,
   type BookingQuery,
 } from "@/lib/admin/booking-view";
-import { Button } from "@/components/ui/button";
+import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
 import { Input } from "@/components/ui/input";
 
 /**
@@ -35,15 +33,16 @@ export function BookingFilters({
     Boolean(filters.locationId ?? filters.preferredFrom ?? filters.preferredTo ?? filters.assignee);
 
   return (
-    <form
-      method="get"
+    <AdminFilterBar
       action="/admin/bookings"
-      className="rounded-xl border border-border bg-white p-4"
+      hidden={[
+        // The sort survives a filter change; the page does not.
+        { name: "sort", value: sort.column },
+        { name: "dir", value: sort.direction },
+      ]}
+      isFiltered={isFiltered}
+      clearHref="/admin/bookings"
     >
-      {/* The sort survives a filter change; the page does not. */}
-      <input type="hidden" name="sort" value={sort.column} />
-      <input type="hidden" name="dir" value={sort.direction} />
-
       <fieldset className="border-0 p-0">
         <legend className="text-sm font-medium text-primary">Status</legend>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
@@ -129,20 +128,6 @@ export function BookingFilters({
           />
         </div>
       </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <Button type="submit" size="sm">
-          Apply filters
-        </Button>
-        {isFiltered ? (
-          <Link
-            href="/admin/bookings"
-            className="text-sm text-accent underline underline-offset-4 hover:no-underline"
-          >
-            Clear filters
-          </Link>
-        ) : null}
-      </div>
-    </form>
+    </AdminFilterBar>
   );
 }

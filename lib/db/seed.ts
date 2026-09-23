@@ -335,15 +335,19 @@ async function main(): Promise<void> {
         awardingBody: orTodo(s.awarding_body),
         year: s.year,
         description: orTodo(s.description),
-        logo: s.logo,
-        certificateImage: s.certificate_image,
+        // `logo` and `certificate_image` in the seed file are bare CDN URLs,
+        // and the columns are now foreign keys into `media`, where alt text
+        // lives. Alt text cannot be derived from a URL and must not be
+        // invented, so seeded awards carry no image: upload it in the panel,
+        // which is the only place the alt text can be written. Flagged by
+        // `seed:report` rather than silently dropped.
         externalLink: s.external_link,
       })
       .onConflictDoUpdate({
         target: awards.slug,
         set: conflictSet(awards, [
           "name", "published", "order", "awardingBody", "year", "description",
-          "logo", "certificateImage", "externalLink",
+          "externalLink",
         ]),
       });
   }

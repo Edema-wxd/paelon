@@ -5,6 +5,12 @@ import type {
 } from "@/lib/db/queries/bookings";
 import type { BookingStatus } from "@/lib/db/schema";
 
+import { paginate, type AdminPagination } from "@/lib/admin/list-view";
+
+export { paginate, type AdminPagination };
+/** @deprecated Use `AdminPagination` from `lib/admin/list-view`. Kept as an alias so this module's existing exports keep working. */
+export type BookingPagination = AdminPagination;
+
 /**
  * The `/admin/bookings` view state, which lives entirely in the URL.
  *
@@ -167,30 +173,3 @@ export function ariaSort(
   return query.sort.direction === "asc" ? "ascending" : "descending";
 }
 
-export interface BookingPagination {
-  page: number;
-  pageSize: number;
-  total: number;
-  pages: number;
-  from: number;
-  to: number;
-}
-
-/** Page numbers for the "showing 26–50 of 120" line and the prev/next links. */
-export function paginate(
-  total: number,
-  page: number,
-  pageSize: number,
-): BookingPagination {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const current = Math.min(Math.max(1, page), pages);
-  const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
-  return {
-    page: current,
-    pageSize,
-    total,
-    pages,
-    from,
-    to: Math.min(total, current * pageSize),
-  };
-}

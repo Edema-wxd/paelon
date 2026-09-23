@@ -1,8 +1,10 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
+import { z } from "zod";
 
 import { can } from "@/lib/auth/policy";
 import { getAdminUser } from "@/lib/auth/session";
+import { recordUpload } from "@/lib/db/queries/media";
 import { serverEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
@@ -10,10 +12,12 @@ import { logger } from "@/lib/logger";
  * UploadThing file router (spec §10).
  *
  * This is object storage for **editorial images** — blog hero images, doctor
- * headshots, branch galleries, award certificates, HMO logos. Those live in
- * nullable `text` columns on the content tables and hold a CDN URL, so nothing
- * here writes to the database; the URL is pasted into a seed file today and
- * set by the Phase 2 CMS later.
+ * headshots, branch galleries, award certificates, HMO logos.
+ *
+ * Every completed upload writes a `media` row (spec §8), because alt text has
+ * to live somewhere and a CDN bucket has nowhere to put it. Content tables
+ * reference that row by id as they migrate onto it — `awards` does; the rest
+ * still hold a URL in a `text` column filled from seed.
  *
  * It is *not* the pipeline for the site's own design assets. Those are
  * committed under `assets/`, pre-encoded by `scripts/optimize-images.mjs`, and
@@ -55,7 +59,14 @@ export const uploadRouter = {
    * row it was meant for, which is the only way a CDN bucket stays reviewable.
    */
   contentImage: f(IMAGE_LIMITS)
-    .middleware(async ({ req }) => {
+    // Both optional: the media library uploads with no content row in mind.
+    .input(
+      z.object({
+        contentType: z.string().max(50).optional(),
+        slug: z.string().max(100).optional(),
+      }),
+    )
+    .middleware(async ({ req, input }) => {
       const env = serverEnv();
 
       if (!env.UPLOADTHING_TOKEN) {
@@ -70,15 +81,29 @@ export const uploadRouter = {
         throw new UploadThingError("Unauthorized");
       }
 
+      // From the call's input, or the query string the media library used
+      // before `.input()` existed here.
       const url = new URL(req.url);
-      const contentType = url.searchParams.get("contentType") ?? "unknown";
-      const slug = url.searchParams.get("slug") ?? "unknown";
+      const contentType =
+        input?.contentType ?? url.searchParams.get("contentType") ?? "unknown";
+      const slug = input?.slug ?? url.searchParams.get("slug") ?? "unknown";
 
       // Recorded on the upload so an orphaned file can be traced to whoever
       // put it there.
       return { contentType, slug, userId: user.id };
     })
     .onUploadComplete(async ({ file, metadata }) => {
+      // The row is the record of the file; the bucket is only storage. Written
+      // here rather than by the form, so a file uploaded and then abandoned is
+      // still visible in the library instead of becoming an orphan nobody can
+      // see. Idempotent — this callback is retried (see `recordUpload`).
+      const row = await recordUpload({
+        key: file.key,
+        url: file.ufsUrl,
+        filename: file.name,
+        uploadedBy: metadata.userId,
+      });
+
       // Structured, and free of anything personal: a filename and a content
       // slug, never a patient identifier (spec §14).
       logger.info("upload.complete", {
@@ -90,9 +115,9 @@ export const uploadRouter = {
         userId: metadata.userId,
       });
 
-      // Returned to the caller, which is how the Phase 2 editor will learn the
-      // URL to write into the row.
-      return { url: file.ufsUrl, key: file.key };
+      // Returned to the caller. The admin image field writes `mediaId` into
+      // the content row, not the URL — alt text lives on the media row.
+      return { url: file.ufsUrl, key: file.key, mediaId: row.id };
     }),
 } satisfies FileRouter;
 

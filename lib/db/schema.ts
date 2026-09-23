@@ -360,8 +360,19 @@ export const awards = pgTable("awards", {
   awardingBody: text("awarding_body").notNull(),
   year: integer("year").notNull(),
   description: text("description").notNull(),
-  logo: text("logo"),
-  certificateImage: text("certificate_image"),
+  /**
+   * Both images are foreign keys into `media`, not the CDN URLs the other
+   * content tables still hold. Alt text lives on the media row (master spec
+   * §8 Content editing), and a URL in a text column has nowhere to put it.
+   *
+   * `restrict` rather than `set null`: a media delete that silently blanks a
+   * published award's logo is the failure `media-references.ts` exists to
+   * prevent, so the database refuses it too.
+   */
+  logoId: uuid("logo_id").references(() => media.id, { onDelete: "restrict" }),
+  certificateImageId: uuid("certificate_image_id").references(() => media.id, {
+    onDelete: "restrict",
+  }),
   externalLink: text("external_link"),
 });
 
@@ -447,6 +458,54 @@ export const blogPostRelated = pgTable(
       .references(() => blogPosts.id, { onDelete: "cascade" }),
   },
   (t) => [primaryKey({ columns: [t.postId, t.relatedId] })],
+);
+
+/* -------------------------------------------------------------------------- */
+/* Media                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One row per UploadThing object (master spec §8 Content editing).
+ *
+ * Until now the media library was the CDN bucket itself: `lib/uploadthing/api.ts`
+ * listed files from UploadThing and content rows held a bare URL. That has no
+ * place to keep alt text, and alt text is not optional — a shipped image
+ * without it is a blocking accessibility failure (CLAUDE.md, spec §12). So the
+ * row is the record and the bucket is storage.
+ *
+ * `alt` is `notNull` with no default on purpose: every write has to say
+ * something, and the admin forms require it whenever an image is set. It may
+ * be the empty string, which is the correct value for a decorative image and
+ * is how the media grid's own thumbnails are rendered.
+ *
+ * Content tables migrate onto this one at a time — `awards` is first, because
+ * it is the only image-bearing table with no seed rows to backfill. The others
+ * still hold URLs in `text` columns and are still matched by
+ * `lib/db/queries/media-references.ts`.
+ */
+export const media = pgTable(
+  "media",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The UploadThing file key. The identity of the object in the bucket. */
+    key: text("key").notNull(),
+    url: text("url").notNull(),
+    /** Alt text. Empty string means deliberately decorative, never "not set yet". */
+    alt: text("alt").notNull(),
+    /** Original filename, for the media grid's label. */
+    filename: text("filename"),
+    uploadedBy: uuid("uploaded_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("media_key_key").on(t.key)],
 );
 
 /* -------------------------------------------------------------------------- */
@@ -926,6 +985,8 @@ export type Author = typeof authors.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Award = typeof awards.$inferSelect;
 export type Faq = typeof faqs.$inferSelect;
+export type Media = typeof media.$inferSelect;
+export type NewMedia = typeof media.$inferInsert;
 
 export type Booking = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
@@ -941,3 +1002,5 @@ export type AuditEntry = typeof auditLog.$inferSelect;
 export type BookingStatus = (typeof bookingStatusEnum.enumValues)[number];
 export type ServiceFamily = (typeof serviceFamilyEnum.enumValues)[number];
 export type TimeWindow = (typeof timeWindowEnum.enumValues)[number];
+export type CorporateStatus = (typeof corporateStatusEnum.enumValues)[number];
+export type CompanySize = (typeof companySizeEnum.enumValues)[number];

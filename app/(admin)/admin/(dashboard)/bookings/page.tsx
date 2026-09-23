@@ -1,6 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 
+import { AdminPaginationNav } from "@/components/admin/admin-pagination";
 import { BookingFilters } from "@/components/admin/booking-filters";
 import { BookingsEmpty } from "@/components/admin/bookings-empty";
 import { BookingsTable } from "@/components/admin/bookings-table";
@@ -108,36 +108,11 @@ export default async function AdminBookingsPage({
           )}
         </div>
 
-        {pages.pages > 1 ? (
-          <nav
-            aria-label="Bookings pagination"
-            className="mt-6 flex items-center justify-between gap-4"
-          >
-            {pages.page > 1 ? (
-              <Link
-                href={bookingHref(query, { page: pages.page - 1 })}
-                className="text-sm text-accent underline underline-offset-4 hover:no-underline"
-              >
-                Previous page
-              </Link>
-            ) : (
-              <span />
-            )}
-            <p className="text-sm text-muted-foreground">
-              Page {pages.page} of {pages.pages}
-            </p>
-            {pages.page < pages.pages ? (
-              <Link
-                href={bookingHref(query, { page: pages.page + 1 })}
-                className="text-sm text-accent underline underline-offset-4 hover:no-underline"
-              >
-                Next page
-              </Link>
-            ) : (
-              <span />
-            )}
-          </nav>
-        ) : null}
+        <AdminPaginationNav
+          pages={pages}
+          hrefFor={(page) => bookingHref(query, { page })}
+          label="Bookings pagination"
+        />
       </section>
     </div>
   );

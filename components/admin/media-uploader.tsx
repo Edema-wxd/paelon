@@ -44,7 +44,9 @@ export function MediaUploader() {
       if (files.length === 0) return;
       setStatus(`Uploading ${files.length} file${files.length === 1 ? "" : "s"}…`);
       setError(null);
-      void startUpload(files);
+      // No content row in mind — the library is where files are uploaded before
+      // anyone knows which award or post they belong to.
+      void startUpload(files, {});
     },
     [startUpload],
   );

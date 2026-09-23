@@ -20,6 +20,7 @@ import {
 import type { BookingListRow, BookingSortColumn } from "@/lib/db/queries/bookings";
 import { BookingStatusBadge } from "@/components/admin/booking-status-badge";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { SortableColumnHeader } from "@/components/admin/sortable-column-header";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -238,24 +239,12 @@ export function BookingsTable({
                 </th>
               ) : null}
               {COLUMNS.map((column) => (
-                <th
+                <SortableColumnHeader
                   key={column}
-                  scope="col"
-                  aria-sort={ariaSort(query, column)}
-                  className="p-3 font-medium text-primary"
-                >
-                  <Link
-                    href={sortHref(query, column)}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {BOOKING_SORT_LABELS[column]}
-                    {query.sort.column === column
-                      ? query.sort.direction === "asc"
-                        ? " ↑"
-                        : " ↓"
-                      : ""}
-                  </Link>
-                </th>
+                  label={BOOKING_SORT_LABELS[column]}
+                  href={sortHref(query, column)}
+                  ariaSort={ariaSort(query, column)}
+                />
               ))}
               <th scope="col" className="p-3 font-medium text-primary">
                 Branch
