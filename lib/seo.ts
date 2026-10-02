@@ -55,3 +55,57 @@ export function preferredSourceUrl(siteUrl: string): string | null {
 
   return `https://www.google.com/preferences/source?q=${encodeURIComponent(host)}`;
 }
+
+/**
+ * `MedicalOrganization` JSON-LD (spec §11: "on the homepage and About page").
+ *
+ * One builder rather than a literal per page. Two hand-written copies of the
+ * same claims about the hospital drift the moment one page is edited, and
+ * structured data that disagrees with itself across a site is worse than one
+ * copy — a crawler has no way to tell which is current.
+ *
+ * TODO(seed): no logo, `sameAs` profiles, or verified opening hours are
+ * available yet, so they are omitted rather than guessed. Invalid structured
+ * data is worse than absent structured data.
+ *
+ * @param siteUrl absolute site origin, normally `NEXT_PUBLIC_SITE_URL`
+ * @param location the branch whose address and phone front the site, or null
+ */
+export function medicalOrganizationLd(
+  siteUrl: string,
+  location: OrganizationLocation | null,
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "MedicalOrganization",
+    name: "Paelon Memorial Hospital",
+    url: siteUrl,
+    description:
+      "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
+    ...(location
+      ? {
+          telephone: location.phone,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: location.address_line_1,
+            addressLocality: location.city,
+            addressRegion: location.state,
+            addressCountry: location.country,
+          },
+        }
+      : {}),
+  };
+}
+
+/**
+ * The branch fields the organisation schema needs. A structural subset of
+ * `Location` in `lib/content.ts`, declared here so this module stays free of a
+ * value import from the content layer.
+ */
+export interface OrganizationLocation {
+  phone: string;
+  address_line_1: string;
+  city: string;
+  state: string;
+  country: string;
+}

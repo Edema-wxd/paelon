@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -142,6 +143,9 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
         website: "",
         formRenderedAt: Date.now(),
       });
+      // `contact_form_submitted` (spec §9) — after the server accepted it.
+      track("contact_form_submitted");
+
       // A real thank-you page, not an inline toast (conversion baseline item
       // 1) — POST then redirect, so a refresh of the destination can never
       // re-submit the enquiry.

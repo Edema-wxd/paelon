@@ -4,14 +4,28 @@ import { notFound } from "next/navigation";
 import { NotPermitted } from "@/components/admin/not-permitted";
 import { ResourceDeleteForm } from "@/components/admin/resource-delete-form";
 import { ResourceForm } from "@/components/admin/resource-form";
+import type { SelectOption } from "@/components/admin/multi-select-field";
 import type { ImageFieldValue } from "@/components/admin/resource-image-field";
 import type { Field, ResourceConfig } from "@/lib/admin/resource-config";
 import { RESOURCE_SERVER } from "@/lib/admin/resources/server";
 import type { ResourceName } from "@/lib/admin/resources";
 import { can, canOnRow } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
-import { getContentById, type ContentRow } from "@/lib/db/queries/content-crud";
+import {
+  getContentById,
+  listContentOptions,
+  listRelationIds,
+  type ContentRow,
+} from "@/lib/db/queries/content-crud";
 import { getMediaByIds } from "@/lib/db/queries/media";
+import { hasPublishedHours } from "@/lib/locations/hours-display";
+import {
+  previewDestinationFor,
+  previewHref,
+  previewPathFor,
+  previewUnavailableReason,
+} from "@/lib/preview/target";
+import { DAYS, type Hours } from "@/lib/validation/hours";
 
 /**
  * The new / edit screen for a content type.
@@ -26,6 +40,15 @@ import { getMediaByIds } from "@/lib/db/queries/media";
  * and foreign keys. That conversion happens here rather than in the client
  * component, so the form never has to know what a `media` row is — it receives
  * the URL and the alt text already resolved.
+ *
+ * The same applies to the two shapes that are not columns at all:
+ *
+ *  - **join rows.** `service_locations` and friends are read here into a list
+ *    of ids, and the rows they could point at are read into picker options. A
+ *    `multiselect` is then an ordinary field with an ordinary default.
+ *  - **opening hours.** The jsonb value — or `{}`, for a branch whose schedule
+ *    nobody has supplied — is spread back into seven days of controls, and the
+ *    "confirmed" tick is set from whether the stored value has any days in it.
  */
 export async function ResourceEditorScreen<R extends ContentRow>({
   resource,
@@ -68,10 +91,67 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     .filter((value): value is string => typeof value === "string");
   const mediaRows = row ? await getMediaByIds(mediaIds) : new Map();
 
-  const defaults: Record<string, string | boolean> = {};
+  // One query per relation, and only the ones this resource declares. A
+  // resource with no join tables costs nothing here.
+  const relations = server.relations ?? [];
+  const options: Record<string, SelectOption[]> = {};
+  const selected: Record<string, string[]> = {};
+
+  for (const relation of relations) {
+    const [rows, current] = await Promise.all([
+      listContentOptions(relation.columns.otherTable, relation.optionsLabel),
+      id ? listRelationIds(relation.columns, id) : Promise.resolve<string[]>([]),
+    ]);
+
+    // A self-referencing join — `service_related` — must not offer the row
+    // itself. The database would take it and the page would list a service as
+    // related to itself.
+    options[relation.field] = rows.filter((option) => option.id !== id);
+    selected[relation.field] = current;
+  }
+
+  // Foreign-key pickers. One query each, and only for the resource that has
+  // them; the chosen id itself is an ordinary column and needs nothing here.
+  for (const reference of server.references ?? []) {
+    options[reference.field] = await listContentOptions(
+      reference.table,
+      reference.optionsLabel,
+    );
+  }
+
+  const defaults: Record<string, unknown> = {};
   const images: Record<string, ImageFieldValue> = {};
 
+  // Set by the `hours` field itself, from the stored value. Skipped by the
+  // generic checkbox branch, which would otherwise read a column that is not
+  // there and default it to unticked.
+  const hoursConfirmedNames = new Set(
+    config.fields
+      .filter((field): field is Extract<Field, { type: "hours" }> => field.type === "hours")
+      .map((field) => field.confirmedName),
+  );
+
   for (const field of config.fields) {
+    if (field.type === "multiselect") {
+      defaults[field.name] = selected[field.name] ?? [];
+      continue;
+    }
+
+    if (field.type === "tags") {
+      const value = row ? row[field.name] : undefined;
+      defaults[field.name] = Array.isArray(value) ? value.map(String) : [];
+      continue;
+    }
+
+    if (field.type === "hours") {
+      const stored = row ? row[field.name] : undefined;
+      defaults[field.name] = toHoursDefaults(stored);
+      defaults[field.confirmedName] = hasPublishedHours(
+        stored as Hours | Record<string, never> | undefined,
+      );
+      continue;
+    }
+
     if (field.type === "image") {
       const mediaId = typeof row?.[field.name] === "string" ? (row[field.name] as string) : null;
       const media = mediaId ? mediaRows.get(mediaId) : undefined;
@@ -92,6 +172,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     }
 
     if (field.type === "checkbox") {
+      if (hoursConfirmedNames.has(field.name)) continue;
       defaults[field.name] = row ? row[field.name] === true : false;
       continue;
     }
@@ -103,6 +184,12 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   const heading = row
     ? String(row[config.titleField] ?? config.singular)
     : `New ${config.singular.toLowerCase()}`;
+
+  // Which marketing page this row shows up on, if any. Types whose rows have no
+  // page of their own get no button — see `lib/preview/target.ts`.
+  const previewPath = row ? previewPathFor(resource, row) : null;
+  const previewUnavailable =
+    row && !previewPath ? previewUnavailableReason(resource) : null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -126,10 +213,37 @@ export async function ResourceEditorScreen<R extends ContentRow>({
 
       <h1 className="mt-4 text-2xl font-bold text-primary">{heading}</h1>
 
+      {/* Preview is only meaningful for a row that exists: it opens the
+          marketing site in draft mode, which reads the saved row, not the form.
+          A new, unsaved row has nothing to show. */}
       {row ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {row.published ? "Published" : "Draft"}
-        </p>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <p className="text-sm text-muted-foreground">
+            {row.published ? "Published" : "Draft"}
+          </p>
+
+          {previewPath ? (
+            <>
+              <a
+                href={previewHref(resource, previewPath)}
+                target="_blank"
+                rel="noopener"
+                aria-describedby="preview-hint"
+                className="rounded-sm text-sm font-medium text-accent underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                Preview on the site
+              </a>
+              <p id="preview-hint" className="text-sm text-muted-foreground">
+                Opens the last saved version on{" "}
+                {previewDestinationFor(resource)}, in a new tab.
+              </p>
+            </>
+          ) : null}
+
+          {previewUnavailable ? (
+            <p className="text-sm text-muted-foreground">{previewUnavailable}</p>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="mt-8">
@@ -138,6 +252,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           {...(id ? { id } : {})}
           defaults={defaults}
           images={images}
+          options={options}
           canPublish={canPublish}
         />
       </div>
@@ -157,5 +272,30 @@ export async function ResourceEditorScreen<R extends ContentRow>({
         </section>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The stored schedule, spread back into the controls that produced it.
+ *
+ * A branch with no confirmed hours stores `{}`, and every day comes back blank
+ * and unticked — which is what "nobody has told us yet" should look like in a
+ * form. It is deliberately not seven ticked "Closed" boxes: that is a claim,
+ * and it is the wrong one.
+ */
+function toHoursDefaults(
+  stored: unknown,
+): Record<string, { open: string; close: string; closed: boolean }> {
+  const candidate = stored as Hours | Record<string, never> | undefined;
+  const hours = hasPublishedHours(candidate) ? candidate : undefined;
+
+  return Object.fromEntries(
+    DAYS.map((day) => {
+      const value = hours?.[day];
+      if (!value) return [day, { open: "", close: "", closed: false }];
+      return value.closed
+        ? [day, { open: "", close: "", closed: true }]
+        : [day, { open: value.open, close: value.close, closed: false }];
+    }),
   );
 }

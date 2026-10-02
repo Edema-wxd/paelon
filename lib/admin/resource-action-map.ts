@@ -1,10 +1,25 @@
 import {
   createAwardAction,
+  createDoctorAction,
   createFaqAction,
+  createHmoAction,
+  createLocationAction,
+  createServiceAction,
+  createTestimonialAction,
   deleteAwardAction,
+  deleteDoctorAction,
   deleteFaqAction,
+  deleteHmoAction,
+  deleteLocationAction,
+  deleteServiceAction,
+  deleteTestimonialAction,
   updateAwardAction,
+  updateDoctorAction,
   updateFaqAction,
+  updateHmoAction,
+  updateLocationAction,
+  updateServiceAction,
+  updateTestimonialAction,
   type ResourceResult,
   type ResourceState,
 } from "@/lib/admin/resource-actions";
@@ -35,6 +50,23 @@ export interface ResourceActions {
 }
 
 export const RESOURCE_ACTIONS: Record<ResourceName, ResourceActions> = {
+  services: {
+    create: createServiceAction,
+    update: updateServiceAction,
+    remove: deleteServiceAction,
+  },
+  doctors: { create: createDoctorAction, update: updateDoctorAction, remove: deleteDoctorAction },
+  locations: {
+    create: createLocationAction,
+    update: updateLocationAction,
+    remove: deleteLocationAction,
+  },
+  hmos: { create: createHmoAction, update: updateHmoAction, remove: deleteHmoAction },
+  testimonials: {
+    create: createTestimonialAction,
+    update: updateTestimonialAction,
+    remove: deleteTestimonialAction,
+  },
   faqs: { create: createFaqAction, update: updateFaqAction, remove: deleteFaqAction },
   awards: { create: createAwardAction, update: updateAwardAction, remove: deleteAwardAction },
 };

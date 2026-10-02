@@ -2,11 +2,18 @@
 
 import { Search } from "lucide-react";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { track } from "@/lib/analytics/track";
 import type { Hmo } from "@/lib/content";
 import { searchHmos } from "@/lib/hmo-search";
+
+/** Shortest query counted as a lookup — one character is a mistype. */
+const LOOKUP_MIN_LENGTH = 2;
+
+/** Quiet period before a query counts as a deliberate lookup. */
+const LOOKUP_IDLE_MS = 700;
 
 interface HmoTypeaheadProps {
   hmos: readonly Hmo[];
@@ -31,6 +38,33 @@ export function HmoTypeahead({ hmos }: HmoTypeaheadProps) {
   const listId = useId();
 
   const trimmed = query.trim();
+
+  /**
+   * `hmo_lookup_performed` (spec §9) — one event per lookup, not per keystroke.
+   *
+   * Matching is local, so there is no request to hang the event on. The two
+   * guards below make "a lookup" mean what a person would mean by it: settle
+   * for `LOOKUP_IDLE_MS` after the last keypress, and never re-fire for a query
+   * already counted, so backspacing over a word does not inflate the figure.
+   *
+   * No part of the query is sent. What someone typed into a health-insurance
+   * search box is not a number or a boolean, so `track()` could not accept it
+   * even if a call site tried.
+   */
+  const counted = useRef(new Set<string>());
+
+  useEffect(() => {
+    const normalised = trimmed.toLowerCase();
+    if (normalised.length < LOOKUP_MIN_LENGTH) return;
+    if (counted.current.has(normalised)) return;
+
+    const timer = window.setTimeout(() => {
+      counted.current.add(normalised);
+      track("hmo_lookup_performed");
+    }, LOOKUP_IDLE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [trimmed]);
 
   /**
    * Matching lives in `lib/hmo-search` so it can be unit tested without a

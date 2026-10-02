@@ -16,8 +16,19 @@ import { RESOURCES, type ResourceName } from "@/lib/admin/resources";
  * the dialog says so rather than warning about something permanent — a warning
  * that overstates the consequence is the kind people learn to click through,
  * which is exactly wrong on the screens where it is true.
+ *
+ * What *is* immediate is the public URL. A type whose rows have one sets
+ * `deleteWarning` on its config, and it is shown first and in the destructive
+ * colour: reversible in the database is not the same as reversible for the
+ * person who followed the link while it was gone.
  */
-function ConfirmButton({ singular }: { singular: string }) {
+function ConfirmButton({
+  singular,
+  warning,
+}: {
+  singular: string;
+  warning?: string;
+}) {
   const { pending } = useFormStatus();
   const lower = singular.toLowerCase();
 
@@ -25,7 +36,18 @@ function ConfirmButton({ singular }: { singular: string }) {
     <ConfirmDialog
       triggerLabel={`Delete ${lower}`}
       title={`Delete this ${lower}?`}
-      description={`It is removed from the site straight away and no longer appears in this list. Nothing is erased — an admin can restore it from the database if it was a mistake.`}
+      description={
+        <>
+          {warning ? (
+            <p className="font-medium text-destructive">{warning}</p>
+          ) : null}
+          <p className={warning ? "mt-2" : undefined}>
+            It is removed from the site straight away and no longer appears in
+            this list. Nothing is erased — an admin can restore it from the
+            database if it was a mistake.
+          </p>
+        </>
+      }
       confirmLabel={`Delete ${lower}`}
       cancelLabel="Keep it"
       name="confirm"
@@ -70,7 +92,10 @@ export function ResourceDeleteForm({
         ) : null}
       </div>
 
-      <ConfirmButton singular={config.singular} />
+      <ConfirmButton
+        singular={config.singular}
+        {...(config.deleteWarning ? { warning: config.deleteWarning } : {})}
+      />
     </form>
   );
 }

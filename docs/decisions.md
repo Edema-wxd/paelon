@@ -78,6 +78,45 @@ only about implementation shape.**
 
 ---
 
+## Analytics (§9)
+
+**The Umami tracker carries no CSP nonce, and is `afterInteractive` because of
+it.** `middleware.ts` generates a per-request nonce and the policy has no
+`'unsafe-inline'` on `script-src`, so the intuitive wiring is to read `x-nonce`
+in the root layout and pass it to the script tag. Measured on 2026-09-29: doing
+that turns every static route dynamic — `/`, `/about`, `/contact`, `/services`,
+`/locations`, `/privacy`, `/terms`, `/contact/thank-you`, `/_not-found` all move
+from `o` to `f`, and the SSG routes lose their revalidate windows — because
+`headers()` is a dynamic API and the root layout is on every route. Every page
+view would then block on Postgres before first byte, against §13's LCP < 2.0s.
+
+`afterInteractive` avoids the trade entirely. next/script emits no `<script>`
+tag in the server HTML for that strategy (only `<link rel="preload">`); the
+element is inserted at hydration by Next's own nonced bootstrap, and
+`'strict-dynamic'` propagates trust to it. Verified against the built
+`index.html`. Nothing about the policy is loosened — the origin entry in
+`script-src` was already there for the preload.
+
+**Event properties are typed as numbers and booleans only.** §9's "Do NOT track
+PII" is enforced by `lib/analytics/events.ts` rather than by care at the call
+site: the property map admits no strings, `NoFreeTextInProps` asserts that at
+compile time, and the seven event names are a closed union. A booking form has
+the patient's name in scope one line above its `track()` call, so the guarantee
+has to be structural.
+
+**`frame-src` is widened per request, not globally.** The Umami share page is
+the site's only frame, so `middleware.ts` allows the share origin when the
+pathname is under `/admin` and keeps `'none'` everywhere else (§9, §14
+Headers). A global allowlist would let injected markup on a public template
+open a frame there.
+
+**`hmo_lookup_performed` fires for the marketing HMO typeahead only**, debounced
+to one event per settled query and never twice for the same text. The booking
+wizard's HMO step is counted by the booking events instead. `/hmo-check` is
+unbuilt; it fires the same event when it lands.
+
+---
+
 ## Still blocked on Francis
 
 Flagged rather than worked around:

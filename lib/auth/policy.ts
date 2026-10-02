@@ -24,7 +24,9 @@ import type { userRoleEnum } from "@/lib/db/schema";
  * |               | update own       |                                |               |       |                      |
  *
  * ¹ services, doctors, locations, hmos, testimonials, authors, blog_posts,
- *   awards, faqs. "All" means read, create, update, publish, delete.
+ *   awards, faqs. "All" means read, create, update, publish, delete — except
+ *   that an `editor` cannot delete services, doctors, locations or hmos, which
+ *   are in `SENSITIVE_RESOURCES`.
  * ² bookings, contact_submissions, corporate_enquiries, newsletter_subscribers.
  * ³ blog_posts, authors, faqs, awards. Never publish, never delete.
  *
@@ -41,12 +43,21 @@ import type { userRoleEnum } from "@/lib/db/schema";
  *
  * ## What "sensitive" means
  *
- * Patient-submitted data and user accounts (`SENSITIVE_RESOURCES`). Only an
- * `admin` may delete them. Patient data is an NDPR obligation; user accounts
- * are the privilege-escalation surface. Content is deliberately not on the
- * list (B2 option C): an editor can already take a page off the site by
- * unpublishing it, and every content delete is soft, so blocking the delete
- * protects little.
+ * Patient-submitted data, user accounts and the four structural content types
+ * (`SENSITIVE_RESOURCES`). Only an `admin` may delete them. Patient data is an
+ * NDPR obligation; user accounts are the privilege-escalation surface.
+ *
+ * Services, doctors, locations and HMOs were added to the list on 2026-09-28,
+ * narrowing decision B2 option C. The reasoning behind C — an editor can
+ * already take a page off the site by unpublishing it, and every content delete
+ * is soft — still holds for the editorial types, which stay off the list. It
+ * holds less well here: each of these four rows owns a public URL that other
+ * pages link to, so a delete 404s a live page for everyone holding the link and
+ * drops the row out of every service, branch, doctor and HMO listing at once.
+ * The join rows survive a soft delete, so an undelete does restore the
+ * relationships — what it cannot undo is the time the URL spent returning 404.
+ * Unpublishing remains the editor's reversible route. Recorded in
+ * `docs/phase-2-decisions.md`; awaiting Francis.
  *
  * Deletes across the whole panel are soft (`deleted_at`), except UploadThing
  * objects, which the CDN genuinely destroys.
@@ -93,6 +104,15 @@ export const SENSITIVE_RESOURCES = new Set<Resource>([
   "newsletter_subscribers",
   // Privilege escalation.
   "users",
+  // Structural content: every row of these four owns a public URL, and other
+  // rows hang off it. Deleting one 404s a live page, empties the join tables
+  // that pointed at it, and — for a location — takes a branch out of the
+  // booking flow. Unpublishing does the reversible half of that job, which is
+  // what an editor has.
+  "services",
+  "doctors",
+  "locations",
+  "hmos",
 ]);
 
 /** Patient-submitted data. Editors work the queue; contributors never see it. */

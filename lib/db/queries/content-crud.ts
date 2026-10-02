@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
-import { db } from "@/lib/db/client";
+import { db, dbTx } from "@/lib/db/client";
 
 /**
  * One repository for every content table, because all of them carry the same
@@ -243,4 +243,213 @@ export async function softDeleteContent(
     .where(and(eq(table.id, id), isNull(table.deletedAt)))
     .returning({ id: table.id });
   return rows.length > 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Join tables                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A join table as the CRUD kit edits it: two uuid columns, no payload.
+ *
+ * `serviceLocations`, `serviceRelated`, `doctorLocations` and `hmoLocations`
+ * are all this shape. The columns are passed twice — once as a `PgColumn` for
+ * the `where`, once as the property name for the `values` — because Drizzle's
+ * query builder and its insert builder do not take the same thing, and a
+ * generic helper cannot derive one from the other.
+ *
+ * `otherTable` is the table `otherColumn` points at. It is here because both
+ * reading and writing a relation have to know which of the joined rows are
+ * soft-deleted — see `syncRelationIn`.
+ */
+export interface RelationColumns {
+  table: PgTable;
+  ownColumn: PgColumn;
+  otherColumn: PgColumn;
+  ownKey: string;
+  otherKey: string;
+  otherTable: ContentTable;
+}
+
+/**
+ * A Drizzle transaction handle from the pooled client.
+ *
+ * Derived rather than imported: the concrete type is a deeply parameterised
+ * `PgTransaction`, and naming it here would tie this module to the driver.
+ */
+type Tx = Parameters<Parameters<ReturnType<typeof dbTx>["transaction"]>[0]>[0];
+
+/** `id NOT IN (soft-deleted rows of the table `otherColumn` points at)`. */
+function liveTargets(relation: RelationColumns): SQL {
+  return sql`${relation.otherColumn} in (select ${relation.otherTable.id} from ${relation.otherTable} where ${relation.otherTable.deletedAt} is null)`;
+}
+
+/**
+ * The ids currently joined to `ownId`, excluding any whose row is soft-deleted.
+ *
+ * The join rows to deleted targets survive — see `syncRelationIn` — but a
+ * picker cannot offer a row that is not in its options, so returning them would
+ * put the `<select>` in a state it cannot render.
+ */
+export async function listRelationIds(
+  relation: RelationColumns,
+  ownId: string,
+): Promise<string[]> {
+  const rows = await db()
+    .select({ id: relation.otherColumn })
+    .from(relation.table)
+    .where(and(eq(relation.ownColumn, ownId), liveTargets(relation)));
+  return rows.map((row) => String(row.id));
+}
+
+/**
+ * Make the join rows for `ownId` exactly `ids`, within a transaction.
+ *
+ * Delete-then-insert rather than a diff: the table has no payload and no
+ * surrogate key, so a row that survives a diff is indistinguishable from one
+ * that was removed and re-added.
+ *
+ * ## Why the delete is not `where own = :id`
+ *
+ * Joins to a **soft-deleted** row are left alone. The picker cannot show them
+ * and the submission therefore cannot contain them, so a blanket delete would
+ * quietly drop the memberships of every deleted row the first time anyone saved
+ * the form for an unrelated reason — and an undelete would bring the row back
+ * with its relationships gone. That is the behaviour `lib/auth/policy.ts` leans
+ * on when it says restoring a deleted branch restores what pointed at it.
+ *
+ * `onConflictDoNothing` covers a submission that names the same id twice; the
+ * schema already dedupes, and the primary key is the backstop.
+ */
+async function syncRelationIn(
+  tx: Tx,
+  relation: RelationColumns,
+  ownId: string,
+  ids: readonly string[],
+): Promise<void> {
+  const unique = [...new Set(ids)].filter((id) => id !== ownId);
+
+  await tx
+    .delete(relation.table)
+    .where(and(eq(relation.ownColumn, ownId), liveTargets(relation)));
+
+  if (unique.length === 0) return;
+
+  await tx
+    .insert(relation.table)
+    .values(unique.map((id) => ({ [relation.ownKey]: ownId, [relation.otherKey]: id })))
+    .onConflictDoNothing();
+}
+
+/** `syncRelationIn` in a transaction of its own. For callers with no row write. */
+export async function syncRelation(
+  relation: RelationColumns,
+  ownId: string,
+  ids: readonly string[],
+): Promise<void> {
+  await dbTx().transaction((tx) => syncRelationIn(tx, relation, ownId, ids));
+}
+
+/** One relation's selection, as the admin actions hand it over. */
+export interface RelationWrite {
+  columns: RelationColumns;
+  ids: readonly string[];
+}
+
+/**
+ * Insert a content row and its join rows together.
+ *
+ * One transaction, on the pooled client, because the two halves are one edit: a
+ * service written without its branches is a row the editor cannot see the
+ * problem with, and — since the slug is now taken — cannot create again either.
+ * `createContent`'s HTTP fast path is kept for the types that have no
+ * relations, which is most of them.
+ */
+export async function createContentWithRelations<R extends ContentRow>(
+  table: ContentTable,
+  values: Record<string, unknown>,
+  createdByUserId: string,
+  relations: readonly RelationWrite[],
+): Promise<R> {
+  if (relations.length === 0) {
+    return createContent<R>(table, values, createdByUserId);
+  }
+
+  return dbTx().transaction(async (tx) => {
+    const rows = await tx
+      .insert(table)
+      .values({ ...values, createdByUserId })
+      .returning();
+    const row = rows[0] as R;
+
+    for (const relation of relations) {
+      await syncRelationIn(tx, relation.columns, row.id, relation.ids);
+    }
+
+    return row;
+  });
+}
+
+/**
+ * Update a content row and its join rows together. `null` when the row is
+ * missing or already soft-deleted, with the relations left untouched.
+ */
+export async function updateContentWithRelations<R extends ContentRow>(
+  table: ContentTable,
+  id: string,
+  values: Record<string, unknown>,
+  relations: readonly RelationWrite[],
+): Promise<R | null> {
+  if (relations.length === 0) {
+    return updateContent<R>(table, id, values);
+  }
+
+  return dbTx().transaction(async (tx) => {
+    const rows = await tx
+      .update(table)
+      .set(values)
+      .where(and(eq(table.id, id), isNull(table.deletedAt)))
+      .returning();
+
+    const row = (rows[0] as R | undefined) ?? null;
+    if (!row) return null;
+
+    for (const relation of relations) {
+      await syncRelationIn(tx, relation.columns, id, relation.ids);
+    }
+
+    return row;
+  });
+}
+
+/** One option for a multi-select: the row's id and the label an editor reads. */
+export interface ContentOption {
+  id: string;
+  label: string;
+  published: boolean;
+}
+
+/**
+ * Every row of a content table, as picker options.
+ *
+ * Drafts are included and marked. A service is routinely attached to a branch
+ * that is still being written, and a picker that hid drafts would silently drop
+ * the join the next time anyone saved the row. Soft-deleted rows are excluded,
+ * and `syncRelationIn` is what stops their joins being dropped along with them.
+ */
+export async function listContentOptions(
+  table: ContentTable,
+  labelColumn: PgColumn,
+): Promise<ContentOption[]> {
+  const rows = await db()
+    .select({ id: table.id, label: labelColumn, published: table.published })
+    .from(table)
+    .where(isNull(table.deletedAt))
+    .orderBy(asc(table.order), asc(labelColumn));
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    label: String(row.label),
+    published: row.published === true,
+  }));
 }

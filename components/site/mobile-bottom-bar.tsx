@@ -1,6 +1,7 @@
 import { CalendarPlus, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
 
+import { trackOnClick } from "@/lib/analytics/events";
 import { getPrimaryLocation, toTelHref } from "@/lib/content";
 
 /**
@@ -34,6 +35,7 @@ export async function MobileBottomBar() {
         <a
           href={toTelHref(location.emergency_line)}
           className={`${tile} text-accent`}
+          {...trackOnClick("emergency_line_clicked")}
         >
           <Phone className="size-5" aria-hidden />
           Call

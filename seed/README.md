@@ -36,6 +36,32 @@ These must be resolved with Francis before the site goes live.
 
 ## Missing content, non-blocking
 
+- **`doctors.json` — the file does not exist**, so the `doctors` table is empty.
+  Two templates depend on it: the leadership team on `/about` renders nothing,
+  and `/doctors/[slug]` resolves no slug. A doctor's name, title,
+  qualifications, specialties, languages, years of experience and biography are
+  claims about a real clinician's credentials — the one kind of content on this
+  site where a plausible placeholder would be a genuine harm — so none of it is
+  drafted. Needed per doctor: `name`, `slug`, `title`, `qualifications[]`,
+  `years_experience`, `specialties[]`, `languages_spoken[]`, `bio` (Markdown,
+  80–120 words per spec §5), `in_house`, `visiting`, `location_slugs[]`.
+  Headshots are listed under Missing assets.
+- **`awards.json` — the file does not exist**, so the awards timeline on
+  `/about` renders nothing. An award is a claim that a named body gave this
+  hospital something; the homepage's "15+ Winning Awards" figure is a launch
+  blocker above for the same reason. Needed per award: `name`, `slug`,
+  `awarding_body`, `year`, `description`, and `external_link` where the body
+  publishes its own page. The SafeCare 5-star rating the trust ribbon carries
+  (spec §6) is presumably the first row.
+- **`faqs.json` — the file does not exist**, so every FAQ accordion is absent.
+  CLAUDE.md's conversion baseline requires one on the homepage and on every
+  service and location page, with `FAQPage` JSON-LD — all of which is built and
+  renders nothing. Needed per entry: `question`, `answer`, `slug`, and a
+  `category` from `general | booking | services | insurance | emergencies`.
+- **`content/about.json` — every field is null.** Not a seed file, but the same
+  gap: the founding story, mission, vision, value proposition, motto and ESG
+  block for `/about`. See `content/README.md` for the field list and how the
+  page behaves until they are filled in.
 - `services.json` — every service has `short_description: null`. The export's
   cards show names only. Copy is needed for the services index and detail
   templates, along with `long_description`, `who_its_for`, `how_to_access`,
@@ -65,7 +91,12 @@ labelled placeholders and swap to `next/image` once the files land in `/public`.
 `vector-10.svg`
 
 Also needed and absent from the export entirely: the SafeCare 5-star badge for
-the trust ribbon (spec §6).
+the trust ribbon (spec §6), and a headshot per doctor for the leadership team on
+`/about` and the profile at `/doctors/[slug]`. Both templates read the local
+`portrait` slot by doctor slug (`assets/portrait/<slug>.png`) and fall back to a
+labelled placeholder, so a doctor can be published before their photograph
+arrives. The `doctors.headshot` column holds an UploadThing key and is not what
+the templates read — see the CRUD image-field gap in CLAUDE.md.
 
 ---
 

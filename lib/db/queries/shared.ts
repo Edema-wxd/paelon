@@ -31,6 +31,56 @@ export function publicFilterWith(
 }
 
 /**
+ * How a content read should treat unpublished rows and the cache.
+ *
+ * Draft mode (spec §8 Content editing, decision C4) is a fact about the
+ * *request*, not about a query, so the repository layer never reads the cookie
+ * itself: `lib/content.ts` asks `draftMode()` once and threads the answer down.
+ * That keeps every query here callable from a script, a seed run or a test,
+ * where there is no request to read a cookie from.
+ *
+ * Only content reads take this. Bookings, submissions and anything
+ * authenticated have no draft state to show and are never cached in the first
+ * place.
+ */
+export interface ReadOptions {
+  /**
+   * Include unpublished rows and bypass `cachedRead`. Both halves matter: §5
+   * forbids caching a read that depended on who was asking, and an editor
+   * previewing a draft is exactly that.
+   */
+  draft?: boolean;
+}
+
+/**
+ * `deleted_at IS NULL` — the one guard draft mode keeps.
+ *
+ * Preview shows the unpublished state, not the deleted one. A soft-deleted row
+ * is content someone removed on purpose, and resurrecting it in a preview
+ * would misrepresent what publishing would do.
+ */
+export function draftFilter(table: PublishableTable): SQL {
+  return isNull(table.deletedAt);
+}
+
+/** `publicFilter`, or `draftFilter` when the caller is in draft mode. */
+export function visibleFilter(
+  table: PublishableTable,
+  options: ReadOptions = {},
+): SQL {
+  return options.draft ? draftFilter(table) : publicFilter(table);
+}
+
+/** `visibleFilter` plus caller-supplied conditions. */
+export function visibleFilterWith(
+  table: PublishableTable,
+  options: ReadOptions,
+  ...extra: (SQL | undefined)[]
+): SQL {
+  return and(visibleFilter(table, options), ...extra) as SQL;
+}
+
+/**
  * Fallback revalidation window for cached content reads, in seconds.
  *
  * Phase 2 admin writes call `revalidateTag()`, which is the fast path. This is
@@ -44,7 +94,9 @@ export const CONTENT_REVALIDATE_SECONDS = 3600;
  *
  * Never wrap bookings, submissions, newsletter, rate limiting, or anything
  * authenticated in this (master spec §5) — those reads must always hit the
- * database.
+ * database. A draft-mode read is authenticated by the same rule, which is why
+ * every getter below picks between the cached path and a direct one rather
+ * than caching under a "draft" key part.
  *
  * Tags are wired now so each Phase 2 mutation is a one-line `revalidateTag`.
  */

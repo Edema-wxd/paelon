@@ -105,6 +105,20 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
   NEXT_PUBLIC_UMAMI_SCRIPT_URL: optionalString,
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: optionalString,
+  /*
+   * The Umami share URL embedded by /admin/analytics (spec §9 Dashboard
+   * integration).
+   *
+   * NEXT_PUBLIC_ because `middleware.ts` needs its origin to build frame-src,
+   * and middleware cannot call `serverEnv()` — it runs on the Edge and the
+   * whole schema would have to parse on every request. The value is a bearer
+   * link, so shipping it to the browser is not the exposure it looks like: it
+   * only ever renders inside an admin-only page, and §9 accepts that anyone
+   * holding the link can see the stats because the stats contain no PII.
+   * Absent means /admin/analytics explains what is missing instead of framing
+   * a blank page.
+   */
+  NEXT_PUBLIC_UMAMI_SHARE_URL: optionalString,
   NEXT_PUBLIC_WHATSAPP_NUMBER: optionalString,
   // Read directly from process.env by lib/emergency.ts — the error boundaries
   // cannot afford a parse that might throw. Declared here so a malformed value
@@ -124,6 +138,7 @@ export const clientEnv: ClientEnv = clientSchema.parse({
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
+  NEXT_PUBLIC_UMAMI_SHARE_URL: process.env.NEXT_PUBLIC_UMAMI_SHARE_URL,
   NEXT_PUBLIC_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
   NEXT_PUBLIC_EMERGENCY_LINE: process.env.NEXT_PUBLIC_EMERGENCY_LINE,
 });

@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type FieldValues, type Resolver } from "react-hook-form";
 
+import { HoursField } from "@/components/admin/hours-field";
 import { MarkdownField } from "@/components/admin/markdown-field";
+import {
+  MultiSelectField,
+  type SelectOption,
+} from "@/components/admin/multi-select-field";
+import { TagInput } from "@/components/admin/tag-input";
 import {
   ResourceImageField,
   type ImageFieldValue,
@@ -51,10 +57,22 @@ export interface ResourceFormProps {
   resource: ResourceName;
   /** Present when editing. Absent for a new row. */
   id?: string;
-  /** Row values keyed by field name. Strings, as the controls want them. */
-  defaults: Record<string, string | boolean>;
+  /**
+   * Row values keyed by field name.
+   *
+   * Strings for the ordinary controls, arrays for `tags` and `multiselect`,
+   * and a nested `{ day: { open, close, closed } }` object for `hours` — the
+   * same shapes `resourceInput` reconstructs on the server, so both sides
+   * validate the same thing.
+   */
+  defaults: Record<string, unknown>;
   /** Existing image values, keyed by the image field's name. */
   images?: Record<string, ImageFieldValue>;
+  /**
+   * Picker options for each `multiselect` field, loaded by the editor screen.
+   * They are rows and they change, so they are not in the config.
+   */
+  options?: Record<string, readonly SelectOption[]>;
   /** Hides the published toggle for a role that may not publish. */
   canPublish: boolean;
 }
@@ -64,6 +82,7 @@ export function ResourceForm({
   id,
   defaults,
   images = {},
+  options = {},
   canPublish,
 }: ResourceFormProps) {
   const config = RESOURCES[resource];
@@ -84,7 +103,7 @@ export function ResourceForm({
     // own field types, so the form works in `FieldValues` and the schema is the
     // thing that knows the real shape.
     resolver: zodResolver(config.schema) as unknown as Resolver<FieldValues>,
-    defaultValues: defaults,
+    defaultValues: defaults as FieldValues,
     mode: "onBlur",
   });
 
@@ -114,6 +133,23 @@ export function ResourceForm({
   );
 
   /**
+   * Tag and multi-select values, which are arrays rather than control values.
+   * `react-hook-form` holds the same arrays — `setValue` on every change — so
+   * the resolver validates exactly what the hidden inputs and the `<select>`
+   * will submit.
+   */
+  const [listValues, setListValues] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(
+      config.fields
+        .filter((field) => field.type === "tags" || field.type === "multiselect")
+        .map((field) => {
+          const value = defaults[field.name];
+          return [field.name, Array.isArray(value) ? value.map(String) : []];
+        }),
+    ),
+  );
+
+  /**
    * True once the editor types in the slug box, after which generation stops.
    *
    * An existing row starts touched: its slug is already a live URL, and
@@ -133,12 +169,24 @@ export function ResourceForm({
     }
   }, [state, id, resource, router]);
 
-  /** Client errors and server field errors, in one place. */
+  /**
+   * Client errors and server field errors, in one place.
+   *
+   * The client half has to be walked rather than read. `hours`, `whoItsFor` and
+   * the multi-selects validate as nested values, so react-hook-form files their
+   * errors at `hours.sun.open` or `whoItsFor.0` — `errors.hours` itself has no
+   * `message`. Reading only the top level made those errors invisible while
+   * `onSubmit` still refused to submit, which is a Save button that does
+   * nothing and says nothing.
+   *
+   * The server half needs no walk: `z.flattenError` keys `fieldErrors` by the
+   * first path segment, so a nested issue already arrives under `hours`.
+   */
   function errorsFor(name: string): string[] | undefined {
     const server = state && !state.ok ? state.fields[name] : undefined;
     if (server?.length) return server;
-    const message = form.formState.errors[name]?.message;
-    return typeof message === "string" ? [message] : undefined;
+    const messages = collectMessages(form.formState.errors[name]);
+    return messages.length > 0 ? messages : undefined;
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -148,12 +196,22 @@ export function ResourceForm({
     const valid = await form.trigger();
     if (!valid) {
       // Focus the first invalid control, or the message is announced somewhere
-      // off screen and nothing tells the editor where to go.
-      const firstError = Object.keys(form.formState.errors)[0];
-      if (firstError) {
-        formRef.current
-          ?.querySelector<HTMLElement>(`[name="${firstError}"]`)
-          ?.focus();
+      // off screen and nothing tells the editor where to go. The leaf path
+      // first — `hours.sun.open` is a real input, `hours` is not — then the
+      // field name, for a control that renders under a name of its own.
+      const [leaf, root] = firstErrorPath(form.formState.errors);
+      const selectors = [
+        leaf ? `[name="${leaf}"]` : null,
+        root ? `[name="${root}"]` : null,
+        root ? `#field-${CSS.escape(root)}` : null,
+      ].filter((selector): selector is string => selector !== null);
+
+      for (const selector of selectors) {
+        const target = formRef.current?.querySelector<HTMLElement>(selector);
+        if (target) {
+          target.focus();
+          break;
+        }
       }
       return;
     }
@@ -337,6 +395,42 @@ export function ResourceForm({
           />
         );
 
+      case "date":
+        return (
+          <Input
+            {...form.register(field.name)}
+            id={inputId}
+            type="date"
+            min={field.min}
+            max={field.max}
+            required={field.required}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+          />
+        );
+
+      case "reference":
+        return (
+          <select
+            {...form.register(field.name)}
+            id={inputId}
+            required={field.required}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+            className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            {/* The blank option is a real answer, not a prompt to choose: the
+                column is nullable and "not attached to anything" is the right
+                value for most rows. */}
+            <option value="">{field.emptyLabel}</option>
+            {(options[field.name] ?? []).map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.published ? option.label : `${option.label} (draft)`}
+              </option>
+            ))}
+          </select>
+        );
+
       case "select":
         return (
           <select
@@ -364,6 +458,60 @@ export function ResourceForm({
             value="on"
             aria-describedby={describedBy}
             className="mt-0.5 size-4 rounded border-input"
+          />
+        );
+
+      case "tags": {
+        form.register(field.name);
+        return (
+          <TagInput
+            name={field.name}
+            id={inputId}
+            label={field.label}
+            values={listValues[field.name] ?? []}
+            maxItems={field.maxItems}
+            maxLength={field.maxLength}
+            invalid={invalid}
+            describedBy={describedBy}
+            onChange={(next) => {
+              setListValues((current) => ({ ...current, [field.name]: next }));
+              form.setValue(field.name, next, {
+                shouldValidate: form.formState.isSubmitted,
+              });
+            }}
+          />
+        );
+      }
+
+      case "multiselect": {
+        form.register(field.name);
+        return (
+          <MultiSelectField
+            name={field.name}
+            id={inputId}
+            options={options[field.name] ?? []}
+            value={listValues[field.name] ?? []}
+            emptyLabel={field.emptyLabel}
+            invalid={invalid}
+            describedBy={describedBy}
+            onChange={(next) => {
+              setListValues((current) => ({ ...current, [field.name]: next }));
+              form.setValue(field.name, next, {
+                shouldValidate: form.formState.isSubmitted,
+              });
+            }}
+          />
+        );
+      }
+
+      case "hours":
+        return (
+          <HoursField
+            name={field.name}
+            legend={field.label}
+            hint={field.hint}
+            register={(control) => form.register(control)}
+            error={errorsFor(field.name)?.[0]}
           />
         );
 
@@ -401,6 +549,53 @@ export function ResourceForm({
 }
 
 /**
+ * Every message under an error node, however deep.
+ *
+ * A leaf is `{ message, type, ref }`; a branch is a plain object or array of
+ * them. Both shapes come from the same resolver, so the walk is the only thing
+ * that reads both without knowing which field produced it.
+ */
+function collectMessages(node: unknown, found: string[] = []): string[] {
+  if (!node || typeof node !== "object") return found;
+
+  const message = (node as { message?: unknown }).message;
+  if (typeof message === "string") {
+    found.push(message);
+    return found;
+  }
+
+  for (const value of Object.values(node as Record<string, unknown>)) {
+    collectMessages(value, found);
+  }
+  return found;
+}
+
+/**
+ * The dotted path of the first error with a message, and the top-level field it
+ * belongs to. `["hours.sun.open", "hours"]` for a blank Sunday.
+ */
+function firstErrorPath(
+  errors: Record<string, unknown>,
+): [leaf: string | null, root: string | null] {
+  for (const [key, value] of Object.entries(errors)) {
+    const path = pathToMessage(value, key);
+    if (path) return [path, key];
+  }
+  return [null, null];
+}
+
+function pathToMessage(node: unknown, prefix: string): string | null {
+  if (!node || typeof node !== "object") return null;
+  if (typeof (node as { message?: unknown }).message === "string") return prefix;
+
+  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    const found = pathToMessage(value, `${prefix}.${key}`);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
  * The label / control / hint / error wrapper.
  *
  * Image fields render their own `<fieldset>` with its own legend, labels and
@@ -418,7 +613,10 @@ function FieldRow({
   altErrors?: string[];
   children: React.ReactNode;
 }) {
-  if (field.type === "image") return <>{children}</>;
+  // Both render their own `<fieldset>` with a legend, labels and errors, so
+  // this contributes nothing around them — a second label for a control that
+  // already has three would be noise in a screen reader.
+  if (field.type === "image" || field.type === "hours") return <>{children}</>;
 
   const inputId = `field-${field.name}`;
   const invalid = (errors?.length ?? 0) > 0 || (altErrors?.length ?? 0) > 0;

@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/site/mobile-nav";
 import { NAV_ITEMS } from "@/components/site/nav-items";
 import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
+import { trackOnClick } from "@/lib/analytics/events";
 import { getPrimaryLocation, toTelHref } from "@/lib/content";
 
 /**
@@ -68,7 +69,10 @@ export async function Header() {
               variant="accent"
               className="hidden h-11 rounded-full px-5 text-base lg:inline-flex"
             >
-              <a href={toTelHref(location.emergency_line)}>
+              <a
+                href={toTelHref(location.emergency_line)}
+                {...trackOnClick("emergency_line_clicked")}
+              >
                 Emergency
                 <span className="sr-only">
                   , call {location.emergency_line}

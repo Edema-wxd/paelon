@@ -19,6 +19,8 @@ import {
   type ServiceOption,
 } from "@/components/booking/types";
 import { Button } from "@/components/ui/button";
+import type { BookingStep } from "@/lib/analytics/events";
+import { track } from "@/lib/analytics/track";
 import { RESPONSE_TIME_PROMISE } from "@/lib/response-time";
 import {
   bookingStep1,
@@ -147,6 +149,15 @@ export function BookingWizard({
     headingRef.current?.focus();
   }, [step]);
 
+  /**
+   * `booking_started` (spec §9) — once per mount, including for a deep link
+   * that lands on step 2 or 3. Arriving on `/book` at all is the start of the
+   * funnel; where the wizard opens is a property of the link, not of intent.
+   */
+  useEffect(() => {
+    track("booking_started");
+  }, []);
+
   const patch = useCallback((values: Partial<BookingDraft>) => {
     setDraft((current) => ({ ...current, ...values }));
     // Clear only what was just touched: wiping every error would hide problems
@@ -206,6 +217,14 @@ export function BookingWizard({
       return;
     }
 
+    /**
+     * `booking_step_completed` (spec §9), 1-indexed for a human reader. Steps
+     * 1-5 only: step 6 is the review screen, whose completion is the submit,
+     * and `booking_submitted` already records that. Firing both would double
+     * count the last step against the other five in a funnel view.
+     */
+    track("booking_step_completed", { step: (step + 1) as BookingStep });
+
     goTo(step + 1);
   }
 
@@ -253,6 +272,9 @@ export function BookingWizard({
         setStatus("error");
         return;
       }
+
+      // `booking_submitted` (spec §9) — a written row, not a pressed button.
+      track("booking_submitted");
 
       const redirectUrl = readRedirectUrl(body);
 

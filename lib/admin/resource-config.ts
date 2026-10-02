@@ -56,6 +56,20 @@ export type Field =
   | (FieldBase & { type: "checkbox" })
   | (FieldBase & { type: "url" })
   /**
+   * A calendar date, stored as a `date` column and submitted as `YYYY-MM-DD`.
+   * `<input type="date">` is the control; the schema is what enforces the
+   * format, because the native picker is not available everywhere.
+   */
+  | (FieldBase & { type: "date"; min?: string; max?: string })
+  /**
+   * A single foreign key, chosen from a list the editor screen loads. Like
+   * `multiselect`, the options are rows rather than config — they are filed
+   * under the field's name in `ResourceFormProps.options`. `emptyLabel` is the
+   * blank choice, which is a real answer: a testimonial need not name a
+   * service, and the column is nullable for that reason.
+   */
+  | (FieldBase & { type: "reference"; emptyLabel: string })
+  /**
    * Generated from `from` until the editor types in it, then left alone
    * (spec §8: "Slug auto-generated from title, editable").
    */
@@ -66,7 +80,29 @@ export type Field =
    * row. Alt text is required whenever the image is set — never independently
    * optional.
    */
-  | (FieldBase & { type: "image"; altName: string; altLabel: string });
+  | (FieldBase & { type: "image"; altName: string; altLabel: string })
+  /**
+   * A `text[]` column, edited as tags. One value per tag, order preserved,
+   * duplicates dropped on save.
+   */
+  | (FieldBase & { type: "tags"; maxItems?: number; maxLength?: number })
+  /**
+   * The rows of a join table, chosen from a list the editor screen loads. The
+   * options are *not* in the config: they are rows, they change, and a config
+   * that is client-safe cannot read them. `name` is the key the screen files
+   * them under — see `ResourceFormProps.options`.
+   */
+  | (FieldBase & { type: "multiselect"; emptyLabel?: string })
+  /**
+   * The seven-day opening schedule on `locations.hours`, validated against
+   * `lib/validation/hours.ts`. Paired with a `hoursConfirmed` checkbox: an
+   * unconfirmed schedule is stored as `{}`, never as a guess.
+   */
+  | (FieldBase & {
+      type: "hours";
+      /** The companion checkbox. Unticked stores `{}` rather than a guess. */
+      confirmedName: string;
+    });
 
 /** A list-view column. `render` is server-side, so it may be a formatter. */
 export interface Column<R> {
@@ -103,6 +139,12 @@ export interface ResourceConfig<R, S extends z.ZodType = z.ZodType> {
   schema: S;
   /** Field to generate the slug from, and the one a list search matches. */
   titleField: string;
+  /**
+   * Extra sentence in the delete confirmation, for a type whose rows have a
+   * public URL. A soft delete takes that URL off the site, so the person
+   * clicking needs to know a live page is about to start 404ing.
+   */
+  deleteWarning?: string;
 }
 
 /** `/admin/faqs` and friends. */

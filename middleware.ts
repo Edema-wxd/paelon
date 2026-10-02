@@ -39,9 +39,27 @@ const CSP_ENFORCE = false;
  * directions" link avoids the CSP entry, the performance budget cost, and the
  * cookie-consent question together.
  */
-function contentSecurityPolicy(nonce: string): string {
+function contentSecurityPolicy(nonce: string, pathname: string): string {
   const umami = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
   const umamiOrigin = umami ? safeOrigin(umami) : null;
+
+  /*
+   * frame-src stays 'none' everywhere except /admin (spec §9, §14 Headers).
+   *
+   * /admin/analytics frames an Umami share page, and that is the only frame the
+   * site has. Allowlisting its origin globally would let any injected markup on
+   * a public template open a frame there, so the directive is built per request
+   * from the pathname instead — the middleware already runs on every request
+   * and `nextUrl.pathname` costs nothing.
+   *
+   * Taken from the share URL rather than the script URL: the two can be
+   * different hosts, and a share link on a CDN or a separate Umami domain is a
+   * normal deployment.
+   */
+  const share = process.env.NEXT_PUBLIC_UMAMI_SHARE_URL;
+  const shareOrigin = share ? safeOrigin(share) : null;
+  const framesUmami =
+    shareOrigin !== null && (pathname === "/admin" || pathname.startsWith("/admin/"));
 
   const directives: string[] = [
     `default-src 'self'`,
@@ -50,9 +68,7 @@ function contentSecurityPolicy(nonce: string): string {
     `img-src 'self' data: blob: https://utfs.io https://*.ufs.sh`,
     `font-src 'self'`,
     `connect-src 'self'${umamiOrigin ? ` ${umamiOrigin}` : ""}`,
-    // frame-src is intentionally 'none' in Phase 1. Phase 2's /admin/analytics
-    // embeds Umami and will need its origin added here.
-    `frame-src 'none'`,
+    `frame-src ${framesUmami ? shareOrigin : "'none'"}`,
     `frame-ancestors 'none'`,
     `object-src 'none'`,
     `base-uri 'self'`,
@@ -106,11 +122,38 @@ function adminLoginRedirect(request: NextRequest): NextResponse | null {
   return NextResponse.redirect(login);
 }
 
+/**
+ * Next's draft-mode cookie. Set only by `/api/preview`, which admits nobody
+ * without a session and `read` on the resource (spec §8 Content editing).
+ */
+const DRAFT_COOKIE = "__prerender_bypass";
+
+/**
+ * Keep an unpublished page out of caches and out of search.
+ *
+ * Draft mode renders drafts on the site's real URLs, so a preview link that gets
+ * forwarded, or a CDN that treats the page as ordinary HTML, would publish
+ * content nobody published. `noindex` cannot be left to page metadata: a draft
+ * reaches templates whose `generateMetadata` says `index`, and this one header
+ * covers every response — pages, RSC payloads and all — from the one place that
+ * sees the cookie.
+ *
+ * Presence of the cookie is the whole test. Whether the value is a valid bypass
+ * token is Next's business; a request carrying a stale one gets the published
+ * page, and sending these headers with it is harmless.
+ */
+function draftHeaders(request: NextRequest, response: NextResponse): void {
+  if (!request.cookies.has(DRAFT_COOKIE)) return;
+
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  response.headers.set("Cache-Control", "no-store, must-revalidate");
+}
+
 export function middleware(request: NextRequest): NextResponse {
   // crypto.randomUUID is available on the Edge runtime and is cheap enough to
   // run per request.
   const nonce = btoa(crypto.randomUUID());
-  const csp = contentSecurityPolicy(nonce);
+  const csp = contentSecurityPolicy(nonce, request.nextUrl.pathname);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
@@ -138,6 +181,8 @@ export function middleware(request: NextRequest): NextResponse {
     "Permissions-Policy",
     "geolocation=(), microphone=(), camera=()",
   );
+
+  draftHeaders(request, response);
 
   return response;
 }

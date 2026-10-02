@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { headers } from "next/headers";
 
 import type { Resource } from "@/lib/auth/policy";
@@ -69,6 +71,25 @@ export function stripPii(metadata: AuditMetadata): AuditMetadata {
   }
 
   return kept;
+}
+
+/**
+ * A SHA-256 of a text value, for auditing a change to a field whose *content*
+ * must not be copied into the audit log.
+ *
+ * `testimonials.quote` is the case this exists for: a patient's own words are
+ * personal data, so the log records that the wording changed and a digest of
+ * each side, rather than two copies of the sentence. Any candidate text can
+ * still be hashed and compared against what was recorded, which is what an
+ * audit of "did someone edit this quote" needs to answer.
+ *
+ * Unsalted on purpose, so the same check works from a different process a year
+ * later. These are not secrets — a quote's plaintext is destined for a public
+ * website — so there is nothing here for a salt to protect.
+ */
+export function digestOf(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return createHash("sha256").update(String(value), "utf8").digest("hex");
 }
 
 /** The requesting client's IP, or `null` when no proxy header says. */

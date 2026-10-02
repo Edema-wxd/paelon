@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { trackOnClick } from "@/lib/analytics/events";
 import { getLocations, getPrimaryLocation, toTelHref } from "@/lib/content";
 
 /**
@@ -95,6 +96,7 @@ export async function Footer() {
                 <a
                   href={toTelHref(location.emergency_line)}
                   className="mt-3 block rounded-md text-base underline-offset-4 hover:underline"
+                  {...trackOnClick("emergency_line_clicked")}
                 >
                   {location.emergency_line}
                 </a>

@@ -1,7 +1,12 @@
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 
 import { awardResource } from "./awards";
+import { doctorResource } from "./doctors";
 import { faqResource } from "./faqs";
+import { hmoResource } from "./hmos";
+import { locationResource } from "./locations";
+import { serviceResource } from "./services";
+import { testimonialResource } from "./testimonials";
 
 /**
  * The client-safe half of the resource registry.
@@ -23,6 +28,11 @@ import { faqResource } from "./faqs";
    lookup by string cannot preserve. Call sites narrow through the per-resource
    exports (`faqResource`, `awardResource`) when they need the real types. */
 export const RESOURCES = {
+  services: serviceResource,
+  doctors: doctorResource,
+  locations: locationResource,
+  hmos: hmoResource,
+  testimonials: testimonialResource,
   faqs: faqResource,
   awards: awardResource,
 } satisfies Record<string, ResourceConfig<any, any>>;
@@ -37,4 +47,12 @@ export function isResourceName(value: string): value is ResourceName {
   return (RESOURCE_NAMES as string[]).includes(value);
 }
 
-export { awardResource, faqResource };
+export {
+  awardResource,
+  doctorResource,
+  faqResource,
+  hmoResource,
+  locationResource,
+  serviceResource,
+  testimonialResource,
+};

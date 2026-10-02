@@ -11,7 +11,11 @@ import { ServicesGrid } from "@/components/site/services-grid";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { TrustRibbon } from "@/components/site/trust-ribbon";
 import { getPrimaryLocation } from "@/lib/content";
-import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import {
+  medicalOrganizationLd,
+  OG_IMAGES,
+  TWITTER_IMAGES,
+} from "@/lib/seo";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -41,39 +45,15 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const location = await getPrimaryLocation();
 
-  /**
-   * MedicalOrganization JSON-LD (spec §11).
-   *
-   * TODO(seed): no logo, sameAs profiles, or verified opening hours are
-   * available yet, so they are omitted rather than guessed — invalid
-   * structured data is worse than absent structured data.
-   */
-  const organizationLd = {
-    "@context": "https://schema.org",
-    "@type": "MedicalOrganization",
-    name: "Paelon Memorial Hospital",
-    url: siteUrl,
-    description:
-      "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
-    ...(location
-      ? {
-          telephone: location.phone,
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: location.address_line_1,
-            addressLocality: location.city,
-            addressRegion: location.state,
-            addressCountry: location.country,
-          },
-        }
-      : {}),
-  };
+  // `MedicalOrganization` per spec §11, shared with /about so the two cannot
+  // drift. See `medicalOrganizationLd` for what is deliberately omitted.
+  const organizationLd = medicalOrganizationLd(siteUrl, location);
 
   return (
     <>
       <script
         type="application/ld+json"
-        // Serialised from a literal above, so there is no untrusted input here.
+        // Serialised from seeded values; no untrusted input here.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
       />
 

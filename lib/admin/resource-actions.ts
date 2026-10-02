@@ -11,19 +11,33 @@ import {
   type ActionResult,
   type ActionState,
 } from "@/lib/admin/action";
+import { digestOf, type AuditMetadata } from "@/lib/admin/audit";
 import { can } from "@/lib/auth/policy";
 import type { AdminUser } from "@/lib/auth/session";
 import { awardResource } from "@/lib/admin/resources/awards";
+import { doctorResource } from "@/lib/admin/resources/doctors";
 import { faqResource } from "@/lib/admin/resources/faqs";
+import { hmoResource } from "@/lib/admin/resources/hmos";
+import { locationResource } from "@/lib/admin/resources/locations";
+import { serviceResource } from "@/lib/admin/resources/services";
+import { testimonialResource } from "@/lib/admin/resources/testimonials";
+import { resourceInput } from "@/lib/admin/resource-input";
 import type { ImageFieldNames } from "@/lib/admin/resources/fields";
-import { RESOURCE_SERVER, type ResourceServerConfig } from "@/lib/admin/resources/server";
+import {
+  RESOURCE_SERVER,
+  type AuditDiffColumn,
+  type ResourceRelation,
+  type ResourceServerConfig,
+} from "@/lib/admin/resources/server";
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 import {
-  createContent,
+  createContentWithRelations,
+  getContentById,
   getContentOwner,
   isSlugTaken,
   softDeleteContent,
-  updateContent,
+  updateContentWithRelations,
+  type RelationWrite,
 } from "@/lib/db/queries/content-crud";
 import { setMediaAlt } from "@/lib/db/queries/media";
 
@@ -101,6 +115,98 @@ async function writeAlts(
   return null;
 }
 
+/**
+ * Lift the join-table fields out of a validated submission.
+ *
+ * `locationIds` is a form field but not a column, so it has to leave the
+ * values before the insert — Drizzle would reject it, and a silent `delete`
+ * scattered through both actions is how one of them ends up forgetting.
+ */
+function splitRelations(
+  input: Record<string, unknown>,
+  relations: readonly ResourceRelation[],
+): { values: Record<string, unknown>; selected: Map<string, string[]> } {
+  const values = { ...input };
+  const selected = new Map<string, string[]>();
+
+  for (const relation of relations) {
+    const ids = values[relation.field];
+    delete values[relation.field];
+    selected.set(relation.field, Array.isArray(ids) ? ids.map(String) : []);
+  }
+
+  return { values, selected };
+}
+
+/**
+ * The relation writes for one submission, in the shape the repository takes.
+ *
+ * The row and its join rows are written in a single transaction
+ * (`createContentWithRelations` / `updateContentWithRelations`) rather than one
+ * after the other. On a create that is not tidiness: the insert commits the
+ * slug, so a relation that failed afterwards would leave a row the editor
+ * cannot see and cannot recreate — `isSlugTaken` would answer the retry with
+ * "That slug is already in use."
+ */
+function relationWrites(
+  selected: Map<string, string[]>,
+  relations: readonly ResourceRelation[],
+): RelationWrite[] {
+  return relations.map((relation) => ({
+    columns: relation.columns,
+    ids: selected.get(relation.field) ?? [],
+  }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Auditing a change, not just the fact of one                                */
+/* -------------------------------------------------------------------------- */
+
+/** `consentGiven` → `consent_given`, so audit keys read like the columns. */
+function toSnakeCase(name: string): string {
+  return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+/**
+ * One column's contribution to the audit metadata, or nothing when it is
+ * unchanged.
+ *
+ * Only what moved is recorded. An audit row that restates every watched column
+ * on every save buries the one edit that mattered — and for `testimonials` the
+ * question being asked of this log is "when did consent change, and who
+ * changed it", which an unchanged value does not answer.
+ */
+function auditDiffFor(
+  columns: readonly AuditDiffColumn[],
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown>,
+): AuditMetadata {
+  const metadata: AuditMetadata = {};
+
+  for (const { column, mode } of columns) {
+    // A column the form did not submit was not part of this edit.
+    if (!(column in after)) continue;
+
+    const read = (source: Record<string, unknown> | null): string | boolean | null => {
+      if (source === null) return null;
+      const value = source[column];
+      if (mode === "digest") return digestOf(value);
+      if (typeof value === "boolean") return value;
+      return value === null || value === undefined ? null : String(value);
+    };
+
+    const from = read(before);
+    const to = read(after);
+    if (before !== null && from === to) continue;
+
+    const key = toSnakeCase(column);
+    metadata[`${key}_before`] = from;
+    metadata[`${key}_after`] = to;
+  }
+
+  return metadata;
+}
+
 const MISSING_IMAGE_MESSAGE =
   "That image is no longer in the media library. Choose another.";
 
@@ -141,6 +247,7 @@ function buildCreateAction<R, S extends z.ZodType>(
       event: `${config.name}.created`,
       tag: server.tags,
       path: `/admin/${config.name}`,
+      input: (formData) => resourceInput(config, formData),
     },
     async (input, { user }) => {
       const parsed = input as Record<string, unknown>;
@@ -152,9 +259,11 @@ function buildCreateAction<R, S extends z.ZodType>(
         });
       }
 
-      const { values, alts } = splitImageAlts(parsed, server.images);
+      const relations = server.relations ?? [];
+      const { values: withImages, selected } = splitRelations(parsed, relations);
+      const { values: raw, alts } = splitImageAlts(withImages, server.images);
 
-      const refused = publishRefusal(user, server, values);
+      const refused = publishRefusal(user, server, raw);
       if (refused) return refused;
 
       const missing = await writeAlts(alts, server.images);
@@ -164,11 +273,26 @@ function buildCreateAction<R, S extends z.ZodType>(
         });
       }
 
-      const row = await createContent(server.table, values, user.id);
+      const values = server.toRow ? server.toRow(raw) : raw;
+      const row = await createContentWithRelations(
+        server.table,
+        values,
+        user.id,
+        relationWrites(selected, relations),
+      );
 
       return done(
         { id: row.id, message: `${config.singular} created.` },
-        { entityId: row.id, metadata: { slug, published: values.published === true } },
+        {
+          entityId: row.id,
+          metadata: {
+            slug,
+            published: values.published === true,
+            // `before` is null on a create: the row did not exist, which is a
+            // different statement from "the value was false".
+            ...auditDiffFor(server.auditDiff ?? [], null, values),
+          },
+        },
       );
     },
   );
@@ -196,6 +320,7 @@ function buildUpdateAction<R, S extends z.ZodType>(
       path: `/admin/${config.name}`,
       // Loaded so `canOnRow` can apply the contributor's own-rows-only rule.
       row: (input) => getContentOwner(server.table, (input as { id: string }).id),
+      input: (formData) => resourceInput(config, formData),
     },
     async (input, { user }) => {
       const parsed = { ...(input as Record<string, unknown>) };
@@ -209,9 +334,11 @@ function buildUpdateAction<R, S extends z.ZodType>(
         });
       }
 
-      const { values, alts } = splitImageAlts(parsed, server.images);
+      const relations = server.relations ?? [];
+      const { values: withImages, selected } = splitRelations(parsed, relations);
+      const { values: raw, alts } = splitImageAlts(withImages, server.images);
 
-      const refused = publishRefusal(user, server, values);
+      const refused = publishRefusal(user, server, raw);
       if (refused) return refused;
 
       const missing = await writeAlts(alts, server.images);
@@ -221,12 +348,32 @@ function buildUpdateAction<R, S extends z.ZodType>(
         });
       }
 
-      const row = await updateContent(server.table, id, values);
+      // Read before the write, and only for a resource that watches columns.
+      // `getContentOwner` above projects two columns and cannot serve this.
+      const watched = server.auditDiff ?? [];
+      const before = watched.length > 0 ? await getContentById(server.table, id) : null;
+
+      const values = server.toRow ? server.toRow(raw) : raw;
+      // One transaction: a row whose update lands but whose branches do not is
+      // a half-saved edit reported as saved.
+      const row = await updateContentWithRelations(
+        server.table,
+        id,
+        values,
+        relationWrites(selected, relations),
+      );
       if (!row) return fail(`That ${config.singular.toLowerCase()} no longer exists.`);
 
       return done(
         { id, message: "Saved." },
-        { entityId: id, metadata: { slug, published: values.published === true } },
+        {
+          entityId: id,
+          metadata: {
+            slug,
+            published: values.published === true,
+            ...auditDiffFor(watched, before, values),
+          },
+        },
       );
     },
   );
@@ -270,3 +417,32 @@ export const deleteFaqAction = buildDeleteAction(faqResource, RESOURCE_SERVER.fa
 export const createAwardAction = buildCreateAction(awardResource, RESOURCE_SERVER.awards);
 export const updateAwardAction = buildUpdateAction(awardResource, RESOURCE_SERVER.awards);
 export const deleteAwardAction = buildDeleteAction(awardResource, RESOURCE_SERVER.awards);
+
+export const createServiceAction = buildCreateAction(serviceResource, RESOURCE_SERVER.services);
+export const updateServiceAction = buildUpdateAction(serviceResource, RESOURCE_SERVER.services);
+export const deleteServiceAction = buildDeleteAction(serviceResource, RESOURCE_SERVER.services);
+
+export const createDoctorAction = buildCreateAction(doctorResource, RESOURCE_SERVER.doctors);
+export const updateDoctorAction = buildUpdateAction(doctorResource, RESOURCE_SERVER.doctors);
+export const deleteDoctorAction = buildDeleteAction(doctorResource, RESOURCE_SERVER.doctors);
+
+export const createLocationAction = buildCreateAction(locationResource, RESOURCE_SERVER.locations);
+export const updateLocationAction = buildUpdateAction(locationResource, RESOURCE_SERVER.locations);
+export const deleteLocationAction = buildDeleteAction(locationResource, RESOURCE_SERVER.locations);
+
+export const createTestimonialAction = buildCreateAction(
+  testimonialResource,
+  RESOURCE_SERVER.testimonials,
+);
+export const updateTestimonialAction = buildUpdateAction(
+  testimonialResource,
+  RESOURCE_SERVER.testimonials,
+);
+export const deleteTestimonialAction = buildDeleteAction(
+  testimonialResource,
+  RESOURCE_SERVER.testimonials,
+);
+
+export const createHmoAction = buildCreateAction(hmoResource, RESOURCE_SERVER.hmos);
+export const updateHmoAction = buildUpdateAction(hmoResource, RESOURCE_SERVER.hmos);
+export const deleteHmoAction = buildDeleteAction(hmoResource, RESOURCE_SERVER.hmos);

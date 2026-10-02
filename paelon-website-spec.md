@@ -130,6 +130,7 @@ clsx tailwind-merge
 │   │   ├── about/
 │   │   ├── services/
 │   │   ├── locations/
+│   │   ├── doctors/[slug]/     # Profile only. No index — see §6.
 │   │   ├── blog/
 │   │   ├── for-corporates/
 │   │   ├── contact/
@@ -548,9 +549,10 @@ Fifteen templates. Each has an owning group per the timeline in section 1. Do no
 #### About `/about`
 - Founding story (Patricia, Dr. Ngozi Onyia).
 - Mission, Vision, Value Proposition, Motto as one integrated page, not fragmented strip.
-- Awards and accreditations as a scrollable timeline.
-- Leadership team with photos and bios.
+- Awards and accreditations as a scrollable timeline, from the `awards` table.
+- Leadership team with photos and bios, from the `doctors` table, each card linking to `/doctors/[slug]`.
 - ESG / IFC EDGE certification block.
+- The prose on this page is a singleton with no rows in it, so it lives in `content/about.json` behind `lib/about.ts` — the same arrangement §8 uses for legal pages, and for the same reason: a one-row table plus an admin screen to edit that one row buys nothing. It ships with every field null and each section renders only once its copy exists. `published: false` serves the page `noindex` until it does.
 
 #### Services index `/services`
 - Filterable by service family.
@@ -576,6 +578,15 @@ Fifteen templates. Each has an owning group per the timeline in section 1. Do no
 - Services available at this branch.
 - Photos, parking, accessibility.
 - Embedded map.
+
+#### Doctor profile `/doctors/[slug]`
+- Name, title, and whether they are in-house, visiting, or both.
+- Qualifications, specialties, languages spoken, years of experience — each shown only when the row holds it.
+- Biography (Markdown, rendered by the same renderer as the blog).
+- The branches they practise at, linking to each branch page. Published branches only.
+- `Physician` JSON-LD (§11) and a visible breadcrumb trail whose parent is `/about`.
+- A "Book an appointment" CTA, deep-linked to the branch when the doctor has exactly one. There is no per-doctor slot selection — §17 puts that out of scope — so the CTA must not imply one.
+- **No `/doctors` index.** Profiles are reached from the leadership team on `/about`. Added 2026-09-28: §11 already required `Physician` "on each doctor profile", `app/sitemap.ts` already emitted these URLs, and §8 treats a doctor row as owning a public URL, but §6 listed doctors only as a section of `/about`. The profile route resolves that; the sitemap's `/doctors` index entry was removed with it.
 
 #### For Corporates `/for-corporates`
 - Retainer programme overview.
@@ -731,7 +742,7 @@ Both deep links skip the pre-filled step and land on the next step directly.
 Role stored on the `users` table. Three roles, labelled in the UI by their enum names:
 
 - **`admin`** — Full CRUD on all content, including deleting patient data (bookings, contact submissions, corporate enquiries). User management. Audit log.
-- **`editor`** — Create, update, publish and soft-delete content. Reads patient submissions, but cannot delete them. No access to the staff list or user management.
+- **`editor`** — Create, update, publish and soft-delete content, except `services`, `doctors`, `locations` and `hmos`, whose rows own a public URL and which only an `admin` may delete (B5, provisional). Reads patient submissions, but cannot delete them. No access to the staff list or user management.
 - **`contributor`** — Limited to `blog_posts`, `authors`, `faqs`, `awards` and media. May create rows of those types and update only rows they created (`created_by_user_id`, written on insert and checked alongside `can()`); media likewise, through `uploaded_by` on the `media` table. Publish requires an editor or admin. No access to services, doctors, locations, HMOs, testimonials or patient data.
 
 All content deletes are soft deletes.
@@ -747,7 +758,7 @@ All content deletes are soft deletes.
 - `/admin/doctors` — Doctor CRUD.
 - `/admin/locations` — Location CRUD.
 - `/admin/hmos` — HMO CRUD.
-- `/admin/testimonials` — Testimonial CRUD.
+- `/admin/testimonials` — Testimonial CRUD. Consent is its own control, never a side effect of publishing, and `name_format` is required: how much of a patient's name may appear is part of what they agreed to.
 - `/admin/blog` — Blog post CRUD with Markdown editor.
 - `/admin/awards` — Award CRUD.
 - `/admin/faqs` — FAQ CRUD.
@@ -789,6 +800,7 @@ Interface features:
 ### Audit log
 
 - `audit_log` records sign-ins, staff account changes, media deletes, and each open of a booking, contact submission or corporate enquiry detail page. List views are not logged.
+- **Testimonials additionally record the change itself, not just the fact of one.** Any edit that turns `consent_given` on or off writes the before and after value; any edit to `quote` writes a SHA-256 of each side. The digest is deliberate — a patient's own words are personal data, and the audit log must not become a second store of it with its own retention problem (D4). Nothing else writes a before/after pair.
 - The IP address is stored as a salted hash, using the same scheme as the rate limiter. It is never stored raw.
 - Readable by `admin` only, at `/admin/audit`.
 - Retention period: `TODO`, set by counsel together with the §14 retention periods.
@@ -800,7 +812,9 @@ Interface features:
 - Image uploads via UploadThing (§10). Each upload is a row in a `media` table (`key`, `url`, `alt`, `uploaded_by`, `created_at`), and content rows reference it by foreign key. Alt text lives on the media row. Headshots and logos may derive alt text from their row (doctor name, award name) instead. In the media grid, thumbnails use `alt=""` because the filename is shown next to them.
 - Slug auto-generated from title, editable, uniqueness enforced.
 - Draft / published toggle.
-- "Preview" button that opens the marketing site in Next's `draftMode()`, showing the unpublished state. The route that enables draft mode calls `requireCan("read", resource)`. In draft mode, content getters skip `cachedRead` and the published filter (§5: never cache authenticated queries).
+- "Preview" button that opens the marketing site in Next's `draftMode()`, showing the unpublished state. The route that enables draft mode (`/api/preview`) checks the session and `read` on the resource before anything else, and only redirects to a validated same-origin path — it sets a cookie and then sends the browser somewhere, so an unvalidated target would be an open redirect wearing the hospital's domain. In draft mode, `lib/content.ts` passes `{ draft: true }` down to the repositories, which skip `cachedRead` and the published filter (§5: never cache authenticated queries). Soft-deleted rows stay hidden, and so does a testimonial without recorded consent: draft mode lifts `published` and nothing else.
+- Every marketing page in draft mode carries a "Preview: not published" banner above the header, with a link to `/api/preview/exit` that clears the cookie and returns to the same page. Draft responses are `noindex` and `no-store`, set in `middleware.ts` from the presence of the draft cookie rather than per page — a draft renders on the page's real URL, through `generateMetadata` that says `index`.
+- A type with no public page has no Preview button. `services`, `locations` and `doctors` preview on their own detail routes; `hmos` preview on `/` (the homepage HMO list — `/hmo-check` is unbuilt) and `awards` on `/about`, where each renders. `faqs` and `testimonials` appear across several pages rather than on one, so they have no button and the edit screen says which page to preview instead. Targets live in `lib/preview/target.ts`, never inline in a template.
 - Legal pages are not editable in the panel. They stay as JSON in `content/legal/` and change by PR after counsel review, with `CONSENT_TEXT_VERSION` bumped in the same deploy. Git history is the record of which wording each consent version refers to.
 
 ---
@@ -1212,7 +1226,17 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
   - A7: `@node-rs/argon2` approved (§2, §14 Auth).
   - A8: `UPLOADTHING_TOKEN` replaces the v6 pair, `UPLOADTHING_UPLOADS_ENABLED` removed, `AUTH_SECRET`/`AUTH_URL` required in production, `trustHost` kept (§14).
   - B1: UI role labels match the enum names (§8 Roles).
-  - B2: editors may soft-delete content. Patient-data deletes and the staff list are `admin` only (§8 Roles).
+  - B2: editors may soft-delete content. Patient-data deletes and the staff list are `admin` only (§8 Roles). Narrowed by B5.
+- Phase 2, 2026-09-28. `/admin/services`, `/admin/doctors`, `/admin/locations`
+  and `/admin/hmos` built on the shared CRUD kit. Join tables
+  (`service_locations`, `service_related`, `doctor_locations`, `hmo_locations`)
+  are edited as multi-selects and synced by the action after the row is
+  written; `locations.hours` is edited against `lib/validation/hours.ts` behind
+  an explicit "confirmed" tick, and stays `{}` until it is ticked.
+  - B5 (**provisional, awaiting Francis**): delete on `services`, `doctors`,
+    `locations` and `hmos` is `admin` only, and the confirmation names the URL
+    that will start returning 404. Editors keep unpublish. This narrows B2 and
+    is not yet ratified (§8 Roles).
   - B3: contributors keep a resource allow-list and may update only rows they created (§8 Roles).
   - B4: audit log added: detail-page opens of patient records are logged, IPs stored as salted hashes, `/admin/audit` for `admin`, retention `TODO` (§8 Audit log).
   - C1: the spec's per-type admin routes stand, with `/admin/media` and `/admin/audit` added (§8 Admin routes).

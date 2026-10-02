@@ -1,3 +1,5 @@
+import { draftMode } from "next/headers";
+
 import {
   getLatestPost,
   getPostBySlug as getPostRow,
@@ -5,6 +7,13 @@ import {
   getRelatedPosts as getRelatedPostRows,
   type BlogPostWithAuthor,
 } from "@/lib/db/queries/blog";
+import { getAwards as getAwardRows } from "@/lib/db/queries/awards";
+import {
+  getDoctorBySlug as getDoctorRow,
+  getDoctorsByLocation as getDoctorRowsByLocation,
+  getLocationsByDoctor as getLocationRowsByDoctor,
+  getPublishedDoctors,
+} from "@/lib/db/queries/doctors";
 import { getPublishedHmos } from "@/lib/db/queries/hmos";
 import {
   getLocationBySlug as getLocationRow,
@@ -18,12 +27,15 @@ import {
 } from "@/lib/db/queries/services";
 import { getFeaturedTestimonials as getFeaturedTestimonialRows } from "@/lib/db/queries/testimonials";
 import type {
+  Award as AwardRow,
+  Doctor as DoctorRow,
   Faq as FaqRow,
   Hmo as HmoRow,
   Location as LocationRow,
   Service as ServiceRow,
   Testimonial as TestimonialRow,
 } from "@/lib/db/schema";
+import type { ReadOptions } from "@/lib/db/queries/shared";
 import type { Hours } from "@/lib/validation/hours";
 
 /**
@@ -40,6 +52,15 @@ import type { Hours } from "@/lib/validation/hours";
  * components must not import anything from this module except **types**, which
  * TypeScript erases — importing a getter into a client bundle would pull the
  * Neon driver in with it.
+ *
+ * ## Draft mode
+ *
+ * This is also the one place that asks whether the request is in Next's draft
+ * mode (spec §8 Content editing, decision C4). Every getter checks it and, when
+ * it is on, reads unpublished rows straight from Postgres instead of through
+ * `cachedRead` — §5 forbids caching a read that depended on who was asking.
+ * The repository layer takes that answer as an argument and never reads the
+ * cookie itself, so a query stays callable from a script or a test.
  */
 
 export type ServiceFamily =
@@ -66,6 +87,44 @@ export interface Service {
   how_to_access: string[];
   typical_wait_time: string | null;
   gallery_images: string[];
+}
+
+export interface Doctor {
+  id: string;
+  slug: string;
+  name: string;
+  /** "Consultant Paediatrician". Always present — the column is NOT NULL. */
+  title: string;
+  qualifications: string[];
+  /** Null when the number has not been supplied. Never inferred from anything. */
+  years_experience: number | null;
+  specialties: string[];
+  languages_spoken: string[];
+  /** Markdown, 80–120 words per spec §5. Rendered by `ArticleBody`. */
+  bio: string | null;
+  /**
+   * UploadThing key, not a URL and not rendered today. The profile template
+   * uses the local `portrait` asset slot like every other photo on the site —
+   * see the note in `app/(marketing)/doctors/[slug]/page.tsx`.
+   */
+  headshot: string | null;
+  in_house: boolean;
+  visiting: boolean;
+  order: number;
+  published: boolean;
+}
+
+export interface Award {
+  id: string;
+  slug: string;
+  name: string;
+  awarding_body: string;
+  year: number;
+  description: string | null;
+  /** Absolute URL to the awarding body's own page, when one was supplied. */
+  external_link: string | null;
+  order: number;
+  published: boolean;
 }
 
 export interface Faq {
@@ -215,6 +274,44 @@ function toService(row: ServiceRow): Service {
   };
 }
 
+/**
+ * `bio` is `NOT NULL` on the row, so an unwritten one arrives as the
+ * `TODO(seed)` sentinel rather than as null — `realOrNull` is what keeps those
+ * three words off a doctor's profile page.
+ */
+function toDoctor(row: DoctorRow): Doctor {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    title: row.title,
+    qualifications: realEntries(row.qualifications),
+    years_experience: row.yearsExperience,
+    specialties: realEntries(row.specialties),
+    languages_spoken: realEntries(row.languagesSpoken),
+    bio: realOrNull(row.bio),
+    headshot: row.headshot,
+    in_house: row.inHouse,
+    visiting: row.visiting,
+    order: row.order,
+    published: row.published,
+  };
+}
+
+function toAward(row: AwardRow): Award {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    awarding_body: row.awardingBody,
+    year: row.year,
+    description: realOrNull(row.description),
+    external_link: row.externalLink,
+    order: row.order,
+    published: row.published,
+  };
+}
+
 function toFaq(row: FaqRow): Faq {
   return {
     id: row.id,
@@ -322,17 +419,43 @@ function toBlogPost(row: BlogPostWithAuthor): BlogPost {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Draft mode                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read options for this request: `{ draft: true }` inside Next's draft mode.
+ *
+ * Draft mode is enabled by `/api/preview`, which admits nobody without a
+ * session and `read` on the resource being previewed. Reaching the cookie is
+ * therefore already an authorisation decision; this function only reports it.
+ *
+ * `draftMode()` throws when there is no request to read — a seed run, a unit
+ * test, a script importing a getter directly — so that case is caught and
+ * answered `false` rather than made every caller's problem. It does **not**
+ * throw during prerendering: `next build` gets an empty draft-mode provider and
+ * a `false`, with no bail-out, so every statically rendered route stays static
+ * and the §13 budgets are unaffected.
+ */
+async function readOptions(): Promise<ReadOptions> {
+  try {
+    return { draft: (await draftMode()).isEnabled };
+  } catch {
+    return { draft: false };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Getters                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** Published services, in display order. */
+/** Published services, in display order. Unpublished ones in draft mode. */
 export async function getServices(): Promise<Service[]> {
-  return (await getPublishedServices()).map(toService);
+  return (await getPublishedServices(await readOptions())).map(toService);
 }
 
 /** One published service by slug, or null when the slug is unknown. */
 export async function getServiceBySlug(slug: string): Promise<Service | null> {
-  const row = await getServiceRow(slug);
+  const row = await getServiceRow(slug, await readOptions());
   return row ? toService(row) : null;
 }
 
@@ -340,7 +463,55 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
 export async function getRelatedServices(
   serviceId: string,
 ): Promise<Service[]> {
-  return (await getRelatedServiceRows(serviceId)).map(toService);
+  return (await getRelatedServiceRows(serviceId, await readOptions())).map(
+    toService,
+  );
+}
+
+/** Published doctors, in display order. Unpublished ones in draft mode. */
+export async function getDoctors(): Promise<Doctor[]> {
+  return (await getPublishedDoctors(await readOptions())).map(toDoctor);
+}
+
+/** One doctor by slug, or null when the slug is unknown or unpublished. */
+export async function getDoctorBySlug(slug: string): Promise<Doctor | null> {
+  const row = await getDoctorRow(slug, await readOptions());
+  return row ? toDoctor(row) : null;
+}
+
+/** Doctors practising at one branch, in display order. */
+export async function getDoctorsByLocation(
+  locationId: string,
+): Promise<Doctor[]> {
+  return (await getDoctorRowsByLocation(locationId, await readOptions())).map(
+    toDoctor,
+  );
+}
+
+/**
+ * The branches one doctor practises at.
+ *
+ * Published branches only — the profile links to each one, and a link to an
+ * unpublished branch is a link to a 404.
+ */
+export async function getLocationsByDoctor(
+  doctorId: string,
+): Promise<Location[]> {
+  return (await getLocationRowsByDoctor(doctorId, await readOptions())).map(
+    toLocation,
+  );
+}
+
+/**
+ * Published awards, newest year first within display order.
+ *
+ * The `logo_id` and `certificate_image_id` columns are foreign keys into
+ * `media` and are not read here: nothing renders them yet, and resolving them
+ * would mean a join per award for an image the timeline does not show. The
+ * timeline is text, which is what spec §6 asks for.
+ */
+export async function getAwards(): Promise<Award[]> {
+  return (await getAwardRows(await readOptions())).map(toAward);
 }
 
 /**
@@ -352,17 +523,17 @@ export async function getRelatedServices(
  * question text.
  */
 export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
-  return (await getFaqRows(category)).map(toFaq);
+  return (await getFaqRows(category, await readOptions())).map(toFaq);
 }
 
-/** Published HMOs, in display order. */
+/** Published HMOs, in display order. Unpublished ones in draft mode. */
 export async function getHmos(): Promise<Hmo[]> {
-  return (await getPublishedHmos()).map(toHmo);
+  return (await getPublishedHmos(await readOptions())).map(toHmo);
 }
 
-/** Published branch locations, in display order. */
+/** Published branch locations, in display order. Unpublished in draft mode. */
 export async function getLocations(): Promise<Location[]> {
-  return (await getPublishedLocations()).map(toLocation);
+  return (await getPublishedLocations(await readOptions())).map(toLocation);
 }
 
 /**
@@ -372,21 +543,26 @@ export async function getLocations(): Promise<Location[]> {
  * recorded consent, so a testimonial whose consent has not been confirmed does
  * not appear here — see seed/README.md. The component renders whatever this
  * returns rather than padding with invented content.
+ *
+ * Draft mode lifts `published` and nothing else: an unconsented quote stays
+ * invisible in a preview too, because a preview URL is a real URL.
  */
 export async function getFeaturedTestimonials(
   limit = 2,
 ): Promise<Testimonial[]> {
-  return (await getFeaturedTestimonialRows(limit)).map(toTestimonial);
+  return (await getFeaturedTestimonialRows(limit, await readOptions())).map(
+    toTestimonial,
+  );
 }
 
 /** Published posts, newest first. `limit` is optional — omit it for the index. */
 export async function getBlogPosts(limit?: number): Promise<BlogPost[]> {
-  return (await getPublishedPosts(limit)).map(toBlogPost);
+  return (await getPublishedPosts(limit, await readOptions())).map(toBlogPost);
 }
 
 /** Most recently published blog post, or null when none is published yet. */
 export async function getLatestBlogPost(): Promise<BlogPost | null> {
-  const post = await getLatestPost();
+  const post = await getLatestPost(await readOptions());
   return post ? toBlogPost(post) : null;
 }
 
@@ -394,7 +570,7 @@ export async function getLatestBlogPost(): Promise<BlogPost | null> {
 export async function getBlogPostBySlug(
   slug: string,
 ): Promise<BlogPost | null> {
-  const post = await getPostRow(slug);
+  const post = await getPostRow(slug, await readOptions());
   return post ? toBlogPost(post) : null;
 }
 
@@ -406,9 +582,10 @@ export async function getRelatedBlogPosts(
   post: BlogPost,
   limit = 3,
 ): Promise<BlogPost[]> {
-  const row = await getPostRow(post.slug);
+  const options = await readOptions();
+  const row = await getPostRow(post.slug, options);
   if (!row) return [];
-  return (await getRelatedPostRows(row, limit)).map(toBlogPost);
+  return (await getRelatedPostRows(row, limit, options)).map(toBlogPost);
 }
 
 /**
@@ -421,7 +598,7 @@ export async function getPrimaryLocation(): Promise<Location | null> {
 
 /** One published branch by slug, or null when it is unknown or unpublished. */
 export async function getLocationBySlug(slug: string): Promise<Location | null> {
-  const row = await getLocationRow(slug);
+  const row = await getLocationRow(slug, await readOptions());
   return row ? toLocation(row) : null;
 }
 
