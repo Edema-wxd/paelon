@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { BookingStep } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
-import { RESPONSE_TIME_PROMISE } from "@/lib/response-time";
+
 import {
   bookingStep1,
   bookingStep2,
@@ -107,6 +107,14 @@ export interface BookingWizardProps {
   hmos: readonly HmoOption[];
   /** Resolved server-side from `?branch=` / `?service=` (master spec §7). */
   prefill?: Partial<BookingDraft>;
+  /**
+   * The stated turnaround, already worded by `lib/response-time.ts`.
+   *
+   * Passed in rather than read here: the number lives in `site_settings`, and a
+   * value import of `lib/content.ts` from a client component would drag the
+   * Neon driver toward the browser bundle.
+   */
+  responseTimePromise: string;
 }
 
 export function BookingWizard({
@@ -114,6 +122,7 @@ export function BookingWizard({
   services,
   hmos,
   prefill,
+  responseTimePromise,
 }: BookingWizardProps) {
   const router = useRouter();
 
@@ -407,7 +416,7 @@ export function BookingWizard({
             submit button and repeated verbatim on the thank-you page. */}
         {isLastStep ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            {RESPONSE_TIME_PROMISE} This is a request, not a confirmed
+            {responseTimePromise} This is a request, not a confirmed
             appointment.
           </p>
         ) : null}

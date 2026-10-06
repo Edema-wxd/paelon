@@ -16,6 +16,10 @@ import {
 } from "@/lib/db/queries/doctors";
 import { getPublishedHmos } from "@/lib/db/queries/hmos";
 import {
+  getSiteSettings as getSiteSettingsRow,
+  type SiteSettings,
+} from "@/lib/db/queries/site-settings";
+import {
   getLocationBySlug as getLocationRow,
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
@@ -524,6 +528,21 @@ export async function getAwards(): Promise<Award[]> {
  */
 export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
   return (await getFaqRows(category, await readOptions())).map(toFaq);
+}
+
+export type { SiteSettings };
+
+/**
+ * Site settings — the non-secret display values an operator can change without
+ * a deploy (decision C2 option B).
+ *
+ * No draft-mode branch: there is one row and nothing to preview. Returns the
+ * "nothing confirmed yet" shape rather than throwing when the row is missing,
+ * so a database that predates migration 0003 renders the placeholders instead
+ * of a 500 on every page carrying a form.
+ */
+export async function getSiteSettings(): Promise<SiteSettings> {
+  return getSiteSettingsRow();
 }
 
 /** Published HMOs, in display order. Unpublished ones in draft mode. */

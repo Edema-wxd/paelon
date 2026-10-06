@@ -126,4 +126,5 @@ export const CACHE_TAGS = {
   blogPost: (slug: string) => `blog-post:${slug}`,
   awards: "awards",
   faqs: "faqs",
+  siteSettings: "site-settings",
 } as const;

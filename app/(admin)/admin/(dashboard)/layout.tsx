@@ -51,6 +51,7 @@ const NAV: ReadonlyArray<
   { href: "/admin/users", label: "Staff", gate: { action: "read", resource: "users" }, built: true },
   { href: "/admin/audit", label: "Audit log", gate: { action: "read", resource: "audit_log" }, built: true },
   { href: "/admin/analytics", label: "Analytics", gate: { action: "read", resource: "analytics" }, built: true },
+  { href: "/admin/settings", label: "Settings", gate: { action: "read", resource: "site_settings" }, built: true },
 ];
 
 export default async function AdminDashboardLayout({

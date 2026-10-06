@@ -31,7 +31,7 @@ const PATIENT_DATA: Resource[] = [
   "corporate_enquiries",
   "newsletter_subscribers",
 ];
-const ALL: Resource[] = [...CLINICAL, ...EDITORIAL, ...PATIENT_DATA, "media", "users", "audit_log", "analytics"];
+const ALL: Resource[] = [...CLINICAL, ...EDITORIAL, ...PATIENT_DATA, "media", "users", "audit_log", "analytics", "site_settings"];
 
 type Grants = Record<Resource, readonly Action[]>;
 
@@ -63,6 +63,9 @@ const EXPECTED: Record<Role, Grants> = {
     users: EVERYTHING,
     audit_log: ["read"],
     analytics: ["read"],
+    // No create and no delete: migration 0003 creates the single row, and the
+    // screen only ever updates it.
+    site_settings: ["read", "update"],
   },
   editor: {
     services: ALL_BUT_DELETE,
@@ -82,6 +85,10 @@ const EXPECTED: Record<Role, Grants> = {
     users: NOTHING,
     audit_log: NOTHING,
     analytics: NOTHING,
+    // Admin-only for read as well as write (C2 option B). This is the case the
+    // `editor` branch of `can()` would grant by omission if `site_settings`
+    // were not checked before it.
+    site_settings: NOTHING,
   },
   contributor: {
     services: NOTHING,
@@ -102,6 +109,7 @@ const EXPECTED: Record<Role, Grants> = {
     users: NOTHING,
     audit_log: NOTHING,
     analytics: NOTHING,
+    site_settings: NOTHING,
   },
 };
 

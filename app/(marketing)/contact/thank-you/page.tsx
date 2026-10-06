@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
-import { RESPONSE_TIME_PROMISE } from "@/lib/response-time";
+import { getSiteSettings } from "@/lib/content";
+import { responseTimePromise } from "@/lib/response-time";
 
 /**
  * `noindex` because the page carries no content of its own beyond a per-visit
@@ -25,7 +26,10 @@ export const metadata: Metadata = {
  * this restates what happens next, repeats the same response-time promise
  * shown beside the form's submit button, and offers one onward link.
  */
-export default function ContactThankYouPage() {
+export default async function ContactThankYouPage() {
+  const { response_time_hours } = await getSiteSettings();
+  const promise = responseTimePromise(response_time_hours);
+
   return (
     <div className="mx-auto max-w-360 px-4 py-10 sm:px-6 lg:px-25 lg:py-16">
       <Breadcrumbs
@@ -43,14 +47,14 @@ export default function ContactThankYouPage() {
         </h1>
 
         <p className="mt-6 text-base">
-          We have emailed you a copy of what you sent. {RESPONSE_TIME_PROMISE}
+          We have emailed you a copy of what you sent. {promise}
         </p>
 
         <h2 className="mt-12 text-2xl text-primary">What happens next</h2>
         <ol className="mt-4 space-y-3 text-base">
           <li>A member of our team reads your message and directs it to the right person.</li>
           <li>
-            We reply to the email address you gave us. {RESPONSE_TIME_PROMISE}
+            We reply to the email address you gave us. {promise}
           </li>
           <li>If your enquiry needs a call, we will use the phone number you gave us.</li>
         </ol>

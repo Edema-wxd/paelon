@@ -30,6 +30,10 @@ import type { userRoleEnum } from "@/lib/db/schema";
  * ² bookings, contact_submissions, corporate_enquiries, newsletter_subscribers.
  * ³ blog_posts, authors, faqs, awards. Never publish, never delete.
  *
+ * Site settings are admin-only in both directions and appear in no column
+ * above: an `editor` and a `contributor` cannot read `/admin/settings` at all.
+ * The audit log and analytics are admin-only on the same footing.
+ *
  * ## Two checks, because ownership is a fact about a row
  *
  * `can(role, action, resource)` answers "may this role ever do this to this
@@ -90,7 +94,8 @@ export type Resource =
   | "media"
   | "users"
   | "audit_log"
-  | "analytics";
+  | "analytics"
+  | "site_settings";
 
 export type Action = "read" | "create" | "update" | "delete" | "publish";
 
@@ -171,6 +176,17 @@ export function can(role: Role, action: Action, resource: Resource): boolean {
   // write, and traffic figures are an admin-only view.
   if (resource === "analytics") {
     return action === "read" && role === "admin";
+  }
+
+  // Site settings (spec §8 Roles: `admin` owns "settings"; decision C2 option
+  // B). Admin-only for read as well as write — the turnaround on this screen is
+  // a promise to every patient who fills in a form, so it is not an editor's
+  // call. Checked here rather than left to the `editor` branch below, which
+  // ends in `return true` and would otherwise grant it by omission. There is
+  // no create and no delete: the row is created by migration 0003 and the
+  // screen only ever updates it.
+  if (resource === "site_settings") {
+    return (action === "read" || action === "update") && role === "admin";
   }
 
   switch (role) {
