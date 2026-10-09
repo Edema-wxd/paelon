@@ -15,6 +15,20 @@
       "when": 1787921007663,
       "tag": "0001_constraints_triggers_sequences",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790159062006,
+      "tag": "0002_media_and_award_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791241611496,
+      "tag": "0003_site_settings",
+      "breakpoints": true
     }
   ]
 }
