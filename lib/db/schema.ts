@@ -39,6 +39,13 @@ function sqlDeletedAtIsNull() {
   return sql`deleted_at IS NULL`;
 }
 
+/**
+ * The fixed primary key of the `site_settings` row. Mirrored as
+ * `SITE_SETTINGS_ID` in `lib/db/queries/site-settings.ts`, which is where
+ * readers get it from; this copy exists so the column default is not a literal.
+ */
+const SITE_SETTINGS_ROW_ID = 1;
+
 /* -------------------------------------------------------------------------- */
 /* Enums                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -609,6 +616,45 @@ export const auditLog = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Site settings — one row of display values Paelon changes without a deploy  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The `site_settings` singleton (Phase 2, decision C2 option B).
+ *
+ * Non-secret values the hospital must be able to change without a deploy: the
+ * stated response-time promise (CLAUDE.md conversion baseline item 4, worded in
+ * exactly one place) and the site-wide WhatsApp fallback behind
+ * `locations.whatsapp`. Secrets, integration toggles and the emergency line
+ * stay in env — see `lib/env.ts`. Widening this table is a migration on
+ * purpose: C2 rejected runtime feature flags, and a key/value store would
+ * accept them silently.
+ *
+ * Both value columns are nullable, and null means "Francis has not confirmed
+ * the number" rather than zero — `lib/response-time.ts` keeps its `TODO(seed)`
+ * fallback until he does.
+ *
+ * The singleton CHECK (`id = 1`), the positive-hours CHECK and the
+ * `updated_at` trigger live in `drizzle/0003_site_settings.sql`, as with every
+ * other constraint and trigger in this schema. The migration also inserts the
+ * row, so a read may assume it exists.
+ */
+export const siteSettings = pgTable("site_settings", {
+  /** Always 1. The hand-written CHECK is what actually enforces the singleton. */
+  id: integer("id").primaryKey().default(SITE_SETTINGS_ROW_ID),
+  responseTimeHours: integer("response_time_hours"),
+  /** E.164. `lib/validation/settings.ts` normalises on the way in; display form is derived. */
+  whatsappNumber: text("whatsapp_number"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  /** set null, not cascade: deactivating an admin must not delete the settings. */
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
+/* -------------------------------------------------------------------------- */
 /* Submission tables — personal data, no `published`, no `order`              */
 /* -------------------------------------------------------------------------- */
 
@@ -998,6 +1044,9 @@ export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AuditEntry = typeof auditLog.$inferSelect;
+
+/** The settings singleton, audit columns included. */
+export type SiteSettingsRow = typeof siteSettings.$inferSelect;
 
 export type BookingStatus = (typeof bookingStatusEnum.enumValues)[number];
 export type ServiceFamily = (typeof serviceFamilyEnum.enumValues)[number];
