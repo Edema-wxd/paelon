@@ -108,7 +108,11 @@ try {
   );
 }
 
-let applied = 0;
+// `succeeded` rather than `applied`: a re-run of a migration written with
+// `IF NOT EXISTS` and `ON CONFLICT DO NOTHING` reports success without
+// changing anything, and Postgres sends that back as a notice the driver does
+// not surface. Counting those as "applied" would overstate what happened.
+let succeeded = 0;
 let skipped = 0;
 let failed = 0;
 
@@ -124,7 +128,7 @@ for (const [index, statement] of statements.entries()) {
 
   try {
     await sql.query(statement);
-    applied += 1;
+    succeeded += 1;
     process.stdout.write(`ok   ${position}  ${label}\n`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -152,6 +156,6 @@ for (const [index, statement] of statements.entries()) {
 }
 
 process.stdout.write(
-  `\n${file}: ${applied} applied, ${skipped} already present, ${failed} failed\n`,
+  `\n${file}: ${succeeded} succeeded, ${skipped} already present, ${failed} failed\n`,
 );
 process.exit(failed > 0 ? 1 : 0);
