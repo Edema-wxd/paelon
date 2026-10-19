@@ -6,6 +6,7 @@ import { can } from "@/lib/auth/policy";
 import { getAdminUser } from "@/lib/auth/session";
 import { recordUpload } from "@/lib/db/queries/media";
 import { serverEnv } from "@/lib/env";
+import { fetchImageDimensions } from "@/lib/uploadthing/image-size";
 import { logger } from "@/lib/logger";
 
 /**
@@ -15,9 +16,8 @@ import { logger } from "@/lib/logger";
  * headshots, branch galleries, award certificates, HMO logos.
  *
  * Every completed upload writes a `media` row (spec §8), because alt text has
- * to live somewhere and a CDN bucket has nowhere to put it. Content tables
- * reference that row by id as they migrate onto it — `awards` does; the rest
- * still hold a URL in a `text` column filled from seed.
+ * to live somewhere and a CDN bucket has nowhere to put it. Every content table
+ * references that row by id: `awards` from migration 0002, the rest from 0004.
  *
  * It is *not* the pipeline for the site's own design assets. Those are
  * committed under `assets/`, pre-encoded by `scripts/optimize-images.mjs`, and
@@ -97,11 +97,19 @@ export const uploadRouter = {
       // here rather than by the form, so a file uploaded and then abandoned is
       // still visible in the library instead of becoming an orphan nobody can
       // see. Idempotent — this callback is retried (see `recordUpload`).
+      // Read from the stored object's header, because UploadThing does not
+      // report dimensions and `next/image` cannot reserve space without them.
+      // Null on failure, which is a state the schema allows — never a reason to
+      // fail an upload whose bytes are already stored.
+      const dimensions = await fetchImageDimensions(file.ufsUrl);
+
       const row = await recordUpload({
         key: file.key,
         url: file.ufsUrl,
         filename: file.name,
         uploadedBy: metadata.userId,
+        width: dimensions?.width ?? null,
+        height: dimensions?.height ?? null,
       });
 
       // Structured, and free of anything personal: a filename and a content

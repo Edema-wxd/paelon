@@ -14,7 +14,9 @@ import {
 import { digestOf, type AuditMetadata } from "@/lib/admin/audit";
 import { can } from "@/lib/auth/policy";
 import type { AdminUser } from "@/lib/auth/session";
+import { authorResource } from "@/lib/admin/resources/authors";
 import { awardResource } from "@/lib/admin/resources/awards";
+import { blogPostResource } from "@/lib/admin/resources/blog-posts";
 import { doctorResource } from "@/lib/admin/resources/doctors";
 import { faqResource } from "@/lib/admin/resources/faqs";
 import { hmoResource } from "@/lib/admin/resources/hmos";
@@ -235,6 +237,30 @@ function publishRefusal(
   });
 }
 
+/**
+ * The resource's own database-backed validation, if it has any.
+ *
+ * Run after the schema and after `publishRefusal`, and before anything is
+ * written — including the alt-text writes, which are a side effect on `media`
+ * rows and must not happen for a submission that is about to be refused.
+ *
+ * `/admin/blog` is the only user today: whether a post's links resolve is a
+ * question about rows, so it cannot live in the schema the client also parses.
+ * See `ResourceServerConfig.validate`.
+ */
+async function validationRefusal(
+  server: ResourceServerConfig,
+  values: Record<string, unknown>,
+  context: { id: string | null; relations: ReadonlyMap<string, string[]> },
+): Promise<ActionFailure | null> {
+  if (!server.validate) return null;
+
+  const fields = await server.validate(values, context);
+  if (!fields) return null;
+
+  return fail(INVALID_MESSAGE, { fields });
+}
+
 function buildCreateAction<R, S extends z.ZodType>(
   config: ResourceConfig<R, S>,
   server: ResourceServerConfig,
@@ -265,6 +291,12 @@ function buildCreateAction<R, S extends z.ZodType>(
 
       const refused = publishRefusal(user, server, raw);
       if (refused) return refused;
+
+      const invalid = await validationRefusal(server, raw, {
+        id: null,
+        relations: selected,
+      });
+      if (invalid) return invalid;
 
       const missing = await writeAlts(alts, server.images);
       if (missing) {
@@ -340,6 +372,12 @@ function buildUpdateAction<R, S extends z.ZodType>(
 
       const refused = publishRefusal(user, server, raw);
       if (refused) return refused;
+
+      const invalid = await validationRefusal(server, raw, {
+        id,
+        relations: selected,
+      });
+      if (invalid) return invalid;
 
       const missing = await writeAlts(alts, server.images);
       if (missing) {
@@ -442,6 +480,14 @@ export const deleteTestimonialAction = buildDeleteAction(
   testimonialResource,
   RESOURCE_SERVER.testimonials,
 );
+
+export const createBlogPostAction = buildCreateAction(blogPostResource, RESOURCE_SERVER.blog);
+export const updateBlogPostAction = buildUpdateAction(blogPostResource, RESOURCE_SERVER.blog);
+export const deleteBlogPostAction = buildDeleteAction(blogPostResource, RESOURCE_SERVER.blog);
+
+export const createAuthorAction = buildCreateAction(authorResource, RESOURCE_SERVER.authors);
+export const updateAuthorAction = buildUpdateAction(authorResource, RESOURCE_SERVER.authors);
+export const deleteAuthorAction = buildDeleteAction(authorResource, RESOURCE_SERVER.authors);
 
 export const createHmoAction = buildCreateAction(hmoResource, RESOURCE_SERVER.hmos);
 export const updateHmoAction = buildUpdateAction(hmoResource, RESOURCE_SERVER.hmos);

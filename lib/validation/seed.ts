@@ -46,8 +46,6 @@ export const serviceSeedSchema = z.object({
   how_to_access: textArray,
   typical_wait_time: nullableText,
   what_to_expect: nullableText,
-  featured_image: nullableText,
-  gallery_images: textArray,
   location_slugs: slugArray,
   related_slugs: slugArray,
 });
@@ -61,7 +59,6 @@ export const doctorSeedSchema = z.object({
   specialties: textArray,
   languages_spoken: textArray,
   bio: nullableText,
-  headshot: nullableText,
   in_house: z.boolean().default(true),
   visiting: z.boolean().default(false),
   location_slugs: slugArray,
@@ -83,15 +80,12 @@ export const locationSeedSchema = z.object({
   hours: hoursSchema.nullable().default(null),
   parking_info: nullableText,
   accessibility_notes: nullableText,
-  hero_image: nullableText,
-  gallery_images: textArray,
   booking_email: nullableText,
 });
 
 export const hmoSeedSchema = z.object({
   ...base,
   name: z.string().min(1),
-  logo: nullableText,
   coverage_notes: nullableText,
   copay_applies: z.boolean().default(false),
   plan_notes: nullableText,
@@ -103,7 +97,6 @@ export const testimonialSeedSchema = z.object({
   ...base,
   patient_name: z.string().min(1),
   name_format: z.enum(["full", "first_only", "initials"]).default("full"),
-  avatar: nullableText,
   quote: nullableText,
   service_slug: slug.nullable().default(null),
   location_slug: slug.nullable().default(null),
@@ -121,7 +114,6 @@ export const authorSeedSchema = z.object({
   name: z.string().min(1),
   role: nullableText,
   bio: nullableText,
-  headshot: nullableText,
   doctor_slug: slug.nullable().default(null),
 });
 
@@ -130,7 +122,6 @@ export const blogPostSeedSchema = z.object({
   title: z.string().min(1),
   excerpt: nullableText,
   body: nullableText,
-  hero_image: nullableText,
   author_slug: slug,
   category: z.enum([
     "seasonal_alerts",
@@ -149,8 +140,6 @@ export const awardSeedSchema = z.object({
   awarding_body: nullableText,
   year: z.number().int(),
   description: nullableText,
-  logo: nullableText,
-  certificate_image: nullableText,
   external_link: nullableText,
 });
 

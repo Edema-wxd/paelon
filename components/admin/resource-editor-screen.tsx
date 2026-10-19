@@ -6,6 +6,7 @@ import { ResourceDeleteForm } from "@/components/admin/resource-delete-form";
 import { ResourceForm } from "@/components/admin/resource-form";
 import type { SelectOption } from "@/components/admin/multi-select-field";
 import type { ImageFieldValue } from "@/components/admin/resource-image-field";
+import { toDateInput } from "@/lib/admin/resources/fields";
 import type { Field, ResourceConfig } from "@/lib/admin/resource-config";
 import { RESOURCE_SERVER } from "@/lib/admin/resources/server";
 import type { ResourceName } from "@/lib/admin/resources";
@@ -17,7 +18,7 @@ import {
   listRelationIds,
   type ContentRow,
 } from "@/lib/db/queries/content-crud";
-import { getMediaByIds } from "@/lib/db/queries/media";
+import { getMediaByIds, listMediaRows } from "@/lib/db/queries/media";
 import { hasPublishedHours } from "@/lib/locations/hours-display";
 import {
   previewDestinationFor,
@@ -93,6 +94,31 @@ export async function ResourceEditorScreen<R extends ContentRow>({
 
   // One query per relation, and only the ones this resource declares. A
   // resource with no join tables costs nothing here.
+  /**
+   * The media library, for a form with a `figures` markdown field.
+   *
+   * Loaded here because the picker is a client component and reading the
+   * library needs the database. Only when a field asks for it: every other
+   * editor screen would be paying a query for a control it does not render.
+   *
+   * Capped at the same 60 rows the library screen shows. The picker filters
+   * what it is given rather than querying again, which keeps it free of a
+   * server round trip per keystroke.
+   */
+  const wantsFigures = config.fields.some(
+    (field) => field.type === "markdown" && field.figures === true,
+  );
+  const media = wantsFigures
+    ? (await listMediaRows()).map((row) => ({
+        id: row.id,
+        url: row.url,
+        alt: row.alt,
+        filename: row.filename,
+        width: row.width,
+        height: row.height,
+      }))
+    : undefined;
+
   const relations = server.relations ?? [];
   const options: Record<string, SelectOption[]> = {};
   const selected: Record<string, string[]> = {};
@@ -103,10 +129,21 @@ export async function ResourceEditorScreen<R extends ContentRow>({
       id ? listRelationIds(relation.columns, id) : Promise.resolve<string[]>([]),
     ]);
 
-    // A self-referencing join — `service_related` — must not offer the row
-    // itself. The database would take it and the page would list a service as
-    // related to itself.
-    options[relation.field] = rows.filter((option) => option.id !== id);
+    // A self-referencing join — `service_related`, `blog_post_related` — must
+    // not offer the row itself. The database would take it and the page would
+    // list a service as related to itself.
+    const offered = rows.filter((option) => option.id !== id);
+
+    // `publishedOptionsOnly` narrows the picker to rows the public site will
+    // actually serve — `blog_post_related`, where a draft would be a link to a
+    // page that 404s. Rows already joined stay in the list whatever their
+    // status, because `syncRelationIn` makes the join exactly what was
+    // submitted: an option the picker hides cannot be submitted, so hiding a
+    // selected one would quietly delete that relation the next time anyone
+    // saved the form for an unrelated reason.
+    options[relation.field] = relation.publishedOptionsOnly
+      ? offered.filter((option) => option.published || current.includes(option.id))
+      : offered;
     selected[relation.field] = current;
   }
 
@@ -174,6 +211,16 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     if (field.type === "checkbox") {
       if (hoursConfirmedNames.has(field.name)) continue;
       defaults[field.name] = row ? row[field.name] === true : false;
+      continue;
+    }
+
+    if (field.type === "date") {
+      // `<input type="date">` takes `YYYY-MM-DD` and silently shows nothing for
+      // anything else. A `date` column arrives as that string already, but a
+      // `timestamptz` one — `blog_posts.published_at` — arrives as a `Date`,
+      // and `String(new Date())` is "Mon Sep 28 2026 …", which the control
+      // rejects without saying so. So both go through one converter.
+      defaults[field.name] = toDateInput(row ? row[field.name] : undefined);
       continue;
     }
 
@@ -253,6 +300,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           defaults={defaults}
           images={images}
           options={options}
+          {...(media ? { media } : {})}
           canPublish={canPublish}
         />
       </div>

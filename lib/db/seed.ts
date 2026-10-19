@@ -134,8 +134,6 @@ async function main(): Promise<void> {
         hours: s.hours ?? {},
         parkingInfo: s.parking_info,
         accessibilityNotes: s.accessibility_notes,
-        heroImage: s.hero_image,
-        galleryImages: s.gallery_images,
         bookingEmail: s.booking_email,
       })
       .onConflictDoUpdate({
@@ -144,7 +142,7 @@ async function main(): Promise<void> {
           "name", "published", "order", "addressLine1", "addressLine2", "city",
           "state", "country", "latitude", "longitude", "phone", "whatsapp",
           "emergencyLine", "hours", "parkingInfo", "accessibilityNotes",
-          "heroImage", "galleryImages", "bookingEmail",
+          "bookingEmail",
         ]),
       })
       .returning({ id: locations.id });
@@ -166,15 +164,13 @@ async function main(): Promise<void> {
         howToAccess: s.how_to_access,
         typicalWaitTime: s.typical_wait_time,
         whatToExpect: orTodo(s.what_to_expect),
-        featuredImage: s.featured_image,
-        galleryImages: s.gallery_images,
       })
       .onConflictDoUpdate({
         target: services.slug,
         set: conflictSet(services, [
           "name", "published", "order", "family", "shortDescription",
           "longDescription", "whoItsFor", "howToAccess", "typicalWaitTime",
-          "whatToExpect", "featuredImage", "galleryImages",
+          "whatToExpect",
         ]),
       })
       .returning({ id: services.id });
@@ -195,7 +191,6 @@ async function main(): Promise<void> {
         specialties: s.specialties,
         languagesSpoken: s.languages_spoken,
         bio: orTodo(s.bio),
-        headshot: s.headshot,
         inHouse: s.in_house,
         visiting: s.visiting,
       })
@@ -204,7 +199,7 @@ async function main(): Promise<void> {
         set: conflictSet(doctors, [
           "name", "published", "order", "title", "qualifications",
           "yearsExperience", "specialties", "languagesSpoken", "bio",
-          "headshot", "inHouse", "visiting",
+          "inHouse", "visiting",
         ]),
       })
       .returning({ id: doctors.id });
@@ -219,7 +214,6 @@ async function main(): Promise<void> {
         name: s.name,
         published: s.published,
         order: s.order,
-        logo: s.logo,
         coverageNotes: s.coverage_notes,
         copayApplies: s.copay_applies,
         planNotes: s.plan_notes,
@@ -228,7 +222,7 @@ async function main(): Promise<void> {
       .onConflictDoUpdate({
         target: hmos.slug,
         set: conflictSet(hmos, [
-          "name", "published", "order", "logo", "coverageNotes",
+          "name", "published", "order", "coverageNotes",
           "copayApplies", "planNotes", "aliases",
         ]),
       })
@@ -246,13 +240,12 @@ async function main(): Promise<void> {
         order: s.order,
         role: orTodo(s.role),
         bio: orTodo(s.bio),
-        headshot: s.headshot,
         doctorId: s.doctor_slug ? (doctorIds.get(s.doctor_slug) ?? null) : null,
       })
       .onConflictDoUpdate({
         target: authors.slug,
         set: conflictSet(authors, [
-          "name", "published", "order", "role", "bio", "headshot", "doctorId",
+          "name", "published", "order", "role", "bio", "doctorId",
         ]),
       })
       .returning({ id: authors.id });
@@ -276,7 +269,6 @@ async function main(): Promise<void> {
         order: s.order,
         excerpt: orTodo(s.excerpt),
         body: orTodo(s.body),
-        heroImage: s.hero_image,
         authorId,
         category: s.category,
         tags: s.tags,
@@ -285,7 +277,7 @@ async function main(): Promise<void> {
       .onConflictDoUpdate({
         target: blogPosts.slug,
         set: conflictSet(blogPosts, [
-          "title", "published", "order", "excerpt", "body", "heroImage",
+          "title", "published", "order", "excerpt", "body",
           "authorId", "category", "tags", "publishedAt",
         ]),
       })
@@ -302,7 +294,6 @@ async function main(): Promise<void> {
         published: s.published,
         order: s.order,
         nameFormat: s.name_format,
-        avatar: s.avatar,
         quote: orTodo(s.quote),
         serviceId: s.service_slug ? (serviceIds.get(s.service_slug) ?? null) : null,
         locationId: s.location_slug
@@ -318,7 +309,7 @@ async function main(): Promise<void> {
       .onConflictDoUpdate({
         target: testimonials.slug,
         set: conflictSet(testimonials, [
-          "patientName", "published", "order", "nameFormat", "avatar", "quote",
+          "patientName", "published", "order", "nameFormat", "quote",
           "serviceId", "locationId", "dateGiven", "featured", "consentGiven",
         ]),
       });

@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/site/article-body";
@@ -12,6 +13,7 @@ import {
   BLOG_CATEGORY_LABELS,
   getBlogPostBySlug,
   getBlogPosts,
+  getBodyImages,
   getRelatedBlogPosts,
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
@@ -99,7 +101,26 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   if (!post) notFound();
 
-  const related = await getRelatedBlogPosts(post);
+  const [related, bodyImages] = await Promise.all([
+    getRelatedBlogPosts(post),
+    getBodyImages(post.body),
+  ]);
+
+  // Dimensions are what make the hero renderable: `next/image` needs both to
+  // reserve the box, and this template's hero is the LCP element. Narrowed here
+  // rather than asserted, so an older `media` row falls back to the placeholder
+  // instead of failing the render.
+  const hero =
+    post.hero_image &&
+    post.hero_image.width !== null &&
+    post.hero_image.height !== null
+      ? {
+          url: post.hero_image.url,
+          alt: post.hero_image.alt,
+          width: post.hero_image.width,
+          height: post.hero_image.height,
+        }
+      : null;
   const url = new URL(`/blog/${post.slug}`, siteUrl).toString();
   const published = new Date(post.published_at);
   const validDate = !Number.isNaN(published.getTime());
@@ -108,9 +129,9 @@ export default async function BlogPostPage({ params }: PageProps) {
   /**
    * `Article` JSON-LD (spec §11).
    *
-   * `image` is omitted rather than pointed at the share card: an `Article`
-   * image is meant to be the article's own, and the generic OG fallback would
-   * misrepresent every post as illustrated. It goes in when `hero_image` does.
+   * `image` is the post's own hero or nothing at all — never the generic OG
+   * fallback, which would misrepresent every post as illustrated. Absolute,
+   * because a consumer of this markup has no base to resolve against.
    */
   const articleLd = {
     "@context": "https://schema.org",
@@ -125,7 +146,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       url: siteUrl,
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    ...(post.hero_image ? { image: [post.hero_image] } : {}),
+    ...(post.hero_image ? { image: [post.hero_image.url] } : {}),
   };
 
   return (
@@ -167,16 +188,29 @@ export default async function BlogPostPage({ params }: PageProps) {
             </p>
           </header>
 
-          {/* TODO(asset): no hero image is supplied for any post. The block
-              holds the space so layout does not shift when one lands. */}
-          <AssetPlaceholder
-            label={`Illustration for ${post.title}`}
-            className="mt-10 aspect-[21/9] w-full rounded-xl"
-            decorative
-          />
+          {/* The hero is the LCP candidate on this template, so it carries
+              `priority` and its real dimensions — the placeholder below holds
+              the same box, so landing an image shifts nothing. */}
+          {hero ? (
+            <Image
+              src={hero.url}
+              alt={hero.alt}
+              width={hero.width}
+              height={hero.height}
+              priority
+              sizes="(min-width: 1024px) 80rem, 100vw"
+              className="mt-10 aspect-[21/9] w-full rounded-xl object-cover"
+            />
+          ) : (
+            <AssetPlaceholder
+              label={`Illustration for ${post.title}`}
+              className="mt-10 aspect-[21/9] w-full rounded-xl"
+              decorative
+            />
+          )}
 
           <div className="mt-12">
-            <ArticleBody source={post.body} />
+            <ArticleBody source={post.body} images={bodyImages} />
           </div>
 
           <footer className="mt-16 max-w-2xl border-t border-border pt-8">

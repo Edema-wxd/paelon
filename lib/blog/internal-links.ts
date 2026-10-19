@@ -1,4 +1,4 @@
-import { parseMarkdown, type Block, type Inline } from "@/lib/markdown";
+import { inlineGroups, parseMarkdown, type Inline } from "@/lib/markdown";
 
 /**
  * The internal links inside a post body, for Conversion baseline item 14.
@@ -69,11 +69,6 @@ export function internalLinks(source: string): InternalLink[] {
 /** The distinct routes a body links to, for a batched resolution check. */
 export function uniquePaths(links: readonly InternalLink[]): string[] {
   return [...new Set(links.map((link) => link.path))];
-}
-
-/** Each run of inline nodes in a block. A list contributes one per item. */
-function inlineGroups(block: Block): Inline[][] {
-  return block.type === "list" ? block.items : [block.children];
 }
 
 function collect(nodes: readonly Inline[], found: InternalLink[]): void {

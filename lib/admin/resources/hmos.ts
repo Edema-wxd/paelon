@@ -6,11 +6,14 @@ import type { Hmo } from "@/lib/db/schema";
 import {
   checkboxField,
   idListField,
+  imageAltRule,
+  imageFields,
   optionalText,
   orderField,
   requiredText,
   slugField,
   tagsField,
+  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -31,17 +34,27 @@ import {
 /** `hmo_locations`: the branches that accept this HMO. */
 export const HMO_LOCATIONS_FIELD = "locationIds";
 
-export const hmoSchema = z.object({
-  name: requiredText("the HMO name", 200),
-  slug: slugField,
-  aliases: tagsField("alias", { maxItems: 20, maxLength: 120 }),
-  coverageNotes: optionalText(4000),
-  copayApplies: checkboxField,
-  planNotes: optionalText(4000),
-  [HMO_LOCATIONS_FIELD]: idListField("branches"),
-  order: orderField,
-  published: checkboxField,
-});
+/** `hmos.logo_id`, with its alt text on the media row. */
+export const HMO_LOGO: ImageFieldNames = {
+  id: "logoId",
+  alt: "logoAlt",
+  decorative: "logoDecorative",
+};
+
+export const hmoSchema = z
+  .object({
+    name: requiredText("the HMO name", 200),
+    slug: slugField,
+    aliases: tagsField("alias", { maxItems: 20, maxLength: 120 }),
+    coverageNotes: optionalText(4000),
+    copayApplies: checkboxField,
+    planNotes: optionalText(4000),
+    [HMO_LOCATIONS_FIELD]: idListField("branches"),
+    order: orderField,
+    published: checkboxField,
+    ...imageFields(HMO_LOGO),
+  })
+  .check(imageAltRule(HMO_LOGO));
 
 export type HmoInput = z.output<typeof hmoSchema>;
 
@@ -98,6 +111,14 @@ const FIELDS: readonly Field[] = [
     label: "Accepted at",
     hint: "The branches that accept this HMO. The typeahead lists these under each result.",
     emptyLabel: "No branches yet — create one under Locations first.",
+  },
+  {
+    type: "image",
+    name: HMO_LOGO.id,
+    label: "Logo",
+    altName: HMO_LOGO.alt,
+    altLabel: "Logo alt text",
+    hint: "Optional. The provider logo strip uses design assets today. Alt text should name the provider, not say “logo”.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

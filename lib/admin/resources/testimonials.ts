@@ -5,11 +5,14 @@ import { nameFormatEnum, type Testimonial } from "@/lib/db/schema";
 
 import {
   checkboxField,
+  imageAltRule,
+  imageFields,
   optionalReferenceField,
   orderField,
   pastDateField,
   requiredText,
   slugField,
+  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -54,24 +57,34 @@ const NAME_FORMAT_LABELS: Record<
   initials: "Initials only — “S.A.”",
 };
 
-export const testimonialSchema = z.object({
-  patientName: requiredText("the patient’s name", 200),
-  slug: slugField,
-  // `z.enum` over the database enum, so adding a name format to the column is
-  // the only place it has to be added.
-  nameFormat: z.enum(
-    nameFormatEnum.enumValues,
-    "Choose how much of the patient’s name may be shown.",
-  ),
-  quote: requiredText("the quote", 2000),
-  dateGiven: pastDateField("the date the quote was given"),
-  [TESTIMONIAL_SERVICE_FIELD]: optionalReferenceField("a service"),
-  [TESTIMONIAL_LOCATION_FIELD]: optionalReferenceField("a branch"),
-  consentGiven: checkboxField,
-  featured: checkboxField,
-  order: orderField,
-  published: checkboxField,
-});
+/** `testimonials.avatar_id`, with its alt text on the media row. */
+export const TESTIMONIAL_AVATAR: ImageFieldNames = {
+  id: "avatarId",
+  alt: "avatarAlt",
+  decorative: "avatarDecorative",
+};
+
+export const testimonialSchema = z
+  .object({
+    patientName: requiredText("the patient’s name", 200),
+    slug: slugField,
+    // `z.enum` over the database enum, so adding a name format to the column is
+    // the only place it has to be added.
+    nameFormat: z.enum(
+      nameFormatEnum.enumValues,
+      "Choose how much of the patient’s name may be shown.",
+    ),
+    quote: requiredText("the quote", 2000),
+    dateGiven: pastDateField("the date the quote was given"),
+    [TESTIMONIAL_SERVICE_FIELD]: optionalReferenceField("a service"),
+    [TESTIMONIAL_LOCATION_FIELD]: optionalReferenceField("a branch"),
+    consentGiven: checkboxField,
+    featured: checkboxField,
+    order: orderField,
+    published: checkboxField,
+    ...imageFields(TESTIMONIAL_AVATAR),
+  })
+  .check(imageAltRule(TESTIMONIAL_AVATAR));
 
 export type TestimonialInput = z.output<typeof testimonialSchema>;
 
@@ -144,6 +157,14 @@ const FIELDS: readonly Field[] = [
     name: "featured",
     label: "Featured on the homepage",
     hint: "Featured and consented quotes appear on the homepage.",
+  },
+  {
+    type: "image",
+    name: TESTIMONIAL_AVATAR.id,
+    label: "Patient photograph",
+    altName: TESTIMONIAL_AVATAR.alt,
+    altLabel: "Photograph alt text",
+    hint: "Optional, and only with the patient’s consent — the same consent the quote itself needs. No template renders one.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   { type: "checkbox", name: "published", label: "Published" },

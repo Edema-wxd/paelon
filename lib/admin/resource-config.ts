@@ -49,8 +49,15 @@ interface FieldBase {
 export type Field =
   | (FieldBase & { type: "text"; maxLength?: number })
   | (FieldBase & { type: "textarea"; rows?: number; maxLength?: number })
-  /** Markdown, rendered with a toolbar and a live preview (spec §8). */
-  | (FieldBase & { type: "markdown"; rows?: number })
+  /**
+   * Markdown, rendered with a toolbar and a live preview (spec §8).
+   *
+   * `figures` adds the image picker, for bodies that may contain block images
+   * — `blog_posts.body`. Off elsewhere: a service's description renders inside
+   * a template that owns its own layout, so an image dropped into it has
+   * nowhere sensible to go.
+   */
+  | (FieldBase & { type: "markdown"; rows?: number; figures?: boolean })
   | (FieldBase & { type: "number"; min?: number; max?: number; step?: number })
   | (FieldBase & { type: "select"; options: readonly FieldOption[] })
   | (FieldBase & { type: "checkbox" })

@@ -1,9 +1,14 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
+import {
+  MarkdownMediaPicker,
+  type PickableMedia,
+} from "@/components/admin/markdown-media-picker";
 import { ArticleBody } from "@/components/site/article-body";
 import { Button } from "@/components/ui/button";
+import type { ContentImage } from "@/lib/content";
 import { Textarea } from "@/components/ui/textarea";
 
 /**
@@ -26,6 +31,17 @@ import { Textarea } from "@/components/ui/textarea";
  * who learns that `**` is bold can type it next time, which a rich-text editor
  * never teaches. Each is a real `<button type="button">` — inside a form,
  * an unnamed `<button>` submits it.
+ *
+ * ## Images
+ *
+ * `media` is the library the Image button picks from. A body references an
+ * asset by `media.id`, which nobody can type, so the picker is what makes the
+ * syntax usable at all. The same list resolves the preview's figures, so an
+ * image placed here renders in the preview exactly as it will on the site —
+ * which is the whole point of sharing the renderer (decision D1).
+ *
+ * Omit `media` and the Image button does not appear: a field whose body has no
+ * figures, such as a service description, has no use for it.
  */
 
 interface Snippet {
@@ -56,6 +72,7 @@ export function MarkdownField({
   required,
   invalid,
   describedBy,
+  media,
 }: {
   name: string;
   id: string;
@@ -67,10 +84,65 @@ export function MarkdownField({
   required?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  /** The media library, when this field's body supports figures. */
+  media?: readonly PickableMedia[];
 }) {
   const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewId = useId();
+
+  /**
+   * The preview's image map, built from the same list the picker offers.
+   *
+   * Keyed by id because that is what a figure's `media:` reference holds.
+   */
+  const previewImages = useMemo<ReadonlyMap<string, ContentImage>>(
+    () =>
+      new Map(
+        (media ?? []).map((asset) => [
+          asset.id,
+          {
+            url: asset.url,
+            alt: asset.alt,
+            width: asset.width,
+            height: asset.height,
+          },
+        ]),
+      ),
+    [media],
+  );
+
+  /**
+   * Place a figure at the caret, as a block of its own.
+   *
+   * Surrounded by blank lines, because the parser only treats an image as a
+   * figure when it is its own block — one dropped into the middle of a
+   * paragraph stays literal text. Inserting the separators is what stops the
+   * commonest way to get that wrong.
+   *
+   * The caption is left empty and selected, so typing writes one and pressing
+   * on without typing leaves `""`, which renders no `<figcaption>`.
+   */
+  function insertFigure(asset: PickableMedia) {
+    const textarea = textareaRef.current;
+    const at = textarea ? textarea.selectionStart : value.length;
+
+    const before = value.slice(0, at).replace(/\s+$/, "");
+    const after = value.slice(at).replace(/^\s+/, "");
+
+    const reference = `![${asset.alt}](media:${asset.id} "")`;
+    const head = before.length > 0 ? `${before}\n\n` : "";
+    const tail = after.length > 0 ? `\n\n${after}` : "";
+
+    onChange(`${head}${reference}${tail}`);
+
+    // Caret inside the empty caption quotes.
+    const caption = head.length + reference.length - 2;
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(caption, caption);
+    });
+  }
 
   function insert(snippet: Snippet) {
     const textarea = textareaRef.current;
@@ -112,6 +184,10 @@ export function MarkdownField({
           </button>
         ))}
 
+        {media ? (
+          <MarkdownMediaPicker media={media} onPick={insertFigure} />
+        ) : null}
+
         <Button
           type="button"
           variant="outline"
@@ -150,7 +226,7 @@ export function MarkdownField({
           Preview — the same renderer the live site uses.
         </p>
         {value.trim() ? (
-          <ArticleBody source={value} />
+          <ArticleBody source={value} images={previewImages} />
         ) : (
           <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
         )}

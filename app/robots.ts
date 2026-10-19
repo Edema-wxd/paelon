@@ -24,6 +24,11 @@ export default function robots(): MetadataRoute.Robots {
           "/book/confirmed",
           "/contact/thank-you",
           "/newsletter/",
+          // Blog search results. `?q=` takes arbitrary input, so crawling it
+          // offers an unbounded set of thin, near-duplicate pages. The page
+          // also sends `noindex` for the crawlers that ignore this, and `?tag=`
+          // is deliberately absent — a tag page is a real taxonomy.
+          "/blog?q=",
         ],
       },
     ],

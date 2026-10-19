@@ -98,6 +98,31 @@ Recommendations are the drafter's view; the Decision column is what stands.
 
 ---
 
+## G. Blog authoring (decided 2026-10-19)
+
+Four rulings taken together, all from Francis directly. Migration
+`drizzle/0004_blog_authoring.sql` implements the first two.
+
+| Topic | Spec says (§ ref) | Options | Decision |
+|---|---|---|---|
+| **G1 Where does a content image live?** | §8 Content editing: "Each upload is a row in a `media` table … content rows reference it by foreign key. Alt text lives on the media row." Only `awards` did this (0002); seven scalar columns and two arrays still held text | **A** Migrate every column onto `media.id`.<br>**B** Keep text keys, add a `*_alt` column per table.<br>**C** Migrate blog and authors now, the rest later. | **A** — accepted. One migration, alt text on the asset, `restrict` on delete. The nine non-null values turned out to be build-time pipeline paths (`/images/service-*.png`), not UploadThing objects, so they were dropped rather than backfilled: giving them `media` rows would list every design asset in the library as deletable, which is exactly what must not happen. |
+| **G2 How are images placed in a body?** | §5/§6 specify the body as MDX; CLAUDE.md forbids an MDX compiler. `lib/markdown.ts` had no image node, so `![…]()` rendered as text | **A** `![alt](media:<id>)` resolved server-side, with `width`/`height` added to `media`.<br>**B** Same syntax, fixed aspect box, no new columns.<br>**C** Raw CDN URL, no media table. | **A** — accepted. Dimensions are read from the uploaded file's header (`lib/uploadthing/image-size.ts`, hand-written because `sharp` and `image-size` are not approved and §10 allows only jpeg/png/webp). Block-level only; an inline image is refused at publish rather than silently rendered as a link. |
+| **G3 Blog search** | Not in §6 at all | **A** Postgres FTS over the blog, `/blog?q=`.<br>**B** `ilike`.<br>**C** Site-wide `/search`. | **A** — accepted. A generated `tsvector` weighted title > excerpt > body, GIN-indexed, ranked with `ts_rank`. Tags are matched in the query instead of in the vector: every way of folding an array into one is `STABLE`, which Postgres refuses in a generated column, and lower-casing the stored tags would change doctors' specialties and service tags, which the site renders as typed. |
+| **G4 Are categories editor-managed?** | §5 defines `blog_category` as a fixed enum | **A** Keep the enum.<br>**B** A `blog_categories` table plus a CRUD screen. | **A** — accepted. Four categories are a deliberate taxonomy; tags carry the open-ended axis. Adding one stays a migration and a §5 edit. |
+
+### Consequences recorded rather than decided
+
+- `/blog` became a **dynamic** route: reading `searchParams` opts out of static
+  rendering, so the index is server-rendered per request instead of ISR-cached
+  for an hour. Restoring it means splitting search onto its own route and tags
+  onto `/blog/tag/[tag]`, which is a §6 change. Not taken.
+- `/admin/authors` is not in §8's route list, which names `/admin/blog` alone.
+  `authors` is its own §5 content type with its own permission, every post
+  requires one, and there is nowhere else to create one. Raised as a spec gap.
+- Galleries are schema-only: the join tables exist, no field drives them.
+
+---
+
 ## Found while reading — not decisions
 
 Fix these when the area is next touched:
@@ -110,6 +135,5 @@ Fix these when the area is next touched:
 - `app/(admin)/admin/login/page.tsx:15` points to a script that does not exist (A6).
 - `lib/db/queries/users.ts:42` says the role is re-checked "on every request"; it
   is every 5 minutes (A3).
-- `lib/db/queries/media-references.ts:22` says thirteen columns; it lists eleven.
 - `lib/db/schema.ts:464` says the argon2 library is not approved, while the
   library is installed and in use (A7).

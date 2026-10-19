@@ -1,8 +1,13 @@
+import type { FieldErrors } from "@/lib/admin/action";
+import { blogPublishErrors } from "@/lib/admin/blog-publish";
 import type { Resource } from "@/lib/auth/policy";
 import type { ContentTable, RelationColumns } from "@/lib/db/queries/content-crud";
 import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import {
+  authors,
   awards,
+  blogPostRelated,
+  blogPosts,
   doctorLocations,
   doctors,
   faqs,
@@ -16,16 +21,15 @@ import {
 } from "@/lib/db/schema";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
+import { AUTHOR_DOCTOR_FIELD, AUTHOR_HEADSHOT } from "./authors";
 import { AWARD_CERTIFICATE, AWARD_LOGO } from "./awards";
-import { DOCTOR_LOCATIONS_FIELD } from "./doctors";
-import { HMO_LOCATIONS_FIELD } from "./hmos";
-import { HOURS_CONFIRMED_FIELD } from "./locations";
-import {
-  TESTIMONIAL_LOCATION_FIELD,
-  TESTIMONIAL_SERVICE_FIELD,
-} from "./testimonials";
-import { SERVICE_LOCATIONS_FIELD, SERVICE_RELATED_FIELD } from "./services";
-import { toHoursValue, type AdminHours } from "./fields";
+import { BLOG_HERO, BLOG_RELATED_FIELD } from "./blog-posts";
+import { DOCTOR_HEADSHOT, DOCTOR_LOCATIONS_FIELD } from "./doctors";
+import { HMO_LOCATIONS_FIELD, HMO_LOGO } from "./hmos";
+import { HOURS_CONFIRMED_FIELD, LOCATION_HERO } from "./locations";
+import { TESTIMONIAL_AVATAR, TESTIMONIAL_LOCATION_FIELD, TESTIMONIAL_SERVICE_FIELD } from "./testimonials";
+import { SERVICE_IMAGE, SERVICE_LOCATIONS_FIELD, SERVICE_RELATED_FIELD } from "./services";
+import { toHoursValue, toTimestamp, type AdminHours } from "./fields";
 import type { ResourceName } from "./index";
 import type { ImageFieldNames } from "./fields";
 
@@ -70,6 +74,16 @@ export interface ResourceRelation {
   columns: RelationColumns;
   /** The column the picker labels its options with. */
   optionsLabel: PgColumn;
+  /**
+   * Offer only published rows, plus any already joined.
+   *
+   * Off by default, because most joins are editorial plumbing: a service is
+   * routinely attached to a branch that is still being written, and hiding
+   * drafts there would be an obstacle rather than a guard. It is on for
+   * `blog_post_related`, where the join is rendered as a link a reader clicks —
+   * a draft there is a 404 in the related-reading block.
+   */
+  publishedOptionsOnly?: boolean;
 }
 
 /**
@@ -123,6 +137,32 @@ export interface ResourceServerConfig {
   /** Columns whose before/after values go into the audit row. */
   auditDiff?: readonly AuditDiffColumn[];
   /**
+   * A last validation pass that needs the database, run after the schema has
+   * accepted the submission and before anything is written.
+   *
+   * The schema in a resource's config is parsed on the client as well as the
+   * server, so it can only ever check the submission against itself. A rule
+   * that has to ask "does this slug name a published page" cannot live there —
+   * importing a repository into the client-safe registry would put the Neon
+   * driver in the browser bundle.
+   *
+   * `/admin/blog` is the case: Conversion baseline item 14 requires every
+   * internal link in a body, and every related post, to resolve before the post
+   * may be published. See `lib/admin/blog-publish.ts`.
+   *
+   * Returns field errors keyed exactly as the form's fields are named, or
+   * `null` to allow the write. `relations` holds the join-table selections,
+   * which have already been lifted out of `values` by the time this runs.
+   */
+  validate?: (
+    values: Record<string, unknown>,
+    context: {
+      /** The row being updated, or `null` on a create. */
+      id: string | null;
+      relations: ReadonlyMap<string, string[]>;
+    },
+  ) => Promise<FieldErrors | null>;
+  /**
    * Last shaping step between a validated submission and the columns written.
    *
    * The escape hatch for a field whose stored form is not its submitted form —
@@ -138,7 +178,7 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     table: services as unknown as ContentTable,
     permission: "services",
     tags: [CACHE_TAGS.services, CACHE_TAGS.locations],
-    images: [],
+    images: [SERVICE_IMAGE],
     relations: [
       {
         field: SERVICE_LOCATIONS_FIELD,
@@ -171,7 +211,7 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     table: doctors as unknown as ContentTable,
     permission: "doctors",
     tags: [CACHE_TAGS.doctors, CACHE_TAGS.locations],
-    images: [],
+    images: [DOCTOR_HEADSHOT],
     relations: [
       {
         field: DOCTOR_LOCATIONS_FIELD,
@@ -194,7 +234,7 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     // A branch appears on service pages, doctor profiles and HMO results, so a
     // rename or an unpublish has to reach all of them, not just /locations.
     tags: [CACHE_TAGS.locations, CACHE_TAGS.services, CACHE_TAGS.doctors, CACHE_TAGS.hmos],
-    images: [],
+    images: [LOCATION_HERO],
     toRow: (values) => {
       const { [HOURS_CONFIRMED_FIELD]: confirmed, hours, ...rest } = values;
       return {
@@ -208,7 +248,7 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     table: hmos as unknown as ContentTable,
     permission: "hmos",
     tags: [CACHE_TAGS.hmos, CACHE_TAGS.locations],
-    images: [],
+    images: [HMO_LOGO],
     relations: [
       {
         field: HMO_LOCATIONS_FIELD,
@@ -231,7 +271,7 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     // A quote appears on the homepage and on the service page it is attached
     // to, so withdrawing consent has to reach both inside the request.
     tags: [CACHE_TAGS.testimonials, CACHE_TAGS.services],
-    images: [],
+    images: [TESTIMONIAL_AVATAR],
     references: [
       {
         field: TESTIMONIAL_SERVICE_FIELD,
@@ -250,6 +290,70 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
       { column: "consentGiven", mode: "value" },
       { column: "quote", mode: "digest" },
     ],
+  },
+
+  authors: {
+    table: authors as unknown as ContentTable,
+    permission: "authors",
+    // There is no `authors` tag, and adding an unused one would be worse than
+    // this comment: an author is only ever read through a blog query, which
+    // `innerJoin`s the table (`lib/db/queries/blog.ts`). Renaming an author has
+    // to reach every post carrying their byline, and the collection tag does.
+    tags: [CACHE_TAGS.blogPosts],
+    images: [AUTHOR_HEADSHOT],
+    references: [
+      {
+        field: AUTHOR_DOCTOR_FIELD,
+        table: doctors as unknown as ContentTable,
+        optionsLabel: doctors.name,
+      },
+    ],
+  },
+
+  blog: {
+    table: blogPosts as unknown as ContentTable,
+    permission: "blog_posts",
+    tags: [CACHE_TAGS.blogPosts],
+    images: [BLOG_HERO],
+    references: [
+      {
+        field: "authorId",
+        table: authors as unknown as ContentTable,
+        optionsLabel: authors.name,
+      },
+    ],
+    relations: [
+      {
+        field: BLOG_RELATED_FIELD,
+        columns: {
+          table: blogPostRelated,
+          ownColumn: blogPostRelated.postId,
+          otherColumn: blogPostRelated.relatedId,
+          ownKey: "postId",
+          otherKey: "relatedId",
+          otherTable: blogPosts as unknown as ContentTable,
+        },
+        optionsLabel: blogPosts.title,
+        publishedOptionsOnly: true,
+      },
+    ],
+    // Conversion baseline item 14. The count and the date are in the schema,
+    // which both sides parse; these two need rows.
+    validate: (values, { id, relations }) =>
+      blogPublishErrors({
+        published: values.published === true,
+        body: String(values.body ?? ""),
+        relatedIds: relations.get(BLOG_RELATED_FIELD) ?? [],
+        id,
+      }),
+    toRow: (values) => ({
+      ...values,
+      // `YYYY-MM-DD` from the date control, into a `timestamptz` column. See
+      // `toTimestamp` for why the conversion is explicit and in UTC.
+      publishedAt: toTimestamp(
+        typeof values.publishedAt === "string" ? values.publishedAt : null,
+      ),
+    }),
   },
 
   faqs: {

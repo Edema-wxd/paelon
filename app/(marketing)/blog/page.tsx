@@ -4,9 +4,13 @@ import Link from "next/link";
 import { BlogPostCard } from "@/components/site/blog-post-card";
 import { PendingNote } from "@/components/site/pending-note";
 import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
+import { BlogSearchForm } from "@/components/site/blog-search-form";
 import {
   BLOG_CATEGORY_LABELS,
   getBlogPosts,
+  getBlogPostsByTag,
+  getBlogTags,
+  searchBlogPosts,
   type BlogCategory,
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
@@ -17,32 +21,77 @@ const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 const DESCRIPTION =
   "Health articles and seasonal guidance from the clinicians at Paelon Memorial Hospital.";
 
-export const metadata: Metadata = {
-  title: "Health articles",
-  description: DESCRIPTION,
-  alternates: { canonical: "/blog" },
-  openGraph: {
-    type: "website",
-    url: new URL("/blog", siteUrl).toString(),
-    siteName: "Paelon Memorial Hospital",
-    title: "Health articles | Paelon Memorial Hospital",
+interface PageProps {
+  searchParams: Promise<{ category?: string; tag?: string; q?: string }>;
+}
+
+/**
+ * Trim and cap a search term.
+ *
+ * Capped because the term is echoed back into the page and into a tsquery; 120
+ * characters is far more than any real search and well short of anything worth
+ * sending to Postgres.
+ */
+function readQuery(value: string | undefined): string {
+  return (value ?? "").trim().slice(0, 120);
+}
+
+/**
+ * Metadata varies with the filters, for two reasons that both matter to search.
+ *
+ * A search result page is `noindex`: `?q=` takes arbitrary input, so letting it
+ * be crawled offers an unbounded set of thin, near-duplicate pages under a
+ * hospital's domain. A tag page is the opposite — a real taxonomy with stable
+ * membership — so it stays indexable and canonicalises to itself.
+ *
+ * The canonical for a search page points at `/blog`, so any link to a result
+ * consolidates onto the index rather than splitting its signals.
+ */
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const query = readQuery(params.q);
+  const tag = (params.tag ?? "").trim();
+
+  const title =
+    query.length > 0
+      ? `Search: ${query}`
+      : tag.length > 0
+        ? `Articles tagged ${tag}`
+        : "Health articles";
+
+  const canonical =
+    query.length > 0
+      ? "/blog"
+      : tag.length > 0
+        ? `/blog?tag=${encodeURIComponent(tag)}`
+        : "/blog";
+
+  return {
+    title,
     description: DESCRIPTION,
-    images: OG_IMAGES,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Health articles | Paelon Memorial Hospital",
-    description: DESCRIPTION,
-    images: TWITTER_IMAGES,
-  },
-};
+    alternates: { canonical },
+    ...(query.length > 0 ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      type: "website",
+      url: new URL(canonical, siteUrl).toString(),
+      siteName: "Paelon Memorial Hospital",
+      title: `${title} | Paelon Memorial Hospital`,
+      description: DESCRIPTION,
+      images: OG_IMAGES,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Paelon Memorial Hospital`,
+      description: DESCRIPTION,
+      images: TWITTER_IMAGES,
+    },
+  };
+}
 
 /** Content changes through the Phase 2 CMS, which revalidates by tag. */
 export const revalidate = 3600;
-
-interface PageProps {
-  searchParams: Promise<{ category?: string }>;
-}
 
 function isCategory(value: string | undefined): value is BlogCategory {
   return value !== undefined && value in BLOG_CATEGORY_LABELS;
@@ -60,10 +109,30 @@ function isCategory(value: string | undefined): value is BlogCategory {
  * it real, and the query layer already takes a limit.
  */
 export default async function BlogIndexPage({ searchParams }: PageProps) {
-  const { category } = await searchParams;
-  const active = isCategory(category) ? category : null;
+  const params = await searchParams;
+  const active = isCategory(params.category) ? params.category : null;
+  const tag = (params.tag ?? "").trim();
+  const query = readQuery(params.q);
 
-  const allPosts = await getBlogPosts();
+  /**
+   * One of three readers, not three filters layered on each other.
+   *
+   * A search is its own ranked query — reordering it by category would throw
+   * away the ranking that makes it useful — and a tag filter is an indexed
+   * lookup rather than something to do in JavaScript over every post. The
+   * category chips still narrow whichever list came back, because that is a
+   * cheap filter over a page of results and keeps the chips meaningful inside a
+   * search.
+   */
+  const [allPosts, tags] = await Promise.all([
+    query.length > 0
+      ? searchBlogPosts(query)
+      : tag.length > 0
+        ? getBlogPostsByTag(tag)
+        : getBlogPosts(),
+    getBlogTags(),
+  ]);
+
   const posts = active
     ? allPosts.filter((post) => post.category === active)
     : allPosts;
@@ -73,6 +142,18 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
   const available = (
     Object.keys(BLOG_CATEGORY_LABELS) as BlogCategory[]
   ).filter((key) => allPosts.some((post) => post.category === key));
+
+  // Chips keep whichever search or tag is active, so narrowing by category does
+  // not silently discard what the visitor already asked for.
+  const withFilters = (next: Record<string, string | null>): string => {
+    const search = new URLSearchParams();
+    const merged = { q: query, tag, category: active, ...next };
+    for (const [key, value] of Object.entries(merged)) {
+      if (value) search.set(key, value);
+    }
+    const queryString = search.toString();
+    return queryString.length > 0 ? `/blog?${queryString}` : "/blog";
+  };
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -104,12 +185,14 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           {DESCRIPTION}
         </p>
 
+        <BlogSearchForm query={query} category={active} tag={tag} />
+
         {available.length > 0 ? (
           <nav aria-label="Filter articles by category" className="mt-10">
             <ul className="flex flex-wrap gap-3">
               <li>
                 <CategoryLink
-                  href="/blog"
+                  href={withFilters({ category: null })}
                   label="All articles"
                   active={active === null}
                 />
@@ -117,12 +200,48 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
               {available.map((key) => (
                 <li key={key}>
                   <CategoryLink
-                    href={`/blog?category=${key}`}
+                    href={withFilters({ category: key })}
                     label={BLOG_CATEGORY_LABELS[key]}
                     active={active === key}
                   />
                 </li>
               ))}
+            </ul>
+          </nav>
+        ) : null}
+
+        {tags.length > 0 ? (
+          <nav aria-label="Filter articles by tag" className="mt-6">
+            <ul className="flex flex-wrap gap-2">
+              {tags.map((entry) => {
+                const isActive = entry.tag.toLowerCase() === tag.toLowerCase();
+                return (
+                  <li key={entry.tag}>
+                    <Link
+                      href={withFilters({
+                        // Clicking the active tag clears it. A filter with no
+                        // way out is a dead end on a touch device, where there
+                        // is no obvious "back to everything".
+                        tag: isActive ? null : entry.tag,
+                        // A tag and a search term are alternative ways of
+                        // narrowing, and the index reads one or the other —
+                        // so choosing a tag drops the search rather than
+                        // appearing to apply both.
+                        q: null,
+                      })}
+                      aria-current={isActive ? "true" : undefined}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none ${
+                        isActive
+                          ? "border-accent bg-accent text-accent-foreground"
+                          : "border-border text-foreground/80 hover:border-accent hover:text-primary"
+                      }`}
+                    >
+                      {entry.tag}
+                      <span className="text-xs opacity-70">{entry.count}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         ) : null}
@@ -133,6 +252,8 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
                 for anyone navigating by landmark. */}
             <p aria-live="polite" className="mt-10 text-sm text-muted-foreground">
               {posts.length} {posts.length === 1 ? "article" : "articles"}
+              {query.length > 0 ? ` matching “${query}”` : ""}
+              {tag.length > 0 && query.length === 0 ? ` tagged “${tag}”` : ""}
               {active ? ` in ${BLOG_CATEGORY_LABELS[active]}` : ""}
             </p>
 
@@ -161,6 +282,28 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
                   Contact us
                 </Link>{" "}
                 in the meantime.
+              </>
+            ) : query.length > 0 ? (
+              <>
+                Nothing matched “{query}”. Try a broader term, or{" "}
+                <Link
+                  href="/blog"
+                  className="text-accent underline underline-offset-4 hover:no-underline"
+                >
+                  browse every article
+                </Link>
+                .
+              </>
+            ) : tag.length > 0 ? (
+              <>
+                Nothing tagged “{tag}” yet.{" "}
+                <Link
+                  href="/blog"
+                  className="text-accent underline underline-offset-4 hover:no-underline"
+                >
+                  See all articles
+                </Link>
+                .
               </>
             ) : (
               <>

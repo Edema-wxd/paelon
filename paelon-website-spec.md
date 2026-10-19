@@ -338,8 +338,8 @@ who_its_for       string[]
 how_to_access     string[]
 typical_wait_time string, nullable
 what_to_expect    text
-featured_image    string (upload key)
-gallery_images    string[]
+featured_image_id uuid, nullable, references media
+gallery_images    → service_gallery_images (join table, ordered)
 related_service_ids uuid[]
 branch_ids        uuid[]
 ```
@@ -354,7 +354,7 @@ years_experience  integer
 specialties       string[]
 languages_spoken  string[]
 bio               text (80 to 120 words)
-headshot          string (upload key)
+headshot_id       uuid, nullable, references media
 in_house          boolean
 visiting          boolean
 branch_ids        uuid[]
@@ -378,15 +378,15 @@ hours               jsonb  (per-day schedule)
 services_available  uuid[]  (references services)
 parking_info        string, nullable
 accessibility_notes string, nullable
-hero_image          string (upload key)
-gallery_images      string[]
+hero_image_id       uuid, nullable, references media
+gallery_images      → location_gallery_images (join table, ordered)
 ```
 
 #### `hmos`
 ```
 name              string
 slug              string, unique
-logo              string (upload key)
+logo_id           uuid, nullable, references media
 branch_ids        uuid[]   (accepted at which branches)
 coverage_notes    string, nullable
 copay_applies     boolean
@@ -397,7 +397,7 @@ plan_notes        text, nullable
 ```
 patient_name      string   (or initials if preference set)
 name_format       enum: full | first_only | initials
-avatar            string, nullable (upload key)
+avatar_id         uuid, nullable, references media
 quote             text
 service_id        uuid, nullable
 branch_id         uuid, nullable
@@ -411,12 +411,17 @@ title             string
 slug              string, unique
 excerpt           string (up to 300 chars)
 body              text (Markdown; see §8 Content editing)
+                  Blocks: ## – #### headings, lists, quotes, pipe tables, and
+                  figures written ![alt](media:<uuid> "caption") — block-level
+                  only, resolved against `media` so alt text and the intrinsic
+                  dimensions next/image needs live on the asset (decision G2)
 hero_image        string
 author_id         uuid, references authors
 category          enum: seasonal_alerts | family_health | women_and_children | corporate_wellness
 tags              string[]
 published_at      timestamp
 related_post_ids  uuid[]
+search_vector     tsvector, generated (title A, excerpt B, body C; GIN-indexed)
 ```
 
 #### `authors`
@@ -435,8 +440,8 @@ name              string
 awarding_body     string
 year              integer
 description       text
-logo              string (upload key)
-certificate_image string, nullable
+logo_id           uuid, nullable, references media
+certificate_image_id uuid, nullable, references media
 external_link     string, nullable
 ```
 
@@ -594,8 +599,19 @@ Fifteen templates. Each has an owning group per the timeline in section 1. Do no
 - Case studies (from `blog_posts` filtered by `corporate_wellness`).
 
 #### Blog index `/blog` + Blog post `/blog/[slug]`
-- Index: filterable by category, paginated.
+- Index: filterable by category and by tag, searchable, paginated.
+  - Category and tag chips are links, not state — a filtered view is a shareable
+    URL and the page needs no JavaScript to use.
+  - Search is `?q=`, a plain `GET` form over the `search_vector` column
+    (decision G3). Ranked, `noindex`, and disallowed in `robots.txt`: the
+    parameter takes arbitrary input, so a crawlable version of it is an
+    unbounded set of thin pages. A `?tag=` view is indexable and canonical —
+    it is a real taxonomy.
+  - Reading `searchParams` makes this route dynamic rather than ISR-cached.
+    Pagination is still not built; one post exists.
 - Post: Markdown body, hero image, author card, related posts, share buttons.
+  - The hero is the LCP element and carries `priority`; body figures never do.
+  - Both come from `media`, so alt text and dimensions live on the asset.
 
 ### Functional (4 templates)
 
@@ -759,7 +775,15 @@ All content deletes are soft deletes.
 - `/admin/locations` — Location CRUD.
 - `/admin/hmos` — HMO CRUD.
 - `/admin/testimonials` — Testimonial CRUD. Consent is its own control, never a side effect of publishing, and `name_format` is required: how much of a patient's name may appear is part of what they agreed to.
-- `/admin/blog` — Blog post CRUD with Markdown editor.
+- `/admin/blog` — Blog post CRUD with Markdown editor. The editor has a syntax
+  toolbar, an image picker over the media library, and a live preview that is
+  the same renderer the live article uses (decision D1). Publishing is gated on
+  the Conversion baseline: at least two internal links that all resolve, a
+  publication date, figures placed as their own block, and no skipped heading
+  level. A draft is exempt from all four.
+- `/admin/authors` — Author CRUD. Not in the original route list; `authors` is
+  its own content type in §5, every post requires one, and there is nowhere
+  else to create one.
 - `/admin/awards` — Award CRUD.
 - `/admin/faqs` — FAQ CRUD.
 - `/admin/media` — Media library: uploads, alt text, where each file is referenced.

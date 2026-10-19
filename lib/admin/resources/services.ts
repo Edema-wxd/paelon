@@ -7,11 +7,14 @@ import { serviceFamilyEnum, type Service } from "@/lib/db/schema";
 import {
   checkboxField,
   idListField,
+  imageAltRule,
+  imageFields,
   optionalText,
   orderField,
   requiredText,
   slugField,
   tagsField,
+  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -33,21 +36,31 @@ export const SERVICE_LOCATIONS_FIELD = "locationIds";
 /** `service_related`: other services shown alongside it. */
 export const SERVICE_RELATED_FIELD = "relatedIds";
 
-export const serviceSchema = z.object({
-  name: requiredText("the service name", 200),
-  slug: slugField,
-  family: z.enum(serviceFamilyEnum.enumValues, "Choose a family."),
-  shortDescription: requiredText("a short description", 200),
-  longDescription: requiredText("a long description", 8000),
-  whatToExpect: requiredText("what to expect", 8000),
-  whoItsFor: tagsField("“who it’s for”"),
-  howToAccess: tagsField("“how to access”"),
-  typicalWaitTime: optionalText(120),
-  [SERVICE_LOCATIONS_FIELD]: idListField("branches"),
-  [SERVICE_RELATED_FIELD]: idListField("related services"),
-  order: orderField,
-  published: checkboxField,
-});
+/** `services.featured_image_id`, with its alt text on the media row. */
+export const SERVICE_IMAGE: ImageFieldNames = {
+  id: "featuredImageId",
+  alt: "featuredImageAlt",
+  decorative: "featuredImageDecorative",
+};
+
+export const serviceSchema = z
+  .object({
+    name: requiredText("the service name", 200),
+    slug: slugField,
+    family: z.enum(serviceFamilyEnum.enumValues, "Choose a family."),
+    shortDescription: requiredText("a short description", 200),
+    longDescription: requiredText("a long description", 8000),
+    whatToExpect: requiredText("what to expect", 8000),
+    whoItsFor: tagsField("“who it’s for”"),
+    howToAccess: tagsField("“how to access”"),
+    typicalWaitTime: optionalText(120),
+    [SERVICE_LOCATIONS_FIELD]: idListField("branches"),
+    [SERVICE_RELATED_FIELD]: idListField("related services"),
+    order: orderField,
+    published: checkboxField,
+    ...imageFields(SERVICE_IMAGE),
+  })
+  .check(imageAltRule(SERVICE_IMAGE));
 
 export type ServiceInput = z.output<typeof serviceSchema>;
 
@@ -134,6 +147,14 @@ const FIELDS: readonly Field[] = [
     label: "Related services",
     hint: "Shown at the foot of this service’s page. This service is excluded from the list.",
     emptyLabel: "No other services to relate this one to yet.",
+  },
+  {
+    type: "image",
+    name: SERVICE_IMAGE.id,
+    label: "Featured image",
+    altName: SERVICE_IMAGE.alt,
+    altLabel: "Featured image alt text",
+    hint: "Optional. No template renders a service image yet — the cards and the detail hero use their design-asset slot. Stored for when one does.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

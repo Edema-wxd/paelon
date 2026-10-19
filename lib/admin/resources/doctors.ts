@@ -6,11 +6,14 @@ import type { Doctor } from "@/lib/db/schema";
 import {
   checkboxField,
   idListField,
+  imageAltRule,
+  imageFields,
   optionalIntField,
   orderField,
   requiredText,
   slugField,
   tagsField,
+  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -29,21 +32,31 @@ import {
 /** `doctor_locations`: the branches this doctor practises at. */
 export const DOCTOR_LOCATIONS_FIELD = "locationIds";
 
-export const doctorSchema = z.object({
-  name: requiredText("the doctor’s name", 200),
-  slug: slugField,
-  title: requiredText("a title", 200),
-  qualifications: tagsField("qualification"),
-  specialties: tagsField("specialty"),
-  languagesSpoken: tagsField("language"),
-  yearsExperience: optionalIntField("Years of experience", { min: 0, max: 80 }),
-  bio: requiredText("a biography", 8000),
-  inHouse: checkboxField,
-  visiting: checkboxField,
-  [DOCTOR_LOCATIONS_FIELD]: idListField("branches"),
-  order: orderField,
-  published: checkboxField,
-});
+/** `doctors.headshot_id`, with its alt text on the media row. */
+export const DOCTOR_HEADSHOT: ImageFieldNames = {
+  id: "headshotId",
+  alt: "headshotAlt",
+  decorative: "headshotDecorative",
+};
+
+export const doctorSchema = z
+  .object({
+    name: requiredText("the doctor’s name", 200),
+    slug: slugField,
+    title: requiredText("a title", 200),
+    qualifications: tagsField("qualification"),
+    specialties: tagsField("specialty"),
+    languagesSpoken: tagsField("language"),
+    yearsExperience: optionalIntField("Years of experience", { min: 0, max: 80 }),
+    bio: requiredText("a biography", 8000),
+    inHouse: checkboxField,
+    visiting: checkboxField,
+    [DOCTOR_LOCATIONS_FIELD]: idListField("branches"),
+    order: orderField,
+    published: checkboxField,
+    ...imageFields(DOCTOR_HEADSHOT),
+  })
+  .check(imageAltRule(DOCTOR_HEADSHOT));
 
 export type DoctorInput = z.output<typeof doctorSchema>;
 
@@ -108,6 +121,14 @@ const FIELDS: readonly Field[] = [
   },
   { type: "checkbox", name: "inHouse", label: "In-house" },
   { type: "checkbox", name: "visiting", label: "Visiting consultant" },
+  {
+    type: "image",
+    name: DOCTOR_HEADSHOT.id,
+    label: "Headshot",
+    altName: DOCTOR_HEADSHOT.alt,
+    altLabel: "Headshot alt text",
+    hint: "Optional. The profile page uses its portrait design-asset slot today; this is stored for when a clinician photograph is delivered.",
+  },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   { type: "checkbox", name: "published", label: "Published" },
 ];

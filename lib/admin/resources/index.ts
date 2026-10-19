@@ -1,6 +1,8 @@
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 
+import { authorResource } from "./authors";
 import { awardResource } from "./awards";
+import { blogPostResource } from "./blog-posts";
 import { doctorResource } from "./doctors";
 import { faqResource } from "./faqs";
 import { hmoResource } from "./hmos";
@@ -33,6 +35,11 @@ export const RESOURCES = {
   locations: locationResource,
   hmos: hmoResource,
   testimonials: testimonialResource,
+  // `blog`, not `blog_posts`: the key is the URL segment, and spec §8 routes
+  // the screen at `/admin/blog`. The `can()` resource is still `blog_posts` —
+  // see this resource's entry in `./server.ts`.
+  blog: blogPostResource,
+  authors: authorResource,
   faqs: faqResource,
   awards: awardResource,
 } satisfies Record<string, ResourceConfig<any, any>>;
@@ -48,7 +55,9 @@ export function isResourceName(value: string): value is ResourceName {
 }
 
 export {
+  authorResource,
   awardResource,
+  blogPostResource,
   doctorResource,
   faqResource,
   hmoResource,

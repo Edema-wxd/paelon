@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TESTIMONIAL_AVATAR } from "@/lib/admin/resources/testimonials";
 import type { AdminUser } from "@/lib/auth/session";
 
 /**
@@ -73,6 +74,9 @@ function form(overrides: Record<string, string | null> = {}): FormData {
     serviceId: "",
     locationId: "",
     order: "1",
+    // The image controls, as a browser submits them with nothing chosen.
+    [TESTIMONIAL_AVATAR.id]: "",
+    [TESTIMONIAL_AVATAR.alt]: "",
   };
 
   const data = new FormData();

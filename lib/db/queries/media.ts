@@ -56,12 +56,20 @@ export async function listMediaRows(limit = 60): Promise<Media[]> {
  *
  * Alt text is *not* touched on conflict: a retried callback must not blank alt
  * text an editor has since written.
+ *
+ * Dimensions, by contrast, *are* refreshed on conflict. They are a fact about
+ * the file rather than something a person wrote, and a re-upload that replaces
+ * the object has to replace them with it — stale dimensions would reserve the
+ * wrong box for the new image. Null overwrites null and changes nothing.
  */
 export async function recordUpload(input: {
   key: string;
   url: string;
   filename: string | null;
   uploadedBy: string | null;
+  /** From the file header; null when it could not be read. */
+  width?: number | null;
+  height?: number | null;
 }): Promise<Media> {
   const rows = await db()
     .insert(media)
@@ -71,10 +79,17 @@ export async function recordUpload(input: {
       alt: "",
       filename: input.filename,
       uploadedBy: input.uploadedBy,
+      width: input.width ?? null,
+      height: input.height ?? null,
     })
     .onConflictDoUpdate({
       target: media.key,
-      set: { url: input.url, deletedAt: null },
+      set: {
+        url: input.url,
+        deletedAt: null,
+        width: input.width ?? null,
+        height: input.height ?? null,
+      },
     })
     .returning();
 

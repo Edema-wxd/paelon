@@ -9,10 +9,13 @@ import {
   coordinateField,
   coordinatePairRule,
   hoursCompletenessRule,
+  imageAltRule,
+  imageFields,
   optionalText,
   orderField,
   requiredText,
   slugField,
+  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -43,6 +46,13 @@ import {
 /** Companion to `hours`: false stores `{}` rather than a guessed schedule. */
 export const HOURS_CONFIRMED_FIELD = "hoursConfirmed";
 
+/** `locations.hero_image_id`, with its alt text on the media row. */
+export const LOCATION_HERO: ImageFieldNames = {
+  id: "heroImageId",
+  alt: "heroImageAlt",
+  decorative: "heroImageDecorative",
+};
+
 export const locationSchema = z
   .object({
     name: requiredText("the branch name", 200),
@@ -67,7 +77,9 @@ export const locationSchema = z
     ),
     order: orderField,
     published: checkboxField,
+    ...imageFields(LOCATION_HERO),
   })
+  .check(imageAltRule(LOCATION_HERO))
   .check(coordinatePairRule("latitude", "longitude"))
   .check(hoursCompletenessRule("hours", HOURS_CONFIRMED_FIELD));
 
@@ -140,6 +152,14 @@ const FIELDS: readonly Field[] = [
     label: "Booking inbox",
     maxLength: 200,
     hint: "Optional. Where this branch’s bookings are emailed. Empty falls back to the BRANCH_*_EMAIL variable for this slug.",
+  },
+  {
+    type: "image",
+    name: LOCATION_HERO.id,
+    label: "Hero image",
+    altName: LOCATION_HERO.alt,
+    altLabel: "Hero image alt text",
+    hint: "Optional. The branch page uses its hero design-asset slot today. Stored for when a branch photograph is delivered.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

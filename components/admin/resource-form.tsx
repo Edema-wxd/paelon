@@ -8,6 +8,7 @@ import { useForm, type FieldValues, type Resolver } from "react-hook-form";
 
 import { HoursField } from "@/components/admin/hours-field";
 import { MarkdownField } from "@/components/admin/markdown-field";
+import type { PickableMedia } from "@/components/admin/markdown-media-picker";
 import {
   MultiSelectField,
   type SelectOption,
@@ -73,6 +74,11 @@ export interface ResourceFormProps {
    * They are rows and they change, so they are not in the config.
    */
   options?: Record<string, readonly SelectOption[]>;
+  /**
+   * The media library, for `markdown` fields declaring `figures`. Loaded by the
+   * editor screen, because reading it needs the database.
+   */
+  media?: readonly PickableMedia[];
   /** Hides the published toggle for a role that may not publish. */
   canPublish: boolean;
 }
@@ -83,6 +89,7 @@ export function ResourceForm({
   defaults,
   images = {},
   options = {},
+  media,
   canPublish,
 }: ResourceFormProps) {
   const config = RESOURCES[resource];
@@ -367,6 +374,7 @@ export function ResourceForm({
             required={field.required}
             invalid={invalid}
             describedBy={describedBy}
+            media={field.figures ? media : undefined}
             value={markdown[field.name] ?? ""}
             onBlur={() => void registration.onBlur({ target: { name: field.name } })}
             onChange={(next) => {

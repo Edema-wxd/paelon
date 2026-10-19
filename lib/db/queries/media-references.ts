@@ -10,16 +10,19 @@ import { db } from "@/lib/db/client";
  * hospital page into one with a broken image, and nothing in the system would
  * report it.
  *
- * ## Why this matches on a substring
+ * ## Why every match is exact
  *
- * The image columns are inconsistent about what they hold. `services.featured_image`
- * is documented as an UploadThing *key*; others were populated from seed files
- * with full CDN URLs. Matching the key as a substring covers both, and a key is
- * a UUID-prefixed filename, so a false positive is not a realistic concern.
+ * It did not used to be. The image columns held a mix of UploadThing keys and
+ * full CDN URLs, so this matched the key as a substring to cover both.
+ * Migration 0004 moved every one of them onto `media.id`, so the question is
+ * now a join: either a row points at the media row or it does not. A substring
+ * match over text columns cannot be wrong in a way that is safe here — a near
+ * miss means either a refused delete nobody can explain, or a permitted one
+ * that breaks a live page.
  *
  * ## Why it is a raw query
  *
- * Nine tables and thirteen columns, three of which are Postgres arrays. Written
+ * Nine tables and eleven references, two of them through join tables. Written
  * out in Drizzle this is forty lines of near-identical `or()` calls that have to
  * be edited every time a column is added. Here the shape is visible at a glance,
  * and the key is still parameterised — never interpolated.
@@ -35,32 +38,48 @@ export interface MediaReference {
 /**
  * Every place an image reference can live. Adding an image column to the schema
  * means adding a line here, or the panel will happily delete files it is using.
- */
-const SCALAR_COLUMNS: Array<{ table: string; column: string; label: string }> = [
-  { table: "services", column: "featured_image", label: "name" },
-  { table: "doctors", column: "headshot", label: "name" },
-  { table: "locations", column: "hero_image", label: "name" },
-  { table: "hmos", column: "logo", label: "name" },
-  { table: "testimonials", column: "avatar", label: "patient_name" },
-  { table: "authors", column: "headshot", label: "name" },
-  { table: "blog_posts", column: "hero_image", label: "title" },
-];
-
-/**
- * Tables that reference `media.id` by foreign key rather than holding a URL.
  *
- * These need a join to reach the key, so they cannot go through the substring
- * match above. As each content table migrates onto `media`, its entry moves
- * from `SCALAR_COLUMNS` to here.
+ * Every one of them is now a `media.id`, reached by join — migration 0004
+ * finished the move that 0002 started for `awards`, so the substring match the
+ * text columns needed is gone and with it the chance of a near miss.
  */
 const FOREIGN_KEY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
   { table: "awards", column: "logo_id", label: "name" },
   { table: "awards", column: "certificate_image_id", label: "name" },
+  { table: "services", column: "featured_image_id", label: "name" },
+  { table: "doctors", column: "headshot_id", label: "name" },
+  { table: "locations", column: "hero_image_id", label: "name" },
+  { table: "hmos", column: "logo_id", label: "name" },
+  { table: "testimonials", column: "avatar_id", label: "patient_name" },
+  { table: "authors", column: "headshot_id", label: "name" },
+  { table: "blog_posts", column: "hero_image_id", label: "title" },
 ];
 
-const ARRAY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
-  { table: "services", column: "gallery_images", label: "name" },
-  { table: "locations", column: "gallery_images", label: "name" },
+/**
+ * Galleries, which are join tables rather than columns on the content row.
+ *
+ * `label` names the column on the *parent* table, reached through `parentKey`,
+ * so a blocked delete can still say which branch or service is using the file
+ * rather than printing a join-row id at the editor.
+ */
+const JOIN_TABLES: Array<{
+  table: string;
+  parent: string;
+  parentKey: string;
+  label: string;
+}> = [
+  {
+    table: "service_gallery_images",
+    parent: "services",
+    parentKey: "service_id",
+    label: "name",
+  },
+  {
+    table: "location_gallery_images",
+    parent: "locations",
+    parentKey: "location_id",
+    label: "name",
+  },
 ];
 
 /**
@@ -72,22 +91,9 @@ const ARRAY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
 export async function findMediaReferences(
   key: string,
 ): Promise<MediaReference[]> {
-  const pattern = `%${key}%`;
   const found: MediaReference[] = [];
 
-  for (const { table, column, label } of SCALAR_COLUMNS) {
-    const rows = await db().execute<{ id: string; label: string | null }>(sql`
-      select id, ${sql.raw(label)}::text as label
-      from ${sql.raw(table)}
-      where ${sql.raw(column)} like ${pattern}
-    `);
-
-    for (const row of rows.rows) {
-      found.push({ table, column, rowId: row.id, label: row.label ?? "(untitled)" });
-    }
-  }
-
-  // An exact join on the key, not a substring: these columns hold a `media.id`.
+  // An exact join on the key: every one of these columns holds a `media.id`.
   for (const { table, column, label } of FOREIGN_KEY_COLUMNS) {
     const rows = await db().execute<{ id: string; label: string | null }>(sql`
       select t.id, t.${sql.raw(label)}::text as label
@@ -101,18 +107,22 @@ export async function findMediaReferences(
     }
   }
 
-  for (const { table, column, label } of ARRAY_COLUMNS) {
+  for (const { table, parent, parentKey, label } of JOIN_TABLES) {
     const rows = await db().execute<{ id: string; label: string | null }>(sql`
-      select id, ${sql.raw(label)}::text as label
-      from ${sql.raw(table)}
-      where exists (
-        select 1 from unnest(${sql.raw(column)}) as element
-        where element like ${pattern}
-      )
+      select p.id, p.${sql.raw(label)}::text as label
+      from ${sql.raw(table)} g
+      join media m on m.id = g.media_id
+      join ${sql.raw(parent)} p on p.id = g.${sql.raw(parentKey)}
+      where m.key = ${key}
     `);
 
     for (const row of rows.rows) {
-      found.push({ table, column, rowId: row.id, label: row.label ?? "(untitled)" });
+      found.push({
+        table,
+        column: "media_id",
+        rowId: row.id,
+        label: row.label ?? "(untitled)",
+      });
     }
   }
 

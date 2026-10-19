@@ -44,7 +44,12 @@ const NAV: ReadonlyArray<
   { href: "/admin/locations", label: "Locations", gate: { action: "read", resource: "locations" }, built: true },
   { href: "/admin/hmos", label: "HMOs", gate: { action: "read", resource: "hmos" }, built: true },
   { href: "/admin/testimonials", label: "Testimonials", gate: { action: "read", resource: "testimonials" }, built: true },
-  { href: "/admin/blog", label: "Blog", gate: { action: "read", resource: "blog_posts" }, built: false },
+  { href: "/admin/blog", label: "Blog", gate: { action: "read", resource: "blog_posts" }, built: true },
+  // Not in §8's route list, which names `/admin/blog` alone. `authors` is its
+  // own content type in §5 with its own permission, every post requires one,
+  // and there is nowhere else to create one — so the screen exists and the nav
+  // says so. Raised as a spec gap rather than left implicit.
+  { href: "/admin/authors", label: "Authors", gate: { action: "read", resource: "authors" }, built: true },
   { href: "/admin/awards", label: "Awards", gate: { action: "read", resource: "awards" }, built: true },
   { href: "/admin/faqs", label: "FAQs", gate: { action: "read", resource: "faqs" }, built: true },
   { href: "/admin/media", label: "Media", gate: { action: "read", resource: "media" }, built: true },

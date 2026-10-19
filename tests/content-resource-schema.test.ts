@@ -1,21 +1,28 @@
 import { describe, expect, it } from "vitest";
 
 import { resourceInput, hoursInputName } from "@/lib/admin/resource-input";
-import { doctorResource, doctorSchema } from "@/lib/admin/resources/doctors";
-import { hmoResource, hmoSchema } from "@/lib/admin/resources/hmos";
+import {
+  DOCTOR_HEADSHOT,
+  doctorResource,
+  doctorSchema,
+} from "@/lib/admin/resources/doctors";
+import { HMO_LOGO, hmoResource, hmoSchema } from "@/lib/admin/resources/hmos";
 import {
   HOURS_CONFIRMED_FIELD,
+  LOCATION_HERO,
   locationResource,
   locationSchema,
 } from "@/lib/admin/resources/locations";
 import { toHoursValue } from "@/lib/admin/resources/fields";
 import {
+  SERVICE_IMAGE,
   SERVICE_LOCATIONS_FIELD,
   SERVICE_RELATED_FIELD,
   serviceResource,
   serviceSchema,
 } from "@/lib/admin/resources/services";
 import {
+  TESTIMONIAL_AVATAR,
   TESTIMONIAL_LOCATION_FIELD,
   TESTIMONIAL_SERVICE_FIELD,
   testimonialResource,
@@ -64,6 +71,10 @@ const validService = {
   [SERVICE_RELATED_FIELD]: [],
   order: "2",
   published: "on",
+  // Empty id is "no image", which is what the control submits when
+  // nothing is chosen.
+  [SERVICE_IMAGE.id]: "",
+  [SERVICE_IMAGE.alt]: "",
 };
 
 describe("serviceSchema", () => {
@@ -143,6 +154,10 @@ const validDoctor = {
   inHouse: "on",
   locationIds: [UUID_A, UUID_B],
   order: "0",
+  // Empty id is "no image", which is what the control submits when
+  // nothing is chosen.
+  [DOCTOR_HEADSHOT.id]: "",
+  [DOCTOR_HEADSHOT.alt]: "",
 };
 
 describe("doctorSchema", () => {
@@ -205,6 +220,10 @@ const validLocation = {
   accessibilityNotes: "",
   bookingEmail: "",
   order: "1",
+  // Empty id is "no image", which is what the control submits when
+  // nothing is chosen.
+  [LOCATION_HERO.id]: "",
+  [LOCATION_HERO.alt]: "",
 };
 
 describe("locationSchema", () => {
@@ -331,6 +350,10 @@ const validHmo = {
   planNotes: "",
   locationIds: [],
   order: "0",
+  // Empty id is "no image", which is what the control submits when
+  // nothing is chosen.
+  [HMO_LOGO.id]: "",
+  [HMO_LOGO.alt]: "",
 };
 
 describe("hmoSchema", () => {
@@ -443,6 +466,8 @@ describe("resourceInput", () => {
       "parkingInfo",
       "accessibilityNotes",
       "bookingEmail",
+      LOCATION_HERO.id,
+      LOCATION_HERO.alt,
     ]) {
       formData.append(key, "");
     }
@@ -471,6 +496,10 @@ const validTestimonial = {
   [TESTIMONIAL_LOCATION_FIELD]: "",
   order: "1",
   published: "on",
+  // Empty id is "no image", which is what the control submits when
+  // nothing is chosen.
+  [TESTIMONIAL_AVATAR.id]: "",
+  [TESTIMONIAL_AVATAR.alt]: "",
 };
 
 describe("testimonial schema", () => {

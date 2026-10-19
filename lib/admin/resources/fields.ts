@@ -475,3 +475,75 @@ export function optionalReferenceField(label: string) {
       `Choose ${label} from the list, or leave it blank.`,
     );
 }
+
+/**
+ * A required foreign key, from a `<select>` with no blank option.
+ *
+ * `optionalReferenceField`'s counterpart, for a column that is `notNull` —
+ * `blog_posts.author_id` is the case this exists for. The distinction is not
+ * cosmetic: a post whose author never resolved would break the `innerJoin`
+ * every public blog read is built on, so the row must not be writable without
+ * one.
+ */
+export function requiredReferenceField(label: string) {
+  return z
+    .string()
+    .trim()
+    .min(1, `Choose ${label} from the list.`)
+    .refine(
+      (value) => z.uuid().safeParse(value).success,
+      `Choose ${label} from the list.`,
+    );
+}
+
+/**
+ * An optional calendar date. The empty string means "not set", which is a real
+ * answer and is stored as `null`.
+ *
+ * `pastDateField` without the `min(1)`: the same `YYYY-MM-DD` string for the
+ * same timezone reason, and the same refusal of a future date.
+ * `blog_posts.published_at` is the case — a draft has none, and a post dated
+ * next March would sit at the top of `/blog` today, since `livePost()` only
+ * checks that the column is not null. Nothing here schedules a publish.
+ */
+export function optionalPastDateField(label: string) {
+  return z
+    .string()
+    .trim()
+    .transform((value) => (value === "" ? null : value))
+    .nullable()
+    .refine(
+      (value) => value === null || ISO_DATE_PATTERN.test(value),
+      `${label[0]?.toUpperCase()}${label.slice(1)} must be a date.`,
+    )
+    .refine(
+      (value) => value === null || !Number.isNaN(Date.parse(value)),
+      "That is not a real date.",
+    )
+    .refine(
+      (value) => value === null || value <= new Date().toISOString().slice(0, 10),
+      `${label[0]?.toUpperCase()}${label.slice(1)} cannot be in the future.`,
+    );
+}
+
+/**
+ * `YYYY-MM-DD` → the instant written to a `timestamptz` column.
+ *
+ * Midnight **UTC**, explicitly. Handing the bare string to Drizzle would let
+ * Postgres read it in the server's timezone, so the same post would carry a
+ * different publication date depending on which machine saved it — and on
+ * Vercel that machine is not the one it was written on.
+ */
+export function toTimestamp(value: string | null): Date | null {
+  return value === null ? null : new Date(`${value}T00:00:00Z`);
+}
+
+/** The inverse, for filling a `date` control back in from a stored row. */
+export function toDateInput(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "string" && value !== "") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  }
+  return "";
+}
