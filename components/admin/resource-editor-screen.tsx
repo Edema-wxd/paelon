@@ -5,6 +5,7 @@ import { NotPermitted } from "@/components/admin/not-permitted";
 import { ResourceDeleteForm } from "@/components/admin/resource-delete-form";
 import { ResourceForm } from "@/components/admin/resource-form";
 import type { SelectOption } from "@/components/admin/multi-select-field";
+import type { PickableMedia } from "@/components/admin/markdown-media-picker";
 import type { ImageFieldValue } from "@/components/admin/resource-image-field";
 import { toDateInput } from "@/lib/admin/resources/fields";
 import type { Field, ResourceConfig } from "@/lib/admin/resource-config";
@@ -18,8 +19,9 @@ import {
   listRelationIds,
   type ContentRow,
 } from "@/lib/db/queries/content-crud";
-import { getMediaByIds, listMediaRows } from "@/lib/db/queries/media";
+import { getMediaByIds, listGalleryMedia } from "@/lib/db/queries/media";
 import { hasPublishedHours } from "@/lib/locations/hours-display";
+import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
 import {
   previewDestinationFor,
   previewHref,
@@ -95,29 +97,76 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   // One query per relation, and only the ones this resource declares. A
   // resource with no join tables costs nothing here.
   /**
-   * The media library, for a form with a `figures` markdown field.
+   * The assets this row's body already references, for the editor's preview.
    *
-   * Loaded here because the picker is a client component and reading the
-   * library needs the database. Only when a field asks for it: every other
-   * editor screen would be paying a query for a control it does not render.
-   *
-   * Capped at the same 60 rows the library screen shows. The picker filters
-   * what it is given rather than querying again, which keeps it free of a
-   * server round trip per keystroke.
+   * Not the library — the picker queries that itself, so the whole of it is
+   * reachable (see `searchMediaRows`). Only the ids actually written into the
+   * stored body are resolved here, which is what the preview needs to render
+   * the figures that are already there. Anything picked afterwards is added
+   * client-side from what the picker returns.
    */
-  const wantsFigures = config.fields.some(
+  const figureFields = config.fields.filter(
     (field) => field.type === "markdown" && field.figures === true,
   );
-  const media = wantsFigures
-    ? (await listMediaRows()).map((row) => ({
-        id: row.id,
-        url: row.url,
-        alt: row.alt,
-        filename: row.filename,
-        width: row.width,
-        height: row.height,
-      }))
-    : undefined;
+
+  const bodyMediaIds = row
+    ? [
+        ...new Set(
+          figureFields.flatMap((field) => {
+            const body = row[field.name];
+            return typeof body === "string"
+              ? collectMediaIds(parseMarkdown(body))
+              : [];
+          }),
+        ),
+      ]
+    : [];
+
+  const media =
+    figureFields.length === 0
+      ? undefined
+      : [...(await getMediaByIds(bodyMediaIds)).values()].map((asset) => ({
+          id: asset.id,
+          url: asset.url,
+          alt: asset.alt,
+          filename: asset.filename,
+          width: asset.width,
+          height: asset.height,
+        }));
+
+  /**
+   * Each gallery's assets, in the order they were arranged.
+   *
+   * Not through the `relations` loop below: that loads every candidate row as
+   * `<option>`s, and the candidates for a gallery are the whole media library,
+   * which the picker queries itself. Only what is already chosen is loaded
+   * here, which is what the control has to render.
+   */
+  const galleryValues: Record<string, readonly PickableMedia[]> = {};
+
+  for (const gallery of server.galleries ?? []) {
+    const { columns } = gallery;
+    const assets =
+      id && columns.orderColumn
+        ? await listGalleryMedia(
+            columns.table,
+            columns.ownColumn,
+            columns.otherColumn,
+            columns.orderColumn,
+            id,
+          )
+        : [];
+
+    galleryValues[gallery.field] = assets.map((asset) => ({
+      id: asset.id,
+      url: asset.url,
+      alt: asset.alt,
+      filename: asset.filename,
+      width: asset.width,
+      height: asset.height,
+    }));
+
+  }
 
   const relations = server.relations ?? [];
   const options: Record<string, SelectOption[]> = {};
@@ -157,6 +206,13 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   }
 
   const defaults: Record<string, unknown> = {};
+
+  // A gallery's default is the id list, so the resolver validates exactly what
+  // the control's hidden inputs will submit. Seeded before the field loop,
+  // which has no `gallery` case of its own.
+  for (const [field, assets] of Object.entries(galleryValues)) {
+    defaults[field] = assets.map((asset) => asset.id);
+  }
   const images: Record<string, ImageFieldValue> = {};
 
   // Set by the `hours` field itself, from the stored value. Skipped by the
@@ -169,6 +225,11 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   );
 
   for (const field of config.fields) {
+    // Already seeded from the join table above. Falling through would reach the
+    // generic branch, which reads `row[field.name]` — a gallery has no such
+    // column, so it would overwrite the arranged list with an empty string.
+    if (field.type === "gallery") continue;
+
     if (field.type === "multiselect") {
       defaults[field.name] = selected[field.name] ?? [];
       continue;
@@ -301,6 +362,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           images={images}
           options={options}
           {...(media ? { media } : {})}
+          galleryValues={galleryValues}
           canPublish={canPublish}
         />
       </div>

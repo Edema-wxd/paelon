@@ -339,7 +339,7 @@ how_to_access     string[]
 typical_wait_time string, nullable
 what_to_expect    text
 featured_image_id uuid, nullable, references media
-gallery_images    → service_gallery_images (join table, ordered)
+gallery_images    → service_gallery_images (join table, ordered; references media)
 related_service_ids uuid[]
 branch_ids        uuid[]
 ```
@@ -379,7 +379,7 @@ services_available  uuid[]  (references services)
 parking_info        string, nullable
 accessibility_notes string, nullable
 hero_image_id       uuid, nullable, references media
-gallery_images      → location_gallery_images (join table, ordered)
+gallery_images      → location_gallery_images (join table, ordered; references media)
 ```
 
 #### `hmos`
@@ -786,7 +786,12 @@ All content deletes are soft deletes.
   else to create one.
 - `/admin/awards` — Award CRUD.
 - `/admin/faqs` — FAQ CRUD.
-- `/admin/media` — Media library: uploads, alt text, where each file is referenced.
+- `/admin/media` — Media library: uploads, alt text, where each file is
+  referenced, paged prev/next. One upload is referenced by as many content rows
+  as need it — image fields and galleries pick from the library rather than
+  uploading a second copy, and alt text set here is what every one of those
+  pages uses. Deleting is refused while a file is still referenced, naming the
+  content row that holds it.
 - `/admin/users` — User management (admin only).
 - `/admin/audit` — Read-only audit log (admin only).
 - `/admin/analytics` — Umami dashboard iframe embed (admin only).

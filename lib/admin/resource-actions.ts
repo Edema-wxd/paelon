@@ -285,7 +285,10 @@ function buildCreateAction<R, S extends z.ZodType>(
         });
       }
 
-      const relations = server.relations ?? [];
+      // Galleries sync exactly like relations — only the picking differs — so
+      // they travel through the same split, the same `validate` context and the
+      // same join-table write.
+      const relations = [...(server.relations ?? []), ...(server.galleries ?? [])];
       const { values: withImages, selected } = splitRelations(parsed, relations);
       const { values: raw, alts } = splitImageAlts(withImages, server.images);
 
@@ -366,7 +369,10 @@ function buildUpdateAction<R, S extends z.ZodType>(
         });
       }
 
-      const relations = server.relations ?? [];
+      // Galleries sync exactly like relations — only the picking differs — so
+      // they travel through the same split, the same `validate` context and the
+      // same join-table write.
+      const relations = [...(server.relations ?? []), ...(server.galleries ?? [])];
       const { values: withImages, selected } = splitRelations(parsed, relations);
       const { values: raw, alts } = splitImageAlts(withImages, server.images);
 

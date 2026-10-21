@@ -1,6 +1,8 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
+import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+
 import { media, type Media } from "@/lib/db/schema";
 
 /**
@@ -43,6 +45,112 @@ export async function listMediaRows(limit = 60): Promise<Media[]> {
     .where(isNull(media.deletedAt))
     .orderBy(desc(media.createdAt))
     .limit(limit);
+}
+
+/** One page of the library. `hasMore` drives the pager; there is no count. */
+export interface MediaRowPage {
+  rows: Media[];
+  hasMore: boolean;
+}
+
+/**
+ * How many rows one page of the picker holds.
+ *
+ * Small on purpose: the picker is a modal over a form, and the point of paging
+ * is that the *whole* library is reachable, not that a lot of it arrives at
+ * once.
+ */
+export const MEDIA_PAGE_SIZE = 24;
+
+/**
+ * Search the library, newest first, one page at a time.
+ *
+ * ## Why this exists
+ *
+ * `listMediaRows` returns the 60 newest rows and nothing else. The picker used
+ * to filter those 60 in the browser, which meant that once the library passed
+ * 60 images an older one could not be found — and the only way to use it again
+ * was to upload a second copy. That is the opposite of what a media table is
+ * for: one row per asset, referenced by as many content rows as need it.
+ *
+ * So the filter moved to the database. Every asset is reachable however large
+ * the library grows, whether by searching for it or by paging to it.
+ *
+ * Matching is case-insensitive over alt text and the original filename — the
+ * two things an editor might remember about a picture. Not a tsvector: this is
+ * a short label on an authenticated screen, and `ilike` over a few thousand
+ * rows is both fast enough and exact in a way stemming is not ("ward" should
+ * not match "wards" differently depending on the dictionary).
+ *
+ * One row beyond the page is fetched and dropped, which is how `hasMore` is
+ * known without a second `count(*)` over the whole table.
+ */
+export async function searchMediaRows(
+  options: { query?: string; limit?: number; offset?: number } = {},
+): Promise<MediaRowPage> {
+  const { query = "", limit = MEDIA_PAGE_SIZE, offset = 0 } = options;
+  const term = query.trim();
+
+  const filters = [isNull(media.deletedAt)];
+
+  if (term.length > 0) {
+    const pattern = `%${term}%`;
+    const matches = or(
+      ilike(media.alt, pattern),
+      ilike(media.filename, pattern),
+    );
+    // `or()` is only undefined when given no arguments.
+    if (matches) filters.push(matches);
+  }
+
+  const rows = await db()
+    .select()
+    .from(media)
+    .where(and(...filters))
+    // `id` breaks the tie: two files uploaded in the same millisecond would
+    // otherwise be ordered arbitrarily, and an unstable sort under LIMIT/OFFSET
+    // can show the same row on two pages and skip another entirely.
+    .orderBy(desc(media.createdAt), desc(media.id))
+    .limit(limit + 1)
+    .offset(offset);
+
+  return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
+/**
+ * Media rows for a gallery, in the order the editor arranged them.
+ *
+ * Ordered by the join row's `order`, not by upload date: a gallery's sequence
+ * is a decision somebody made, and `media` has no column that records it.
+ *
+ * Soft-deleted assets are dropped. The join row survives a media delete being
+ * refused, but a row whose asset is gone cannot be rendered or re-picked.
+ */
+export async function listGalleryMedia(
+  joinTable: PgTable,
+  ownColumn: PgColumn,
+  mediaColumn: PgColumn,
+  orderColumn: PgColumn,
+  ownId: string,
+): Promise<Media[]> {
+  return db()
+    .select({
+      id: media.id,
+      key: media.key,
+      url: media.url,
+      alt: media.alt,
+      filename: media.filename,
+      width: media.width,
+      height: media.height,
+      uploadedBy: media.uploadedBy,
+      createdAt: media.createdAt,
+      updatedAt: media.updatedAt,
+      deletedAt: media.deletedAt,
+    })
+    .from(joinTable)
+    .innerJoin(media, eq(media.id, mediaColumn))
+    .where(and(eq(ownColumn, ownId), isNull(media.deletedAt)))
+    .orderBy(sql`${orderColumn} asc`, desc(media.createdAt));
 }
 
 /**

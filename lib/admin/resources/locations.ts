@@ -9,6 +9,7 @@ import {
   coordinateField,
   coordinatePairRule,
   hoursCompletenessRule,
+  galleryField,
   imageAltRule,
   imageFields,
   optionalText,
@@ -53,6 +54,9 @@ export const LOCATION_HERO: ImageFieldNames = {
   decorative: "heroImageDecorative",
 };
 
+/** `location_gallery_images`: ordered `media` rows for this row. */
+export const LOCATION_GALLERY_FIELD = "locationGalleryIds";
+
 export const locationSchema = z
   .object({
     name: requiredText("the branch name", 200),
@@ -77,6 +81,7 @@ export const locationSchema = z
     ),
     order: orderField,
     published: checkboxField,
+    [LOCATION_GALLERY_FIELD]: galleryField(),
     ...imageFields(LOCATION_HERO),
   })
   .check(imageAltRule(LOCATION_HERO))
@@ -160,6 +165,12 @@ const FIELDS: readonly Field[] = [
     altName: LOCATION_HERO.alt,
     altLabel: "Hero image alt text",
     hint: "Optional. The branch page uses its hero design-asset slot today. Stored for when a branch photograph is delivered.",
+  },
+  {
+    type: "gallery",
+    name: LOCATION_GALLERY_FIELD,
+    label: "Gallery",
+    hint: "Optional. Photographs of this branch. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a branch gallery yet.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

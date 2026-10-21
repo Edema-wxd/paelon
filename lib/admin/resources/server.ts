@@ -13,7 +13,10 @@ import {
   faqs,
   hmoLocations,
   hmos,
+  locationGalleryImages,
   locations,
+  media,
+  serviceGalleryImages,
   serviceLocations,
   serviceRelated,
   services,
@@ -26,9 +29,18 @@ import { AWARD_CERTIFICATE, AWARD_LOGO } from "./awards";
 import { BLOG_HERO, BLOG_RELATED_FIELD } from "./blog-posts";
 import { DOCTOR_HEADSHOT, DOCTOR_LOCATIONS_FIELD } from "./doctors";
 import { HMO_LOCATIONS_FIELD, HMO_LOGO } from "./hmos";
-import { HOURS_CONFIRMED_FIELD, LOCATION_HERO } from "./locations";
+import {
+  HOURS_CONFIRMED_FIELD,
+  LOCATION_GALLERY_FIELD,
+  LOCATION_HERO,
+} from "./locations";
 import { TESTIMONIAL_AVATAR, TESTIMONIAL_LOCATION_FIELD, TESTIMONIAL_SERVICE_FIELD } from "./testimonials";
-import { SERVICE_IMAGE, SERVICE_LOCATIONS_FIELD, SERVICE_RELATED_FIELD } from "./services";
+import {
+  SERVICE_GALLERY_FIELD,
+  SERVICE_IMAGE,
+  SERVICE_LOCATIONS_FIELD,
+  SERVICE_RELATED_FIELD,
+} from "./services";
 import { toHoursValue, toTimestamp, type AdminHours } from "./fields";
 import type { ResourceName } from "./index";
 import type { ImageFieldNames } from "./fields";
@@ -132,6 +144,19 @@ export interface ResourceServerConfig {
   images: readonly ImageFieldNames[];
   /** Join tables this resource's form owns. Synced after the row is written. */
   relations?: readonly ResourceRelation[];
+  /**
+   * Gallery fields: ordered sets of `media` rows in a join table.
+   *
+   * Separate from `relations` because the two are picked differently. A
+   * relation is a `<select>` over rows the editor screen loads as options; a
+   * gallery is picked from the media library, which the picker queries itself.
+   * Loading every media row as `<option>`s would be both wrong and unbounded.
+   *
+   * They are synced identically, though — `resource-actions.ts` concatenates
+   * the two, and `syncRelationIn` writes the submitted order into the join
+   * row's `order` when `orderColumn` is set.
+   */
+  galleries?: readonly ResourceRelation[];
   /** Foreign-key pickers this resource's form renders. */
   references?: readonly ResourceReference[];
   /** Columns whose before/after values go into the audit row. */
@@ -179,6 +204,24 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     permission: "services",
     tags: [CACHE_TAGS.services, CACHE_TAGS.locations],
     images: [SERVICE_IMAGE],
+    galleries: [
+      {
+        field: SERVICE_GALLERY_FIELD,
+        columns: {
+          table: serviceGalleryImages,
+          ownColumn: serviceGalleryImages.serviceId,
+          otherColumn: serviceGalleryImages.mediaId,
+          ownKey: "serviceId",
+          otherKey: "mediaId",
+          orderColumn: serviceGalleryImages.order,
+          orderKey: "order",
+          // Only `id` and `deletedAt` are read off this, which `media` has.
+          // The cast is the same one every other entry here makes.
+          otherTable: media as unknown as ContentTable,
+        },
+        optionsLabel: media.alt,
+      },
+    ],
     relations: [
       {
         field: SERVICE_LOCATIONS_FIELD,
@@ -235,6 +278,22 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     // rename or an unpublish has to reach all of them, not just /locations.
     tags: [CACHE_TAGS.locations, CACHE_TAGS.services, CACHE_TAGS.doctors, CACHE_TAGS.hmos],
     images: [LOCATION_HERO],
+    galleries: [
+      {
+        field: LOCATION_GALLERY_FIELD,
+        columns: {
+          table: locationGalleryImages,
+          ownColumn: locationGalleryImages.locationId,
+          otherColumn: locationGalleryImages.mediaId,
+          ownKey: "locationId",
+          otherKey: "mediaId",
+          orderColumn: locationGalleryImages.order,
+          orderKey: "order",
+          otherTable: media as unknown as ContentTable,
+        },
+        optionsLabel: media.alt,
+      },
+    ],
     toRow: (values) => {
       const { [HOURS_CONFIRMED_FIELD]: confirmed, hours, ...rest } = values;
       return {

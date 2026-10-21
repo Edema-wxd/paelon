@@ -119,7 +119,19 @@ Four rulings taken together, all from Francis directly. Migration
 - `/admin/authors` is not in §8's route list, which names `/admin/blog` alone.
   `authors` is its own §5 content type with its own permission, every post
   requires one, and there is nowhere else to create one. Raised as a spec gap.
-- Galleries are schema-only: the join tables exist, no field drives them.
+- Galleries are editable on services and branches via a `gallery` field type:
+  pick from the library, reorder with move up/down, remove. Buttons rather than
+  drag-and-drop, because a drag handle needs a dependency or a hand-rolled
+  pointer implementation and is unusable by keyboard unless a parallel control
+  exists anyway. Order is the submitted index, written to the join row's
+  `order` by `syncRelationIn`. No template renders a gallery yet.
+- **The picker was the actual cause of duplicate uploads**, not a missing
+  gallery feature. It was handed the 60 newest `media` rows and filtered them in
+  the browser, so past 60 images an older one could not be found and the only
+  way to use it was to upload a second copy. Searching and paging moved into
+  Postgres (`searchMediaRows`, `searchMediaAction`), and `/admin/media` gained
+  prev/next over the bucket listing it already supported. Reuse across posts
+  needed nothing: `media` references are many-to-one and always were.
 
 ---
 

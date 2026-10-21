@@ -7,6 +7,7 @@ import { serviceFamilyEnum, type Service } from "@/lib/db/schema";
 import {
   checkboxField,
   idListField,
+  galleryField,
   imageAltRule,
   imageFields,
   optionalText,
@@ -43,6 +44,9 @@ export const SERVICE_IMAGE: ImageFieldNames = {
   decorative: "featuredImageDecorative",
 };
 
+/** `service_gallery_images`: ordered `media` rows for this row. */
+export const SERVICE_GALLERY_FIELD = "serviceGalleryIds";
+
 export const serviceSchema = z
   .object({
     name: requiredText("the service name", 200),
@@ -58,6 +62,7 @@ export const serviceSchema = z
     [SERVICE_RELATED_FIELD]: idListField("related services"),
     order: orderField,
     published: checkboxField,
+    [SERVICE_GALLERY_FIELD]: galleryField(),
     ...imageFields(SERVICE_IMAGE),
   })
   .check(imageAltRule(SERVICE_IMAGE));
@@ -155,6 +160,12 @@ const FIELDS: readonly Field[] = [
     altName: SERVICE_IMAGE.alt,
     altLabel: "Featured image alt text",
     hint: "Optional. No template renders a service image yet — the cards and the detail hero use their design-asset slot. Stored for when one does.",
+  },
+  {
+    type: "gallery",
+    name: SERVICE_GALLERY_FIELD,
+    label: "Gallery",
+    hint: "Optional. Extra photographs for this service. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a service gallery yet.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

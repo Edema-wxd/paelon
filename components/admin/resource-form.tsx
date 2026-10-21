@@ -7,6 +7,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { useForm, type FieldValues, type Resolver } from "react-hook-form";
 
 import { HoursField } from "@/components/admin/hours-field";
+import { GalleryField } from "@/components/admin/gallery-field";
 import { MarkdownField } from "@/components/admin/markdown-field";
 import type { PickableMedia } from "@/components/admin/markdown-media-picker";
 import {
@@ -75,10 +76,13 @@ export interface ResourceFormProps {
    */
   options?: Record<string, readonly SelectOption[]>;
   /**
-   * The media library, for `markdown` fields declaring `figures`. Loaded by the
-   * editor screen, because reading it needs the database.
+   * Assets the row's stored body already references, resolved by the editor
+   * screen so the preview can render them. Not the library: the picker queries
+   * that itself.
    */
   media?: readonly PickableMedia[];
+  /** Each gallery field's current assets, in order, keyed by field name. */
+  galleryValues?: Record<string, readonly PickableMedia[]>;
   /** Hides the published toggle for a role that may not publish. */
   canPublish: boolean;
 }
@@ -90,6 +94,7 @@ export function ResourceForm({
   images = {},
   options = {},
   media,
+  galleryValues = {},
   canPublish,
 }: ResourceFormProps) {
   const config = RESOURCES[resource];
@@ -136,6 +141,22 @@ export function ResourceForm({
               decorative: false,
             },
           ]),
+      ),
+  );
+
+  /**
+   * Gallery selections, in the editor's order.
+   *
+   * Held as whole assets rather than ids, because the control renders a
+   * thumbnail and an alt-text warning for each. `react-hook-form` holds the
+   * matching id list so the resolver validates exactly what will submit.
+   */
+  const [galleries, setGalleries] = useState<Record<string, readonly PickableMedia[]>>(
+    () =>
+      Object.fromEntries(
+        config.fields
+          .filter((field) => field.type === "gallery")
+          .map((field) => [field.name, galleryValues[field.name] ?? []]),
       ),
   );
 
@@ -374,7 +395,8 @@ export function ResourceForm({
             required={field.required}
             invalid={invalid}
             describedBy={describedBy}
-            media={field.figures ? media : undefined}
+            figures={field.figures === true}
+            {...(media ? { figureImages: media } : {})}
             value={markdown[field.name] ?? ""}
             onBlur={() => void registration.onBlur({ target: { name: field.name } })}
             onChange={(next) => {
@@ -468,6 +490,28 @@ export function ResourceForm({
             className="mt-0.5 size-4 rounded border-input"
           />
         );
+
+      case "gallery": {
+        form.register(field.name);
+        const chosen = galleries[field.name] ?? [];
+        return (
+          <GalleryField
+            name={field.name}
+            label={field.label}
+            value={chosen}
+            max={field.max}
+            describedBy={describedBy}
+            onChange={(next) => {
+              setGalleries((current) => ({ ...current, [field.name]: next }));
+              form.setValue(
+                field.name,
+                next.map((asset) => asset.id),
+                { shouldValidate: form.formState.isSubmitted },
+              );
+            }}
+          />
+        );
+      }
 
       case "tags": {
         form.register(field.name);
@@ -621,13 +665,39 @@ function FieldRow({
   altErrors?: string[];
   children: React.ReactNode;
 }) {
-  // Both render their own `<fieldset>` with a legend, labels and errors, so
+  // These render their own `<fieldset>` with a legend, labels and errors, so
   // this contributes nothing around them — a second label for a control that
   // already has three would be noise in a screen reader.
   if (field.type === "image" || field.type === "hours") return <>{children}</>;
 
   const inputId = `field-${field.name}`;
   const invalid = (errors?.length ?? 0) > 0 || (altErrors?.length ?? 0) > 0;
+
+  // A gallery has no single focusable control for a `<label for>` to point at —
+  // it is a list of rows, each with its own buttons — so it is grouped rather
+  // than labelled. A label pointing at an id that does not exist is worse than
+  // no label: a screen reader announces nothing and the click target is dead.
+  if (field.type === "gallery") {
+    return (
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-foreground">
+          {field.label}
+          {field.required ? <span className="text-destructive"> *</span> : null}
+        </legend>
+        {children}
+        {field.hint ? (
+          <p id={`${inputId}-hint`} className="text-xs text-muted-foreground">
+            {field.hint}
+          </p>
+        ) : null}
+        {invalid ? (
+          <p id={`${inputId}-error`} role="alert" className="text-sm text-destructive">
+            {errors?.[0]}
+          </p>
+        ) : null}
+      </fieldset>
+    );
+  }
 
   if (field.type === "checkbox") {
     return (

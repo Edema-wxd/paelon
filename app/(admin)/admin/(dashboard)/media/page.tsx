@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { MediaGrid } from "@/components/admin/media-grid";
 import { MediaUploader } from "@/components/admin/media-uploader";
@@ -29,22 +30,44 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
-export default async function AdminMediaPage() {
+/** Files per page. Matches what the grid lays out comfortably. */
+const PAGE_SIZE = 60;
+
+interface PageProps {
+  searchParams: Promise<{ offset?: string }>;
+}
+
+export default async function AdminMediaPage({ searchParams }: PageProps) {
   const user = await requireAdminUser();
 
   if (!can(user.role, "read", "media")) {
     return <NotPermitted roleLabel={user.roleLabel} />;
   }
 
-  const { files, hasMore } = await listMedia({ limit: 60 });
+  const { offset: rawOffset } = await searchParams;
+
+  // Clamped and snapped to a page boundary: an offset typed into the URL should
+  // land on a page rather than halfway between two.
+  const parsed = Number.parseInt(rawOffset ?? "0", 10);
+  const offset =
+    Number.isFinite(parsed) && parsed > 0
+      ? Math.min(Math.floor(parsed / PAGE_SIZE) * PAGE_SIZE, 100_000)
+      : 0;
+
+  const { files, hasMore } = await listMedia({ limit: PAGE_SIZE, offset });
+
+  const hrefFor = (next: number) =>
+    next <= 0 ? "/admin/media" : `/admin/media?offset=${next}`;
 
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-bold text-primary">Media</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Editorial images — blog heroes, headshots, branch galleries. Paste a
-        file&rsquo;s URL into the matching field in content. Deleting is
-        permanent and is refused while a file is still in use.
+        Editorial images — blog heroes, headshots, branch galleries. One upload
+        serves as many pages as need it: pick it from the image field in
+        content rather than uploading a second copy. Alt text set here is what
+        every one of those pages uses. Deleting is permanent and is refused
+        while a file is still in use.
       </p>
 
       {can(user.role, "create", "media") ? (
@@ -65,10 +88,42 @@ export default async function AdminMediaPage() {
               contributor gets no delete controls rather than ones that always refuse. */}
           <MediaGrid files={files} canDelete={canOnRow(user, "delete", "media", {})} />
         </div>
-        {hasMore ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Showing the 60 most recent files. Older files are not listed yet.
-          </p>
+        {/* Prev/next rather than numbered pages: the bucket API returns no
+            total, and `listMedia` is explicit that guessing a page count from a
+            partial page is how a library hides its last file. */}
+        {offset > 0 || hasMore ? (
+          <nav
+            aria-label="Media library pagination"
+            className="mt-6 flex items-center justify-between gap-4"
+          >
+            {offset > 0 ? (
+              <Link
+                href={hrefFor(offset - PAGE_SIZE)}
+                className="text-sm text-accent underline underline-offset-4 hover:no-underline"
+              >
+                Newer files
+              </Link>
+            ) : (
+              <span />
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              {files.length > 0
+                ? `Files ${offset + 1}–${offset + files.length}`
+                : "No files on this page"}
+            </p>
+
+            {hasMore ? (
+              <Link
+                href={hrefFor(offset + PAGE_SIZE)}
+                className="text-sm text-accent underline underline-offset-4 hover:no-underline"
+              >
+                Older files
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
         ) : null}
       </section>
     </div>

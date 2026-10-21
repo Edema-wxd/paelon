@@ -34,14 +34,16 @@ import { Textarea } from "@/components/ui/textarea";
  *
  * ## Images
  *
- * `media` is the library the Image button picks from. A body references an
- * asset by `media.id`, which nobody can type, so the picker is what makes the
- * syntax usable at all. The same list resolves the preview's figures, so an
- * image placed here renders in the preview exactly as it will on the site —
- * which is the whole point of sharing the renderer (decision D1).
+ * `figures` adds the Image button, which opens the library picker. A body
+ * references an asset by `media.id`, which nobody can type, so the picker is
+ * what makes the syntax usable at all.
  *
- * Omit `media` and the Image button does not appear: a field whose body has no
- * figures, such as a service description, has no use for it.
+ * `figureImages` is the set the preview resolves against. It arrives holding
+ * the assets the stored body already references — the editor screen resolves
+ * those by id — and grows as the editor picks more, so a figure renders in the
+ * preview exactly as it will on the site, which is the whole point of sharing
+ * the renderer (decision D1). The picker itself needs no list: it queries the
+ * library directly, so the whole of it is reachable.
  */
 
 interface Snippet {
@@ -72,7 +74,8 @@ export function MarkdownField({
   required,
   invalid,
   describedBy,
-  media,
+  figures = false,
+  figureImages,
 }: {
   name: string;
   id: string;
@@ -84,10 +87,20 @@ export function MarkdownField({
   required?: boolean;
   invalid?: boolean;
   describedBy?: string;
-  /** The media library, when this field's body supports figures. */
-  media?: readonly PickableMedia[];
+  /** Adds the Image button. Off for bodies that cannot hold a figure. */
+  figures?: boolean;
+  /** Assets the stored body already references, for the preview. */
+  figureImages?: readonly PickableMedia[];
 }) {
   const [showPreview, setShowPreview] = useState(false);
+
+  /**
+   * Assets picked in this session, on top of the ones the body already used.
+   *
+   * Kept so the preview can render a figure the moment it is placed, without a
+   * round trip to re-resolve an id the picker just handed over.
+   */
+  const [picked, setPicked] = useState<readonly PickableMedia[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewId = useId();
 
@@ -99,7 +112,7 @@ export function MarkdownField({
   const previewImages = useMemo<ReadonlyMap<string, ContentImage>>(
     () =>
       new Map(
-        (media ?? []).map((asset) => [
+        [...(figureImages ?? []), ...picked].map((asset) => [
           asset.id,
           {
             url: asset.url,
@@ -109,7 +122,7 @@ export function MarkdownField({
           },
         ]),
       ),
-    [media],
+    [figureImages, picked],
   );
 
   /**
@@ -124,6 +137,10 @@ export function MarkdownField({
    * on without typing leaves `""`, which renders no `<figcaption>`.
    */
   function insertFigure(asset: PickableMedia) {
+    setPicked((current) =>
+      current.some((entry) => entry.id === asset.id) ? current : [...current, asset],
+    );
+
     const textarea = textareaRef.current;
     const at = textarea ? textarea.selectionStart : value.length;
 
@@ -184,9 +201,7 @@ export function MarkdownField({
           </button>
         ))}
 
-        {media ? (
-          <MarkdownMediaPicker media={media} onPick={insertFigure} />
-        ) : null}
+        {figures ? <MarkdownMediaPicker onPick={insertFigure} /> : null}
 
         <Button
           type="button"

@@ -269,6 +269,17 @@ export interface RelationColumns {
   ownKey: string;
   otherKey: string;
   otherTable: ContentTable;
+  /**
+   * The join row's sequence column, for a relation whose order is a decision.
+   *
+   * Galleries have one: `service_gallery_images.order` is the sequence an
+   * editor arranged, and neither table has a column that records it. Set it and
+   * the submitted order is written and read back; leave it off and membership
+   * is a set, which is what `blog_post_related` and `hmo_locations` are.
+   */
+  orderColumn?: PgColumn;
+  /** The join row's order property name, when `orderColumn` is set. */
+  orderKey?: string;
 }
 
 /**
@@ -295,10 +306,18 @@ export async function listRelationIds(
   relation: RelationColumns,
   ownId: string,
 ): Promise<string[]> {
-  const rows = await db()
+  const query = db()
     .select({ id: relation.otherColumn })
     .from(relation.table)
     .where(and(eq(relation.ownColumn, ownId), liveTargets(relation)));
+
+  // An ordered relation has to come back in its order, or the gallery field
+  // would render the editor's sequence shuffled and saving the form would then
+  // persist the shuffle.
+  const rows = relation.orderColumn
+    ? await query.orderBy(asc(relation.orderColumn))
+    : await query;
+
   return rows.map((row) => String(row.id));
 }
 
@@ -335,9 +354,20 @@ async function syncRelationIn(
 
   if (unique.length === 0) return;
 
+  // The index in the submitted list *is* the order, for a relation that has
+  // one. `Set` preserves insertion order, so this is the sequence the editor
+  // arranged, with duplicates collapsed onto their first appearance.
+  const orderKey = relation.orderKey;
+
   await tx
     .insert(relation.table)
-    .values(unique.map((id) => ({ [relation.ownKey]: ownId, [relation.otherKey]: id })))
+    .values(
+      unique.map((id, index) => ({
+        [relation.ownKey]: ownId,
+        [relation.otherKey]: id,
+        ...(orderKey === undefined ? {} : { [orderKey]: index }),
+      })),
+    )
     .onConflictDoNothing();
 }
 

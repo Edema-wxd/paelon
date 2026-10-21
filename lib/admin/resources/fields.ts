@@ -235,6 +235,35 @@ export function idListField(label: string) {
     .transform((values) => [...new Set(values)]);
 }
 
+/**
+ * An ordered list of `media.id`s, for a `gallery` field.
+ *
+ * `idListField` with a cap and a clearer message. Order is preserved —
+ * `Set` keeps insertion order, so a duplicate collapses onto its first
+ * appearance rather than reordering the rest, which is what an editor who
+ * added the same picture twice would expect to see.
+ *
+ * That each id still names a live `media` row is the foreign key's job, the
+ * same division `idListField` draws: an asset deleted between the form
+ * rendering and the save is a race only the constraint can settle.
+ */
+export function galleryField(max = 24) {
+  return z
+    .preprocess(
+      (value) => {
+        if (value === undefined || value === null) return [];
+        const list = Array.isArray(value) ? value : [value];
+        return list
+          .map((entry) => String(entry).trim())
+          .filter((entry) => entry !== "");
+      },
+      z
+        .array(z.uuid("Choose images from the media library."))
+        .max(max, `A gallery holds at most ${max} images.`),
+    )
+    .transform((values) => [...new Set(values)]);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Numbers and coordinates                                                    */
 /* -------------------------------------------------------------------------- */

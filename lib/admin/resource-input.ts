@@ -11,9 +11,11 @@ import type { Field, ResourceConfig } from "@/lib/admin/resource-config";
  *
  * So the config's field types decide how each name is read:
  *
- *  - `tags` and `multiselect` are read with `getAll`, always as an array, even
- *    when there are none. A schema that only sees a list when two were picked
- *    is a schema that fails on the first real submission.
+ *  - `tags`, `multiselect` and `gallery` are read with `getAll`, always as an
+ *    array, even when there are none. A schema that only sees a list when two
+ *    were picked is a schema that fails on the first real submission. `getAll`
+ *    returns them in document order, which is what makes a gallery's arranged
+ *    sequence survive the round trip.
  *  - `hours` is read from `hours.<day>.<part>` entries and rebuilt as the
  *    nested object `adminHoursField` expects. Dotted names rather than JSON in
  *    a hidden input, so the seven days still submit — and still validate — with
@@ -43,7 +45,12 @@ export function resourceInput<R>(
 ): Record<string, unknown> {
   const listFields = new Set(
     config.fields
-      .filter((field) => field.type === "tags" || field.type === "multiselect")
+      .filter(
+        (field) =>
+          field.type === "tags" ||
+          field.type === "multiselect" ||
+          field.type === "gallery",
+      )
       .map((field) => field.name),
   );
   const hoursFields = config.fields.filter(

@@ -94,6 +94,18 @@ export type Field =
    */
   | (FieldBase & { type: "tags"; maxItems?: number; maxLength?: number })
   /**
+   * An ordered set of images from the media library.
+   *
+   * Backed by a join table rather than a column, so it is declared in
+   * `./resources/server.ts` under `galleries` as well as here — the field name
+   * is what ties the two together, the same way `multiselect` works.
+   *
+   * Order is the editor's: the control submits one hidden input per image in
+   * the arranged sequence, and `syncRelationIn` writes the index into the join
+   * row's `order`.
+   */
+  | (FieldBase & { type: "gallery"; max?: number })
+  /**
    * The rows of a join table, chosen from a list the editor screen loads. The
    * options are *not* in the config: they are rows, they change, and a config
    * that is client-safe cannot read them. `name` is the key the screen files
