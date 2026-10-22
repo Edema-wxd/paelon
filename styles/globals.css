@@ -158,3 +158,50 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Scroll-driven reveal for the specialist cards (/doctors).
+ *
+ * The one piece of non-interactive motion on the site, and it is deliberately
+ * scroll-driven rather than fired on load: a card that animates while it is
+ * three screens below the fold is motion nobody sees. A card already in view
+ * when the page opens sits at the end of its range, so the first one — the LCP
+ * candidate — never starts transparent and the budget in spec §13 is untouched.
+ *
+ * The range ends halfway through entry — a card is fully opaque once half of
+ * it has cleared the viewport edge, so it is solid long before it reaches the
+ * reading area. A scroll-driven animation is reversible by
+ * nature, and this is clinical information: it must never be half-transparent
+ * anywhere a reader is actually reading, only in the strip at the very bottom
+ * of the screen.
+ *
+ * `view()` is Chromium-only today. Everywhere else the `@supports` guard leaves
+ * the cards exactly as they render without it, which is the finished state.
+ *
+ * The global reduced-motion rule above cannot switch this off: a scroll-driven
+ * animation takes its progress from the timeline, not from `animation-duration`,
+ * so the preference is honoured here explicitly.
+ */
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: reveal-rise both;
+      /* Strong ease-out (easing.dev). Scoped here rather than onto Tailwind's
+         --ease-out, which every existing transition on the site reads. */
+      animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+      animation-timeline: view();
+      animation-range: entry 0% entry 50%;
+    }
+  }
+}

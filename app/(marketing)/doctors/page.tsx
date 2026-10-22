@@ -120,11 +120,11 @@ export default async function DoctorsPage() {
         navy the tint resolves to. Add a banner slot to lib/images.ts when the
         photograph arrives — not a stock picture of someone else's hospital.
       */}
-      <section className="bg-primary px-4 py-16 text-center sm:px-6 lg:py-24">
-        <h1 className="text-4xl font-bold text-primary-foreground lg:text-5xl">
+      <section className="bg-primary px-4 py-12 text-center sm:px-6 sm:py-16 lg:py-24">
+        <h1 className="text-4xl font-bold text-primary-foreground sm:text-5xl lg:text-6xl">
           Our Specialists
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-primary-foreground/85">
+        <p className="mx-auto mt-4 max-w-2xl text-base text-primary-foreground/85 sm:mt-6 sm:text-lg">
           {DESCRIPTION}
         </p>
       </section>
@@ -135,7 +135,7 @@ export default async function DoctorsPage() {
 
       <div className="mx-auto max-w-360 px-4 py-12 sm:px-6 lg:px-25 lg:py-16">
         {doctors.length > 0 ? (
-          <ul className="flex flex-col gap-10 lg:gap-14">
+          <ul className="flex flex-col gap-8 sm:gap-10 lg:gap-14">
             {doctors.map((doctor, index) => (
               <li key={doctor.id}>
                 <SpecialistCard

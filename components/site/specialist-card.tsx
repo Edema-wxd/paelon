@@ -14,8 +14,13 @@ interface SpecialistCardProps {
   priority?: boolean;
 }
 
-/** The photograph's rendered box, matching the Figma card's second column. */
-const PORTRAIT_SIZES = "(min-width: 1024px) 444px, 100vw";
+/**
+ * The photograph's rendered box. 444px is the Figma card's second column; the
+ * tablet step matches the 38% track the grid falls back to, and below that the
+ * card is stacked and the image is full-bleed.
+ */
+const PORTRAIT_SIZES =
+  "(min-width: 1280px) 444px, (min-width: 768px) 38vw, 100vw";
 
 /**
  * One clinician, as a full-width card on `/doctors` (Figma "Our Specialists",
@@ -34,6 +39,11 @@ const PORTRAIT_SIZES = "(min-width: 1024px) 444px, 100vw";
  * Everything below the name is conditional. A doctor seeded without a bio
  * shows a name, a role and a way to book — never invented credentials
  * (CLAUDE.md).
+ *
+ * `reveal-on-scroll` is the page's only non-interactive motion: each card
+ * settles into place as it enters the viewport, scroll-driven so it plays when
+ * someone is actually looking at it. See the rule in `styles/globals.css` for
+ * why it cannot touch the LCP card or a reduced-motion reader.
  */
 export function SpecialistCard({
   doctor,
@@ -49,14 +59,14 @@ export function SpecialistCard({
       : null;
 
   return (
-    <article className="grid overflow-hidden rounded-xl bg-surface shadow-md lg:grid-cols-[minmax(0,1fr)_444px]">
-      <div className="order-2 flex flex-col p-6 sm:p-8 lg:order-1 lg:p-10">
+    <article className="reveal-on-scroll grid overflow-hidden rounded-xl bg-surface shadow-md md:grid-cols-[minmax(0,1fr)_38%] xl:grid-cols-[minmax(0,1fr)_27.75rem]">
+      <div className="order-2 flex flex-col p-6 sm:p-8 md:order-1 lg:p-10">
         {/*
           The name is the link, not the whole card: a card-sized target holding
           a name, a role, a bio and a chip row gives a screen reader one
           enormous link label. Same rule as `DoctorCard` on /about.
         */}
-        <h2 className="text-3xl text-primary lg:text-5xl">
+        <h2 className="text-3xl text-primary sm:text-4xl lg:text-5xl xl:text-6xl">
           <Link
             href={`/doctors/${doctor.slug}`}
             className="rounded-sm underline-offset-4 hover:text-accent hover:underline"
@@ -65,7 +75,9 @@ export function SpecialistCard({
           </Link>
         </h2>
 
-        <p className="mt-3 text-xl text-accent lg:text-2xl">{doctor.title}</p>
+        <p className="mt-3 text-lg text-accent sm:text-xl lg:text-2xl">
+          {doctor.title}
+        </p>
 
         {doctor.bio ? (
           // Markdown per spec §5, through the one renderer (CLAUDE.md). The
@@ -82,7 +94,7 @@ export function SpecialistCard({
           </p>
         ) : null}
 
-        <div className="mt-auto flex flex-col gap-4 pt-8 sm:flex-row sm:items-center">
+        <div className="mt-auto flex flex-col gap-4 pt-8 xl:flex-row xl:items-center">
           {doctor.specialties.length > 0 ? (
             <ul
               aria-label={`${doctor.name}'s specialties`}
@@ -113,7 +125,10 @@ export function SpecialistCard({
           <Button
             asChild
             size="pill"
-            className="w-full sm:ml-auto sm:w-auto sm:min-w-[310px]"
+            // Press feedback only: the button confirms it was hit, in 120ms,
+            // on transform alone. The global reduced-motion rule in
+            // styles/globals.css collapses it for anyone who asks.
+            className="w-full transition-transform duration-[120ms] active:scale-[0.98] xl:ml-auto xl:w-auto xl:min-w-[310px]"
           >
             <Link href="/book">
               Book Consultation Now
@@ -123,7 +138,7 @@ export function SpecialistCard({
         </div>
       </div>
 
-      <div className="relative order-1 aspect-4/5 w-full bg-secondary lg:order-2 lg:aspect-auto lg:h-full">
+      <div className="relative order-1 aspect-4/5 w-full bg-secondary sm:aspect-3/4 md:order-2 md:aspect-auto md:h-full">
         {portrait ? (
           <Image
             src={portrait.url}
@@ -132,7 +147,7 @@ export function SpecialistCard({
             height={portrait.height}
             sizes={PORTRAIT_SIZES}
             priority={priority}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover object-top"
           />
         ) : (
           /* TODO(asset): no clinician photographs have been delivered, and
