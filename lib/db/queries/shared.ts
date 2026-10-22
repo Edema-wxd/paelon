@@ -127,4 +127,5 @@ export const CACHE_TAGS = {
   awards: "awards",
   faqs: "faqs",
   siteSettings: "site-settings",
+  about: "about",
 } as const;

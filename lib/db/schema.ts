@@ -81,6 +81,9 @@ const tsvector = customType<{ data: string; driverData: string }>({
  */
 const SITE_SETTINGS_ROW_ID = 1;
 
+/** Fixed primary key of the `about_content` singleton. */
+const ABOUT_CONTENT_ROW_ID = 1;
+
 /* -------------------------------------------------------------------------- */
 /* Enums                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -763,6 +766,57 @@ export const siteSettings = pgTable("site_settings", {
   }),
 });
 
+/**
+ * About-page prose, as one row (migration 0005).
+ *
+ * `/about` is a single page of prose. Everything on it that is genuinely rows
+ * — the leadership team, the awards timeline — already has a table and a CRUD
+ * screen; what is left is six singleton fields. Those lived in
+ * `content/about.json` until 2026-10-22, on the grounds that a one-row table
+ * plus a screen to edit that one row bought nothing. It buys the thing that
+ * turned out to matter: Paelon writing the founding story without a deploy.
+ *
+ * Legal pages did not follow. Decision C3 stands — see the note in
+ * `lib/legal.ts`.
+ *
+ * Every prose column is nullable, and null means "nobody has written this
+ * yet". The template renders only the fields that have been filled in, so an
+ * empty column is a quiet gap rather than a visible placeholder.
+ *
+ * The singleton CHECK (`id = 1`), the motto length CHECK and the `updated_at`
+ * trigger live in `drizzle/0005_about_content.sql`, as with every other
+ * constraint in this schema. The migration also inserts the row, so a read may
+ * assume it exists.
+ */
+export const aboutContent = pgTable("about_content", {
+  /** Always 1. The hand-written CHECK is what actually enforces the singleton. */
+  id: integer("id").primaryKey().default(ABOUT_CONTENT_ROW_ID),
+  published: boolean("published").notNull().default(false),
+  /** True while the copy is a draft nobody at Paelon has confirmed. */
+  placeholder: boolean("placeholder").notNull().default(false),
+  /** Markdown. One or two sentences under the `h1`. */
+  intro: text("intro"),
+  /** Markdown. Spec §6: "Founding story (Patricia, Dr. Ngozi Onyia)." */
+  foundingStory: text("founding_story"),
+  /** Markdown. */
+  mission: text("mission"),
+  /** Markdown. */
+  vision: text("vision"),
+  /** Markdown. */
+  valueProposition: text("value_proposition"),
+  /** Plain text, max 200 chars by CHECK. Shown as a pull quote. */
+  motto: text("motto"),
+  /** Markdown. Spec §6: "ESG / IFC EDGE certification block". */
+  esg: text("esg"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  /** set null, not cascade: deactivating an admin must not delete the page. */
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+});
+
 /* -------------------------------------------------------------------------- */
 /* Submission tables — personal data, no `published`, no `order`              */
 /* -------------------------------------------------------------------------- */
@@ -1132,6 +1186,7 @@ export const contactSubmissionsRelations = relations(
 /* -------------------------------------------------------------------------- */
 
 export type Service = typeof services.$inferSelect;
+export type AboutContentRow = typeof aboutContent.$inferSelect;
 export type Doctor = typeof doctors.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type Hmo = typeof hmos.$inferSelect;

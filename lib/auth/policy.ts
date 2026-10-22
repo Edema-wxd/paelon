@@ -95,7 +95,8 @@ export type Resource =
   | "users"
   | "audit_log"
   | "analytics"
-  | "site_settings";
+  | "site_settings"
+  | "about_content";
 
 export type Action = "read" | "create" | "update" | "delete" | "publish";
 
@@ -187,6 +188,24 @@ export function can(role: Role, action: Action, resource: Resource): boolean {
   // screen only ever updates it.
   if (resource === "site_settings") {
     return (action === "read" || action === "update") && role === "admin";
+  }
+
+  /*
+   * The About page's prose (migration 0005). Editorial content, so an `editor`
+   * has it — §8 Roles gives an editor CRUD on content, and the founding story
+   * is content in the way a turnaround promise is not. A `contributor` does
+   * not: their grant is scoped to rows they created, and a singleton the
+   * migration created has no author to scope to.
+   *
+   * No create and no delete. The row is created by the migration and the
+   * screen only ever updates it; `publish` is the `published` column on that
+   * same update, not a separate action.
+   */
+  if (resource === "about_content") {
+    return (
+      (action === "read" || action === "update") &&
+      (role === "admin" || role === "editor")
+    );
   }
 
   switch (role) {

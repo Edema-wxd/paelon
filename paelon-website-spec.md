@@ -163,7 +163,7 @@ clsx tailwind-merge
 │   ├── email/
 │   ├── analytics/
 │   └── utils.ts
-├── content/                    # Legal pages as JSON (content/legal/)
+├── content/                    # Legal pages as JSON (content/legal/). About copy is in Postgres — §6
 ├── seed/                       # Static JSON seed data for Phase 1
 │   ├── services.json
 │   ├── doctors.json
@@ -557,7 +557,7 @@ Seventeen templates. Each has an owning group per the timeline in section 1. Do 
 - Awards and accreditations as a scrollable timeline, from the `awards` table.
 - Leadership team with photos and bios, from the `doctors` table, each card linking to `/doctors/[slug]`.
 - ESG / IFC EDGE certification block.
-- The prose on this page is a singleton with no rows in it, so it lives in `content/about.json` behind `lib/about.ts` — the same arrangement §8 uses for legal pages, and for the same reason: a one-row table plus an admin screen to edit that one row buys nothing. It ships with every field null and each section renders only once its copy exists. `published: false` serves the page `noindex` until it does.
+- The prose on this page is a singleton with no rows in it, held as the `about_content` row and written in `/admin/about` (decision D5, 2026-10-22; migration 0005). It was `content/about.json` until then, on the grounds that a one-row table plus a screen to edit it buys nothing — which stopped holding when Paelon needed to write the founding story without a deploy. Legal pages did not follow; C3 stands. The row ships with every field null, each section renders only once its copy exists, and `published: false` serves the page `noindex` until it does.
 
 #### Services index `/services`
 - Filterable by service family.
@@ -778,6 +778,7 @@ All content deletes are soft deletes.
 - `/admin/contact` — Contact submissions.
 - `/admin/corporate-enquiries` — Corporate enquiries.
 - `/admin/services` — Service CRUD.
+- `/admin/about` — the About page's prose, as one form (D5). Not CRUD: the row is created by migration 0005 and only ever updated.
 - `/admin/doctors` — Doctor CRUD.
 - `/admin/locations` — Location CRUD.
 - `/admin/hmos` — HMO CRUD.
@@ -805,7 +806,7 @@ All content deletes are soft deletes.
 
 There is no `/admin/settings`. Settings stay in env and seed, and change by deploy. Add a narrow `site_settings` table for non-secret display values only if Paelon names a value that must change without a deploy.
 
-There is no `/admin/legal`. See Content editing.
+There is no `/admin/legal`. See Content editing. `/admin/about` edits the About page's prose (D5) and is not a legal route.
 
 ### Booking workflow
 

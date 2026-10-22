@@ -31,7 +31,7 @@ const PATIENT_DATA: Resource[] = [
   "corporate_enquiries",
   "newsletter_subscribers",
 ];
-const ALL: Resource[] = [...CLINICAL, ...EDITORIAL, ...PATIENT_DATA, "media", "users", "audit_log", "analytics", "site_settings"];
+const ALL: Resource[] = [...CLINICAL, ...EDITORIAL, ...PATIENT_DATA, "media", "users", "audit_log", "analytics", "site_settings", "about_content"];
 
 type Grants = Record<Resource, readonly Action[]>;
 
@@ -66,6 +66,8 @@ const EXPECTED: Record<Role, Grants> = {
     // No create and no delete: migration 0003 creates the single row, and the
     // screen only ever updates it.
     site_settings: ["read", "update"],
+    // Same shape, same reason — migration 0005 creates this row.
+    about_content: ["read", "update"],
   },
   editor: {
     services: ALL_BUT_DELETE,
@@ -89,6 +91,10 @@ const EXPECTED: Record<Role, Grants> = {
     // `editor` branch of `can()` would grant by omission if `site_settings`
     // were not checked before it.
     site_settings: NOTHING,
+    // Unlike settings: the About page's prose is editorial content, and §8
+    // gives an editor CRUD on content. The turnaround on /admin/settings is a
+    // promise to every patient, which is why that one stays admin-only.
+    about_content: ["read", "update"],
   },
   contributor: {
     services: NOTHING,
@@ -110,6 +116,9 @@ const EXPECTED: Record<Role, Grants> = {
     audit_log: NOTHING,
     analytics: NOTHING,
     site_settings: NOTHING,
+    // A contributor's grant is scoped to rows they created, and a singleton
+    // the migration created has no author to scope to.
+    about_content: NOTHING,
   },
 };
 

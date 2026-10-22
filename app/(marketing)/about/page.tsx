@@ -24,18 +24,16 @@ const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
  *
  * ## What comes from where
  *
- * Three sources, and the split is deliberate. The prose — founding story,
- * mission, vision, value proposition, motto, ESG — is a singleton with no rows
- * in it, so it lives in `content/about.json` behind `lib/about.ts`, the way
- * spec §8 keeps legal pages as files. The leadership team is the `doctors`
- * table, and each card links to the profile at `/doctors/[slug]`. The awards
- * timeline is the `awards` table. Both of those already have CRUD screens, so
- * nothing here duplicates an admin surface.
+ * Three sources, all of them Postgres since migration 0005. The prose —
+ * founding story, mission, vision, value proposition, motto, ESG — is the
+ * `about_content` singleton behind `lib/about.ts`, written in `/admin/about`.
+ * The leadership team is the `doctors` table, and each card links to the
+ * profile at `/doctors/[slug]`. The awards timeline is the `awards` table.
  *
  * ## Why so much of it renders nothing today
  *
- * None of the three has content. `content/about.json` ships with every field
- * null, and neither `seed/doctors.json` nor `seed/awards.json` exists. Spec §6
+ * None of the three has content. The `about_content` row ships with every
+ * field null, and neither `seed/doctors.json` nor `seed/awards.json` exists. Spec §6
  * asks for a founding story about Patricia and Dr. Ngozi Onyia, a mission, a
  * vision and an ESG certification claim: real people and verifiable claims about
  * the hospital, every one of which CLAUDE.md forbids drafting. So each section
@@ -76,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
      * Same rule as the legal pages: an About page whose sections are still
      * empty must not rank for the hospital's name. `follow` stays on so the
      * doctor profiles linked from here are still discovered. This lifts itself
-     * the moment `published` flips in content/about.json.
+     * the moment `published` is ticked in `/admin/about`.
      */
     ...(about.published ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
@@ -133,9 +131,10 @@ export default async function AboutPage() {
 
         {nothingWritten ? (
           /*
-           * TODO(seed): every field in content/about.json — the founding story,
-           * mission, vision, value proposition, motto and ESG block. See
-           * content/README.md for what each one is and where it renders.
+           * TODO(seed): every field of the `about_content` row — the founding
+           * story, mission, vision, value proposition, motto and ESG block.
+           * Written in `/admin/about`; content/README.md says what each one is
+           * and where it renders.
            */
           <PendingNote
             className="mt-8 max-w-2xl"

@@ -52,6 +52,10 @@ const NAV: ReadonlyArray<
   { href: "/admin/authors", label: "Authors", gate: { action: "read", resource: "authors" }, built: true },
   { href: "/admin/awards", label: "Awards", gate: { action: "read", resource: "awards" }, built: true },
   { href: "/admin/faqs", label: "FAQs", gate: { action: "read", resource: "faqs" }, built: true },
+  // The About page's prose, which was content/about.json until migration 0005.
+  // Sits after the content types because the sections of /about that are rows
+  // — the team, the timeline — are edited above it.
+  { href: "/admin/about", label: "About page", gate: { action: "read", resource: "about_content" }, built: true },
   { href: "/admin/media", label: "Media", gate: { action: "read", resource: "media" }, built: true },
   { href: "/admin/users", label: "Staff", gate: { action: "read", resource: "users" }, built: true },
   { href: "/admin/audit", label: "Audit log", gate: { action: "read", resource: "audit_log" }, built: true },

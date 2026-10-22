@@ -61,7 +61,8 @@ These must be resolved with Francis before the site goes live.
   service and location page, with `FAQPage` JSON-LD — all of which is built and
   renders nothing. Needed per entry: `question`, `answer`, `slug`, and a
   `category` from `general | booking | services | insurance | emergencies`.
-- **`content/about.json` — every field is null.** Not a seed file, but the same
+- **The `about_content` row — every field is null.** Not a seed file, and no
+  longer a file at all (migration 0005): it is written in `/admin/about`. Same
   gap: the founding story, mission, vision, value proposition, motto and ESG
   block for `/about`. See `content/README.md` for the field list and how the
   page behaves until they are filled in.

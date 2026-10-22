@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import Image from "next/image";
+
 import { ArticleBody } from "@/components/site/article-body";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { PendingNote } from "@/components/site/pending-note";
@@ -9,6 +11,7 @@ import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 import {
   getDoctorBySlug,
+  getDoctorHeadshots,
   getDoctors,
   getLocationsByDoctor,
   getPrimaryLocation,
@@ -141,21 +144,33 @@ export default async function DoctorProfilePage({ params }: PageProps) {
 
   if (!doctor) notFound();
 
-  const [branches, primary] = await Promise.all([
+  const [branches, primary, headshots] = await Promise.all([
     getLocationsByDoctor(doctor.id),
     getPrimaryLocation(),
+    getDoctorHeadshots([doctor]),
   ]);
+
+  /*
+   * The photograph an editor uploaded against this row, if there is one.
+   * Dimensions are what let `next/image` reserve the box; a `media` row from
+   * before migration 0004 has none, and the placeholder is better than a
+   * portrait that shifts the page as it loads (spec §13 CLS budget).
+   */
+  const uploaded = headshots.get(doctor.id);
+  const portrait =
+    uploaded && uploaded.width !== null && uploaded.height !== null
+      ? { ...uploaded, width: uploaded.width, height: uploaded.height }
+      : null;
 
   const url = new URL(`/doctors/${doctor.slug}`, siteUrl).toString();
 
   /**
    * `Physician` per spec §11.
    *
-   * Only seeded facts, like the `MedicalProcedure` on a service page. No
-   * `image`, because the headshot column holds an UploadThing key that nothing
-   * resolves yet; no `description` unless a bio exists. A structured-data field
-   * is a machine-readable claim, and one filled to satisfy a validator is not a
-   * claim worth publishing.
+   * Only seeded facts, like the `MedicalProcedure` on a service page: `image`
+   * only when a headshot has been uploaded, `description` only when a bio
+   * exists. A structured-data field is a machine-readable claim, and one
+   * filled to satisfy a validator is not a claim worth publishing.
    */
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -163,6 +178,7 @@ export default async function DoctorProfilePage({ params }: PageProps) {
     name: doctor.name,
     url,
     jobTitle: doctor.title,
+    ...(portrait ? { image: portrait.url } : {}),
     ...(doctor.bio ? { description: toPlainText(doctor.bio) } : {}),
     ...(doctor.specialties.length > 0
       ? { medicalSpecialty: doctor.specialties }
@@ -242,21 +258,35 @@ export default async function DoctorProfilePage({ params }: PageProps) {
 
       <article className="mx-auto max-w-360 px-4 py-12 sm:px-6 lg:px-25 lg:py-16">
         <header className="flex flex-col gap-6 sm:flex-row sm:items-center">
-          {/* TODO(asset): no doctor headshots have been delivered, so this
-              degrades to a labelled placeholder. Decorative either way — the
-              h1 beside it names the person, which is everything the photo
-              would tell a screen-reader user.
+          {/*
+            The headshot uploaded in /admin/doctors, which is the same image
+            the card on /doctors shows — one upload, both pages.
 
-              The `portrait` slot (100px) is reused rather than a new larger
-              one: the pipeline in lib/images.ts sizes masters from these
-              numbers, and inventing a slot for files nobody has delivered
-              would be guessing at the crop. Revisit when real headshots land. */}
-          <SiteImage
-            kind="portrait"
-            name={doctor.slug}
-            alt=""
-            className="size-25 shrink-0 rounded-full object-cover"
-          />
+            Decorative either way: the h1 beside it names the person, which is
+            everything the photograph would tell a screen-reader user.
+
+            With nothing uploaded it falls back to the build-time `portrait`
+            slot (100px, assets/portrait/<slug>), and with neither to a
+            labelled placeholder. TODO(asset): no headshots exist in either
+            place yet.
+          */}
+          {portrait ? (
+            <Image
+              src={portrait.url}
+              alt=""
+              width={portrait.width}
+              height={portrait.height}
+              sizes="100px"
+              className="size-25 shrink-0 rounded-full object-cover object-top"
+            />
+          ) : (
+            <SiteImage
+              kind="portrait"
+              name={doctor.slug}
+              alt=""
+              className="size-25 shrink-0 rounded-full object-cover"
+            />
+          )}
 
           <div>
             <h1 className="text-3xl font-bold text-primary lg:text-4xl">
