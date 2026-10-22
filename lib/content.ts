@@ -723,6 +723,49 @@ export async function getBodyImages(
 }
 
 /**
+ * The headshots for a set of doctors, keyed by doctor id.
+ *
+ * `Doctor.headshot_id` is a `media.id`, so a template that wants the photograph
+ * has to resolve it — the same trip `BlogPost.hero_image` makes, done in one
+ * indexed query for the whole list rather than per card. Doctors with no
+ * headshot are simply absent from the map, and the caller renders its
+ * placeholder.
+ *
+ * Not cached, for the reason `getBodyImages` is not: an editor who fixes a
+ * photograph's alt text should not wait out a second cache layer.
+ */
+export async function getDoctorHeadshots(
+  doctors: readonly Doctor[],
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const byMediaId = new Map<string, string[]>();
+
+  for (const doctor of doctors) {
+    if (!doctor.headshot_id) continue;
+    const doctorIds = byMediaId.get(doctor.headshot_id) ?? [];
+    doctorIds.push(doctor.id);
+    byMediaId.set(doctor.headshot_id, doctorIds);
+  }
+
+  if (byMediaId.size === 0) return new Map();
+
+  const rows = await getMediaByIds([...byMediaId.keys()]);
+  const resolved = new Map<string, ContentImage>();
+
+  for (const [mediaId, row] of rows) {
+    for (const doctorId of byMediaId.get(mediaId) ?? []) {
+      resolved.set(doctorId, {
+        url: row.url,
+        alt: row.alt,
+        width: row.width,
+        height: row.height,
+      });
+    }
+  }
+
+  return resolved;
+}
+
+/**
  * The branch whose details front the site (footer contact block, emergency
  * line). Victoria Island is the only branch seeded; see seed/README.md.
  */

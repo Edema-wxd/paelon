@@ -37,8 +37,11 @@ These must be resolved with Francis before the site goes live.
 ## Missing content, non-blocking
 
 - **`doctors.json` — the file does not exist**, so the `doctors` table is empty.
-  Two templates depend on it: the leadership team on `/about` renders nothing,
-  and `/doctors/[slug]` resolves no slug. A doctor's name, title,
+  Three templates depend on it: the leadership team on `/about` renders nothing,
+  `/doctors/[slug]` resolves no slug, and `/doctors` — the Figma "Our
+  Specialists" page — shows its pending note instead of a card per clinician.
+  The mock's three names carry lorem-ipsum bios, so nothing there is
+  transcribable. A doctor's name, title,
   qualifications, specialties, languages, years of experience and biography are
   claims about a real clinician's credentials — the one kind of content on this
   site where a plausible placeholder would be a genuine harm — so none of it is
@@ -80,6 +83,13 @@ These must be resolved with Francis before the site goes live.
   photos are used "where consented"; no consent record was supplied.
 
 ## Missing assets
+
+Clinician photographs are the gap with two routes open: either upload them in
+`/admin/media` and attach one to each doctor (`/doctors` renders a `media` row
+directly, at 444x504 on desktop), or deliver files for the build-time pipeline.
+The `/doctors` banner photograph — clinicians in consultation, tinted down
+behind the heading in the mock — has no slot yet and currently renders as the
+flat brand navy.
 
 None of the images referenced by the export were delivered. Components render
 labelled placeholders and swap to `next/image` once the files land in `/public`.

@@ -40,9 +40,11 @@ interface PageProps {
  * profiles are built and `/about` links to them. §6 and the §3 tree are amended
  * to match.
  *
- * There is no `/doctors` index — also Francis's call. A profile is reached from
- * the leadership team on `/about`, which is where a reader looks for it, and an
- * index of an empty table would be a blank page.
+ * The same ruling said there would be no `/doctors` index: a profile was to be
+ * reached from the leadership team on `/about`, and an index over an empty
+ * table would be a blank page. Francis reversed that half on 2026-10-22 and
+ * asked for the Figma "Our Specialists" page, so `app/(marketing)/doctors/
+ * page.tsx` is now the index and both routes reach a profile.
  *
  * ## The content situation
  *
@@ -232,7 +234,7 @@ export default async function DoctorProfilePage({ params }: PageProps) {
       <div className="mx-auto max-w-360 px-4 pt-8 sm:px-6 lg:px-25">
         <Breadcrumbs
           trail={[
-            { label: "About us", href: "/about" },
+            { label: "Our specialists", href: "/doctors" },
             { label: doctor.name },
           ]}
         />

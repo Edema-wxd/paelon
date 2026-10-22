@@ -130,7 +130,7 @@ clsx tailwind-merge
 │   │   ├── about/
 │   │   ├── services/
 │   │   ├── locations/
-│   │   ├── doctors/[slug]/     # Profile only. No index — see §6.
+│   │   ├── doctors/            # Specialists index + [slug] profile
 │   │   ├── blog/
 │   │   ├── for-corporates/
 │   │   ├── contact/
@@ -536,9 +536,9 @@ Defined in Phase 2. Do not implement in Phase 1.
 
 ## 6. Pages and Templates
 
-Fifteen templates. Each has an owning group per the timeline in section 1. Do not build ahead of the group order.
+Seventeen templates. Each has an owning group per the timeline in section 1. Do not build ahead of the group order.
 
-### Marketing (8 templates)
+### Marketing (10 templates)
 
 #### Homepage `/`
 - Single calm hero. No auto-rotating slider under any circumstance.
@@ -584,14 +584,21 @@ Fifteen templates. Each has an owning group per the timeline in section 1. Do no
 - Photos, parking, accessibility.
 - Embedded map.
 
+#### Specialists index `/doctors`
+- Banner heading "Our Specialists" over a full-width photograph of clinicians in consultation, tinted so the heading holds 4.5:1.
+- One full-width card per published doctor, in `order`: photograph, name (linking to the profile), role, biography, qualifications, specialty chips and a "Book Consultation Now" CTA. Each card shows only the fields the row holds.
+- Photographs come from `media` via `doctors.headshot_id`, so an editor's upload in `/admin/doctors` appears without a deploy.
+- `ItemList` of `Physician` (§11) and a visible breadcrumb trail. Every CTA goes to `/book`; there is no per-doctor slot selection (§17).
+- Empty table renders the pending note and a phone number, never a filler clinician.
+
 #### Doctor profile `/doctors/[slug]`
 - Name, title, and whether they are in-house, visiting, or both.
 - Qualifications, specialties, languages spoken, years of experience — each shown only when the row holds it.
 - Biography (Markdown, rendered by the same renderer as the blog).
 - The branches they practise at, linking to each branch page. Published branches only.
-- `Physician` JSON-LD (§11) and a visible breadcrumb trail whose parent is `/about`.
+- `Physician` JSON-LD (§11) and a visible breadcrumb trail whose parent is `/doctors`.
 - A "Book an appointment" CTA, deep-linked to the branch when the doctor has exactly one. There is no per-doctor slot selection — §17 puts that out of scope — so the CTA must not imply one.
-- **No `/doctors` index.** Profiles are reached from the leadership team on `/about`. Added 2026-09-28: §11 already required `Physician` "on each doctor profile", `app/sitemap.ts` already emitted these URLs, and §8 treats a doctor row as owning a public URL, but §6 listed doctors only as a section of `/about`. The profile route resolves that; the sitemap's `/doctors` index entry was removed with it.
+- Reached from the specialists index above, from the leadership team on `/about`, and from the header's "Our Specialists" item. The profile route was added 2026-09-28, when §6 still listed doctors only as a section of `/about` although §11 required `Physician` "on each doctor profile", `app/sitemap.ts` emitted these URLs and §8 treated a doctor row as owning a public URL. That ruling also said there would be no index; Francis reversed it on 2026-10-22 and the index is specified above.
 
 #### For Corporates `/for-corporates`
 - Retainer programme overview.
