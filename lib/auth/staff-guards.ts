@@ -9,6 +9,9 @@ import type { Role } from "@/lib/auth/policy";
  * last super admin, because the result is a panel nobody can administer and a
  * recovery that means running a script against production.
  *
+ * The password rule is a Zod schema, `staffPassword` in `lib/validation/`, so
+ * the forms can run the same check before submitting.
+ *
  * Pure functions with every input passed in, so the whole guard set is testable
  * without a database and cannot be accidentally skipped by a caller that forgot
  * to await something.
@@ -45,7 +48,7 @@ export function canChangeRole(
   if (context.actorId === context.targetId) {
     return {
       ok: false,
-      reason: "You cannot change your own role. Ask another super admin.",
+      reason: "You cannot change your own role. Ask another admin.",
     };
   }
 
@@ -57,7 +60,7 @@ export function canChangeRole(
     return {
       ok: false,
       reason:
-        "This is the only super admin. Promote someone else before changing this role.",
+        "This is the only admin. Promote someone else before changing this role.",
     };
   }
 
@@ -77,38 +80,7 @@ export function canDeactivate(context: StaffChangeContext): GuardResult {
     return {
       ok: false,
       reason:
-        "This is the only super admin. Promote someone else before deactivating this account.",
-    };
-  }
-
-  return OK;
-}
-
-/**
- * Password floor for a staff account.
- *
- * Length only, deliberately. Composition rules ("one capital, one symbol") push
- * people towards `Password1!` and are no longer recommended by NIST or the NCSC;
- * the real protection is argon2id plus the five-attempt lockout. The check
- * against the email catches the one predictable choice a length rule misses.
- */
-export function validatePassword(
-  password: string,
-  email: string,
-): GuardResult {
-  if (password.length < 12) {
-    return { ok: false, reason: "Password must be at least 12 characters." };
-  }
-
-  if (password.length > 1024) {
-    return { ok: false, reason: "Password is too long." };
-  }
-
-  const localPart = email.split("@")[0]?.toLowerCase() ?? "";
-  if (localPart.length >= 3 && password.toLowerCase().includes(localPart)) {
-    return {
-      ok: false,
-      reason: "Password must not contain the email address.",
+        "This is the only admin. Promote someone else before deactivating this account.",
     };
   }
 

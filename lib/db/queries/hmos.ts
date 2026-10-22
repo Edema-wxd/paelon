@@ -3,7 +3,14 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { hmoLocations, hmos, locations, type Hmo } from "@/lib/db/schema";
 
-import { CACHE_TAGS, cachedRead, publicFilter, publicFilterWith } from "./shared";
+import {
+  CACHE_TAGS,
+  cachedRead,
+  publicFilterWith,
+  visibleFilter,
+  visibleFilterWith,
+  type ReadOptions,
+} from "./shared";
 
 /** Public shape of an HMO search hit. Deliberately narrow — see /api/hmo/search. */
 export interface HmoSearchResult {
@@ -17,29 +24,48 @@ export interface HmoSearchResult {
 /** Maximum typeahead results (backend spec §8). */
 export const HMO_SEARCH_LIMIT = 10;
 
-/** Published HMOs, in display order. */
-export const getPublishedHmos = cachedRead(
-  async (): Promise<Hmo[]> =>
-    db()
-      .select()
-      .from(hmos)
-      .where(publicFilter(hmos))
-      .orderBy(asc(hmos.order), asc(hmos.name)),
+function selectHmos(options: ReadOptions): Promise<Hmo[]> {
+  return db()
+    .select()
+    .from(hmos)
+    .where(visibleFilter(hmos, options))
+    .orderBy(asc(hmos.order), asc(hmos.name));
+}
+
+const cachedHmos = cachedRead(
+  async (): Promise<Hmo[]> => selectHmos({}),
   ["hmos", "published"],
   [CACHE_TAGS.hmos],
 );
 
-/** One published HMO by slug, or null. */
-export async function getHmoBySlug(slug: string): Promise<Hmo | null> {
+/** Published HMOs, in display order. Draft mode adds unpublished ones. */
+export async function getPublishedHmos(
+  options: ReadOptions = {},
+): Promise<Hmo[]> {
+  return options.draft ? selectHmos(options) : cachedHmos();
+}
+
+async function selectHmoBySlug(
+  slug: string,
+  options: ReadOptions,
+): Promise<Hmo | null> {
+  const rows = await db()
+    .select()
+    .from(hmos)
+    .where(visibleFilterWith(hmos, options, eq(hmos.slug, slug)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** One HMO by slug, or null. Draft mode also resolves an unpublished one. */
+export async function getHmoBySlug(
+  slug: string,
+  options: ReadOptions = {},
+): Promise<Hmo | null> {
+  if (options.draft) return selectHmoBySlug(slug, options);
+
   const read = cachedRead(
-    async (s: string) => {
-      const rows = await db()
-        .select()
-        .from(hmos)
-        .where(publicFilterWith(hmos, eq(hmos.slug, s)))
-        .limit(1);
-      return rows[0] ?? null;
-    },
+    async (s: string) => selectHmoBySlug(s, {}),
     ["hmo", "by-slug"],
     [CACHE_TAGS.hmos, CACHE_TAGS.hmo(slug)],
   );
@@ -115,7 +141,10 @@ export async function searchHmos(
   }));
 }
 
-/** Resolve an HMO slug to its id for booking submission. Not cached. */
+/**
+ * Resolve an HMO slug to its id for booking submission. Not cached, and never
+ * draft-aware: a patient's booking must not reference an unpublished provider.
+ */
 export async function resolveHmoId(slug: string): Promise<string | null> {
   const rows = await db()
     .select({ id: hmos.id })

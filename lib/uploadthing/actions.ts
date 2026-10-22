@@ -1,34 +1,45 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { ForbiddenError } from "@/lib/auth/policy";
-import { requireCan } from "@/lib/auth/session";
-import { writeAuditEntry } from "@/lib/db/queries/users";
+import {
+  adminAction,
+  done,
+  fail,
+  type ActionFailure,
+  type ActionResult,
+  type ActionState,
+  type HandlerSuccess,
+} from "@/lib/admin/action";
 import { findMediaReferences } from "@/lib/db/queries/media-references";
 import { deleteMedia } from "@/lib/uploadthing/api";
+import {
+  MEDIA_DELETE_COUNT_MESSAGE,
+  MEDIA_DELETE_MAX,
+} from "@/lib/uploadthing/limits";
 
 /**
- * Media library mutations.
- *
- * A server action is a public POST endpoint, so each one re-checks permission
- * for itself. The admin layout's session check does not run for these, and the
- * fact that the UI only renders a delete button for some roles is a courtesy,
- * not a control.
+ * Media library mutations, built on `adminAction` (lib/admin/action.ts), which
+ * does the session, `can(..., "media")`, parsing, audit row and revalidation.
  */
 
-export interface MediaActionState {
-  error?: string;
-  /** Set on success so the client can announce it through `aria-live`. */
-  message?: string;
-  /** Populated when a delete was refused because the file is still in use. */
-  references?: { label: string; table: string }[];
+export interface MediaReferenceSummary {
+  label: string;
+  table: string;
 }
 
-/** Keys are UUID-prefixed filenames. Bounded so a crafted form cannot ask for 10,000 deletes. */
+type MediaData = { message: string };
+type MediaDetails = { references: MediaReferenceSummary[] };
+
+export type MediaResult = ActionResult<MediaData, MediaDetails>;
+export type MediaState = ActionState<MediaData, MediaDetails>;
+
+/** Keys are UUID-prefixed filenames. */
 const deleteSchema = z.object({
-  keys: z.array(z.string().min(1).max(512)).min(1).max(50),
+  keys: z
+    .array(z.string().min(1).max(512))
+    .min(1, MEDIA_DELETE_COUNT_MESSAGE)
+    .max(MEDIA_DELETE_MAX, MEDIA_DELETE_COUNT_MESSAGE),
 });
 
 /**
@@ -41,57 +52,46 @@ const deleteSchema = z.object({
  * Deleting media is *not* a sensitive-resource delete: the file is replaceable,
  * unlike a patient record. `media` is therefore open to editors and media
  * personnel, and the reference check is what keeps that safe.
+ *
+ * Contributors may delete only files they uploaded (policy B3). There is no
+ * `media` table yet, so no file has a recorded owner: with no `row` loader,
+ * `adminAction` judges the delete against an unowned row and refuses every
+ * contributor before parsing, while admins and editors pass. When the table
+ * lands (spec §8 Content editing), add a `row` loader that reads `uploaded_by`.
  */
-export async function deleteMediaAction(
-  _prev: MediaActionState,
-  formData: FormData,
-): Promise<MediaActionState> {
-  let user;
-  try {
-    user = await requireCan("delete", "media");
-  } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return { error: "You do not have permission to delete media." };
+export const deleteMediaAction = adminAction(
+  {
+    resource: "media",
+    action: "delete",
+    schema: deleteSchema,
+    event: "media.deleted",
+    path: "/admin/media",
+    input: (formData) => ({ keys: formData.getAll("key") }),
+  },
+  async ({
+    keys,
+  }): Promise<HandlerSuccess<MediaData> | ActionFailure<MediaDetails>> => {
+    // Check every key before deleting any of them — a partial delete that stops
+    // halfway leaves the library in a state nobody asked for.
+    const references: MediaReferenceSummary[] = [];
+    for (const key of keys) {
+      for (const reference of await findMediaReferences(key)) {
+        references.push({ label: reference.label, table: reference.table });
+      }
     }
-    throw error;
-  }
 
-  const parsed = deleteSchema.safeParse({ keys: formData.getAll("key") });
-  if (!parsed.success) {
-    return { error: "Select between 1 and 50 files to delete." };
-  }
-
-  const { keys } = parsed.data;
-
-  // Check every key before deleting any of them — a partial delete that stops
-  // halfway leaves the library in a state nobody asked for.
-  const blocked: { label: string; table: string }[] = [];
-  for (const key of keys) {
-    for (const reference of await findMediaReferences(key)) {
-      blocked.push({ label: reference.label, table: reference.table });
-    }
-  }
-
-  if (blocked.length > 0) {
-    return {
-      error:
+    if (references.length > 0) {
+      return fail(
         "Some of those files are still used on the site. Remove them from the content below first.",
-      references: blocked,
-    };
-  }
+        { details: { references } },
+      );
+    }
 
-  const deleted = await deleteMedia(keys);
+    const deleted = await deleteMedia(keys);
 
-  await writeAuditEntry({
-    userId: user.id,
-    action: "media.deleted",
-    entityType: "media",
-    metadata: { keys, count: deleted },
-  });
-
-  revalidatePath("/admin/media");
-
-  return {
-    message: `Deleted ${deleted} file${deleted === 1 ? "" : "s"}.`,
-  };
-}
+    return done(
+      { message: `Deleted ${deleted} file${deleted === 1 ? "" : "s"}.` },
+      { metadata: { keys, count: deleted } },
+    );
+  },
+);

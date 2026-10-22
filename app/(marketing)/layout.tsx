@@ -1,3 +1,4 @@
+import { DraftModeBanner } from "@/components/site/draft-mode-banner";
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import { MobileBottomBar } from "@/components/site/mobile-bottom-bar";
@@ -8,6 +9,9 @@ export default function MarketingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
+      {/* Above the header, so "this is not published" is the first thing read.
+          Renders nothing — and costs nothing — outside draft mode. */}
+      <DraftModeBanner />
       <Header />
       {/* Bottom padding clears the sticky mobile bar so it never covers the
           last element on the page. */}

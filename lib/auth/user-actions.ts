@@ -1,15 +1,19 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import {
+  adminAction,
+  done,
+  fail,
+  type ActionResult,
+  type ActionState,
+} from "@/lib/admin/action";
 import { hashPassword } from "@/lib/auth/password";
-import { ForbiddenError } from "@/lib/auth/policy";
-import { requireCan } from "@/lib/auth/session";
+import { isUniqueViolation } from "@/lib/db/errors";
 import {
   canChangeRole,
   canDeactivate,
-  validatePassword,
   type StaffChangeContext,
 } from "@/lib/auth/staff-guards";
 import {
@@ -21,66 +25,53 @@ import {
   setStaffRole,
   unlockStaffAccount,
   updatePasswordHash,
-  writeAuditEntry,
 } from "@/lib/db/queries/users";
 import { userRoleEnum } from "@/lib/db/schema";
+import { staffPassword } from "@/lib/validation/password";
 
 /**
- * Staff account management.
+ * Staff account management, built on `adminAction` (lib/admin/action.ts), which
+ * does the session, `can(..., "users")`, parsing, audit row and revalidation.
  *
- * Every action re-checks permission for itself. A server action is a public POST
- * endpoint: the fact that only a super admin sees these controls decides what is
- * rendered, never what is allowed.
+ * What stays here is the second layer: `lib/auth/staff-guards.ts` decides
+ * whether a specific change is safe, i.e. whether it leaves someone able to
+ * administer the panel afterwards.
  *
- * Two layers of checking, deliberately:
- *  - `requireCan(..., "users")` — may this role manage accounts at all.
- *  - `lib/auth/staff-guards.ts` — is this specific change safe, i.e. does it
- *    leave someone able to administer the panel afterwards.
- *
- * Everything here writes an audit entry. Account and role changes are the events
- * an incident review asks about first, and they are invisible in the content
- * tables.
+ * Audit metadata is roles only. The target is identified by `entity_id`; their
+ * email is personal data and does not belong in the audit log.
  */
 
-export interface StaffActionState {
-  error?: string;
-  message?: string;
-}
+export type StaffResult = ActionResult<{ message: string }>;
+export type StaffState = ActionState<{ message: string }>;
 
 const ROLES = userRoleEnum.enumValues;
+const USERS_PATH = "/admin/users";
 
-const createSchema = z.object({
-  name: z.string().trim().min(1, "Enter a name.").max(120),
-  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(320),
-  role: z.enum(ROLES),
-  password: z.string().min(1, "Enter a password."),
+const createSchema = z
+  .object({
+    name: z.string().trim().min(1, "Enter a name.").max(120),
+    email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(320),
+    role: z.enum(ROLES, "Choose a role."),
+    password: z.string().min(1, "Enter a password."),
+  })
+  // Same rule the form runs client-side; this is the one that counts.
+  .superRefine(({ email, password }, ctx) => {
+    const result = staffPassword.safeParse({ email, password });
+    if (result.success) return;
+    for (const issue of result.error.issues) {
+      ctx.addIssue({ code: "custom", path: ["password"], message: issue.message });
+    }
+  });
+
+const idSchema = z.object({ userId: z.uuid("That account no longer exists.") });
+
+const roleSchema = idSchema.extend({ role: z.enum(ROLES, "That is not a valid role.") });
+
+const passwordSchema = idSchema.extend({
+  password: z.string().min(1, "Enter a new password."),
 });
 
-const idSchema = z.object({ userId: z.string().uuid() });
-
-const roleSchema = idSchema.extend({ role: z.enum(ROLES) });
-
-const passwordSchema = idSchema.extend({ password: z.string().min(1) });
-
-/**
- * Wraps an action body with the permission check, turning a `ForbiddenError`
- * into a message instead of a stack trace. Anything else rethrows — an
- * unexpected failure must not be reported to the user as a permission problem.
- */
-async function withPermission(
-  action: "create" | "update" | "delete",
-  body: (actorId: string) => Promise<StaffActionState>,
-): Promise<StaffActionState> {
-  try {
-    const actor = await requireCan(action, "users");
-    return await body(actor.id);
-  } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return { error: "Only a super admin can manage staff accounts." };
-    }
-    throw error;
-  }
-}
+const NOT_FOUND = "That account no longer exists.";
 
 /**
  * Build the guard context for a change to `targetId`.
@@ -104,28 +95,16 @@ async function contextFor(
   };
 }
 
-/** Create a staff account with an initial password set by the super admin. */
-export async function createStaffAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("create", async (actorId) => {
-    const parsed = createSchema.safeParse({
-      name: formData.get("name"),
-      email: formData.get("email"),
-      role: formData.get("role"),
-      password: formData.get("password"),
-    });
-
-    if (!parsed.success) {
-      return { error: parsed.error.issues[0]?.message ?? "Check the details." };
-    }
-
-    const { name, email, role, password } = parsed.data;
-
-    const strength = validatePassword(password, email);
-    if (!strength.ok) return { error: strength.reason };
-
+/** Create a staff account with an initial password set by an admin. */
+export const createStaffAction = adminAction(
+  {
+    resource: "users",
+    action: "create",
+    schema: createSchema,
+    event: "user.created",
+    path: USERS_PATH,
+  },
+  async ({ name, email, role, password }) => {
     const passwordHash = await hashPassword(password);
 
     let created: { id: string };
@@ -133,181 +112,140 @@ export async function createStaffAction(
       created = await createStaffAccount({ name, email, passwordHash, role });
     } catch (error) {
       // The unique index on email is the duplicate check — a select-then-insert
-      // would race with a second super admin adding the same person.
-      const message = error instanceof Error ? error.message : "";
-      if (/unique|duplicate/i.test(message)) {
-        return { error: "An account with that email already exists." };
+      // would race with a second admin adding the same person. Matched by
+      // SQLSTATE: drizzle's wrapper message says only "Failed query: …".
+      if (isUniqueViolation(error)) {
+        const duplicate = "An account with that email already exists.";
+        return fail(duplicate, { fields: { email: [duplicate] } });
       }
       throw error;
     }
 
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.created",
-      entityType: "users",
-      entityId: created.id,
-      // Role and email only. Never the password or its hash.
-      metadata: { email, role },
-    });
-
-    revalidatePath("/admin/users");
-    return { message: `Created ${email}. Share the password with them directly.` };
-  });
-}
+    return done(
+      { message: `Created ${email}. Share the password with them directly.` },
+      { entityId: created.id, metadata: { role } },
+    );
+  },
+);
 
 /** Change a staff account's role. */
-export async function changeRoleAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("update", async (actorId) => {
-    const parsed = roleSchema.safeParse({
-      userId: formData.get("userId"),
-      role: formData.get("role"),
-    });
+export const changeRoleAction = adminAction(
+  {
+    resource: "users",
+    action: "update",
+    schema: roleSchema,
+    event: "user.role_changed",
+    path: USERS_PATH,
+  },
+  async ({ userId, role }, { user }) => {
+    const context = await contextFor(user.id, userId);
+    if (!context) return fail(NOT_FOUND);
 
-    if (!parsed.success) return { error: "That is not a valid role." };
+    const guard = canChangeRole(context, role);
+    if (!guard.ok) return fail(guard.reason);
 
-    const context = await contextFor(actorId, parsed.data.userId);
-    if (!context) return { error: "That account no longer exists." };
+    await setStaffRole(userId, role);
 
-    const guard = canChangeRole(context, parsed.data.role);
-    if (!guard.ok) return { error: guard.reason };
-
-    await setStaffRole(parsed.data.userId, parsed.data.role);
-
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.role_changed",
-      entityType: "users",
-      entityId: parsed.data.userId,
-      metadata: { from: context.targetRole, to: parsed.data.role },
-    });
-
-    revalidatePath("/admin/users");
-    return { message: "Role updated." };
-  });
-}
+    return done(
+      { message: "Role updated." },
+      { entityId: userId, metadata: { from: context.targetRole, to: role } },
+    );
+  },
+);
 
 /** Deactivate an account. Soft delete — the audit trail keeps resolving. */
-export async function deactivateStaffAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("delete", async (actorId) => {
-    const parsed = idSchema.safeParse({ userId: formData.get("userId") });
-    if (!parsed.success) return { error: "That account no longer exists." };
-
-    const context = await contextFor(actorId, parsed.data.userId);
-    if (!context) return { error: "That account no longer exists." };
+export const deactivateStaffAction = adminAction(
+  {
+    resource: "users",
+    action: "delete",
+    schema: idSchema,
+    event: "user.deactivated",
+    path: USERS_PATH,
+  },
+  async ({ userId }, { user }) => {
+    const context = await contextFor(user.id, userId);
+    if (!context) return fail(NOT_FOUND);
 
     const guard = canDeactivate(context);
-    if (!guard.ok) return { error: guard.reason };
+    if (!guard.ok) return fail(guard.reason);
 
-    await deactivateStaffAccount(parsed.data.userId);
+    await deactivateStaffAccount(userId);
 
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.deactivated",
-      entityType: "users",
-      entityId: parsed.data.userId,
-      metadata: { role: context.targetRole },
-    });
-
-    revalidatePath("/admin/users");
-    return { message: "Account deactivated. They can no longer sign in." };
-  });
-}
+    return done(
+      { message: "Account deactivated. They can no longer sign in." },
+      { entityId: userId, metadata: { role: context.targetRole } },
+    );
+  },
+);
 
 /** Reactivate a deactivated account. */
-export async function reactivateStaffAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("update", async (actorId) => {
-    const parsed = idSchema.safeParse({ userId: formData.get("userId") });
-    if (!parsed.success) return { error: "That account no longer exists." };
+export const reactivateStaffAction = adminAction(
+  {
+    resource: "users",
+    action: "update",
+    schema: idSchema,
+    event: "user.reactivated",
+    path: USERS_PATH,
+  },
+  async ({ userId }) => {
+    await reactivateStaffAccount(userId);
+    return done({ message: "Account reactivated." }, { entityId: userId });
+  },
+);
 
-    await reactivateStaffAccount(parsed.data.userId);
-
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.reactivated",
-      entityType: "users",
-      entityId: parsed.data.userId,
-    });
-
-    revalidatePath("/admin/users");
-    return { message: "Account reactivated." };
-  });
-}
-
-/** Clear a lockout after five failed sign-ins, without changing the password. */
-export async function unlockStaffAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("update", async (actorId) => {
-    const parsed = idSchema.safeParse({ userId: formData.get("userId") });
-    if (!parsed.success) return { error: "That account no longer exists." };
-
-    await unlockStaffAccount(parsed.data.userId);
-
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.unlocked",
-      entityType: "users",
-      entityId: parsed.data.userId,
-    });
-
-    revalidatePath("/admin/users");
-    return { message: "Lockout cleared." };
-  });
-}
+/** Clear a lockout before it expires on its own, without changing the password. */
+export const unlockStaffAction = adminAction(
+  {
+    resource: "users",
+    action: "update",
+    schema: idSchema,
+    event: "user.unlocked",
+    path: USERS_PATH,
+  },
+  async ({ userId }) => {
+    await unlockStaffAccount(userId);
+    return done({ message: "Lockout cleared." }, { entityId: userId });
+  },
+);
 
 /**
  * Set a new password for someone else.
  *
  * There is no self-service reset — no email provider is configured
  * (`RESEND_ENABLED=false` must keep working, per CLAUDE.md), and a reset link
- * that cannot be delivered is worse than none. A super admin sets the password
+ * that cannot be delivered is worse than none. An admin sets the password
  * and passes it on directly.
  */
-export async function resetPasswordAction(
-  _prev: StaffActionState,
-  formData: FormData,
-): Promise<StaffActionState> {
-  return withPermission("update", async (actorId) => {
-    const parsed = passwordSchema.safeParse({
-      userId: formData.get("userId"),
-      password: formData.get("password"),
-    });
+export const resetPasswordAction = adminAction(
+  {
+    resource: "users",
+    action: "update",
+    schema: passwordSchema,
+    event: "user.password_reset",
+    path: USERS_PATH,
+  },
+  async ({ userId, password }) => {
+    const target = await getUserById(userId);
+    if (!target) return fail(NOT_FOUND);
 
-    if (!parsed.success) return { error: "Enter a new password." };
+    // The rule depends on the target's email, which only the database knows.
+    const rule = staffPassword.safeParse({ email: target.email, password });
+    if (!rule.success) {
+      const messages = rule.error.issues.map((issue) => issue.message);
+      return fail(messages[0] ?? "Choose a different password.", {
+        fields: { password: messages },
+      });
+    }
 
-    const target = await getUserById(parsed.data.userId);
-    if (!target) return { error: "That account no longer exists." };
+    await updatePasswordHash(userId, await hashPassword(password));
+    await unlockStaffAccount(userId);
 
-    const strength = validatePassword(parsed.data.password, target.email);
-    if (!strength.ok) return { error: strength.reason };
-
-    await updatePasswordHash(
-      parsed.data.userId,
-      await hashPassword(parsed.data.password),
+    return done(
+      { message: "Password updated. Share it with them directly." },
+      { entityId: userId },
     );
-    await unlockStaffAccount(parsed.data.userId);
-
-    await writeAuditEntry({
-      userId: actorId,
-      action: "user.password_reset",
-      entityType: "users",
-      entityId: parsed.data.userId,
-    });
-
-    revalidatePath("/admin/users");
-    return { message: "Password updated. Share it with them directly." };
-  });
-}
+  },
+);
 
 /**
  * Single entry point for the per-row controls in the staff list.
@@ -318,16 +256,14 @@ export async function resetPasswordAction(
  * announce.
  *
  * The intent is validated against a closed list, and each branch delegates to
- * the action that already does its own permission check. This adds a
- * convenience, not a shortcut past anything.
+ * an action that runs the full `adminAction` pipeline. This adds a convenience,
+ * not a shortcut past anything.
  */
 export async function staffRowAction(
-  prev: StaffActionState,
+  prev: StaffState,
   formData: FormData,
-): Promise<StaffActionState> {
-  const intent = formData.get("intent");
-
-  switch (intent) {
+): Promise<StaffResult> {
+  switch (formData.get("intent")) {
     case "role":
       return changeRoleAction(prev, formData);
     case "deactivate":
@@ -339,6 +275,6 @@ export async function staffRowAction(
     case "password":
       return resetPasswordAction(prev, formData);
     default:
-      return { error: "Unknown action." };
+      return fail("Unknown action.");
   }
 }

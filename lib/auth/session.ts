@@ -26,7 +26,7 @@ export interface AdminUser {
   name: string;
   email: string;
   role: Role;
-  /** How the team refers to this role. Display only. */
+  /** The role's UI label. Display only. */
   roleLabel: string;
 }
 

@@ -2,12 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -23,7 +25,7 @@ import {
  */
 type ContactFormValues = z.input<typeof contactSchema>;
 
-type Status = "idle" | "submitting" | "success" | "error";
+type Status = "idle" | "submitting" | "error";
 
 /** Branches offered in the "which branch" select. Kept minimal so the server
     page does not serialise whole location records into the client bundle. */
@@ -63,6 +65,7 @@ function isFieldName(value: string): value is FieldName {
  * half-filled form — so each field carries a visible `<label>` instead.
  */
 export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -140,7 +143,13 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
         website: "",
         formRenderedAt: Date.now(),
       });
-      setStatus("success");
+      // `contact_form_submitted` (spec §9) — after the server accepted it.
+      track("contact_form_submitted");
+
+      // A real thank-you page, not an inline toast (conversion baseline item
+      // 1) — POST then redirect, so a refresh of the destination can never
+      // re-submit the enquiry.
+      router.push("/contact/thank-you");
     } catch {
       setServerError("We could not reach the server. Please try again.");
       setStatus("error");
@@ -381,14 +390,10 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
         </Button>
       </div>
 
-      {/* Spec §12: form outcomes are announced, not just recoloured. */}
+      {/* Spec §12: form outcomes are announced, not just recoloured. Success
+          navigates away to the thank-you page, so only the error case has
+          anything to announce here. */}
       <div aria-live="polite" className="mt-4">
-        {status === "success" ? (
-          <p className="rounded-md bg-surface px-4 py-3 text-base">
-            Thank you — your message has been sent. We will reply to the email
-            address you gave us.
-          </p>
-        ) : null}
         {status === "error" && serverError ? (
           <p className="rounded-md bg-surface px-4 py-3 text-base text-destructive">
             {serverError}

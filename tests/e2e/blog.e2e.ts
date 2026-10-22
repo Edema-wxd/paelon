@@ -66,10 +66,13 @@ test.describe("blog index", () => {
 test.describe("blog article", () => {
   test("renders the post reached from the index", async ({ page }) => {
     await page.goto("/blog");
+    // Level 2 on the index: the cards sit directly under the page `h1`, so
+    // anything deeper would skip a level. `/blog/[slug]`'s "Read next" grid is
+    // level 3, because there the cards sit under an `h2`.
     const title = await page
       .getByRole("article")
       .first()
-      .getByRole("heading", { level: 3 })
+      .getByRole("heading", { level: 2 })
       .textContent();
 
     await page.getByRole("link", { name: title ?? "" }).first().click();
@@ -84,6 +87,13 @@ test.describe("blog article", () => {
     await page.goto("/blog");
     await page.getByRole("article").first().getByRole("link").first().click();
 
+    /*
+     * Wait for the article before measuring. Without this the heading sweep
+     * below races the navigation and sometimes runs against the *index* DOM
+     * instead — which is how this spec used to fail while reporting a skipped
+     * level on a page it was not looking at.
+     */
+    await expect(page).toHaveURL(/\/blog\/[a-z0-9-]+$/);
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
 
     const levels = await page
@@ -115,6 +125,11 @@ test.describe("blog article", () => {
 
   test("body links are internal routes that resolve", async ({ page, request }) => {
     await page.goto("/blog/preview-post-layout-fixture");
+
+    // This route streams behind a loading state, and `goto` resolves before the
+    // body arrives. Without waiting, the sweep below runs against the fallback
+    // and reports zero links — a failure about nothing.
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
     const hrefs = await page
       .getByRole("article")

@@ -12,6 +12,15 @@ import { logger } from "@/lib/logger";
  *
  * Content comes from the published-content queries, which already apply the
  * public filter — so an unpublished or soft-deleted page can never appear here.
+ *
+ * Every path listed must resolve. `/doctors` was listed as a static route and
+ * has no template: there is no doctors index (ratified 2026-09-28), profiles are
+ * reached from the leadership team on `/about`, and advertising an index that
+ * 404s wastes a crawl and looks like a broken site. The per-doctor entries below
+ * are the ones that resolve.
+ *
+ * `/for-corporates` and `/hmo-check` are still listed and still unbuilt — both
+ * are specified in §6 and outstanding, tracked in CLAUDE.md rather than here.
  */
 
 /** Static marketing routes, with their relative importance. */
@@ -20,7 +29,6 @@ const STATIC_ROUTES: [path: string, priority: number, changeFrequency: MetadataR
   ["/about", 0.8, "monthly"],
   ["/services", 0.9, "weekly"],
   ["/locations", 0.8, "monthly"],
-  ["/doctors", 0.8, "monthly"],
   ["/for-corporates", 0.7, "monthly"],
   ["/hmo-check", 0.7, "monthly"],
   ["/blog", 0.7, "weekly"],

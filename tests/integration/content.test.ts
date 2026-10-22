@@ -55,6 +55,35 @@ describeIfDb("public read guards", () => {
     expect(await getServiceBySlug("deleted-service")).toBeNull();
   });
 
+  /**
+   * The draft-mode half of the same guards (spec §8, decision C4). `{ draft:
+   * true }` is what `lib/content.ts` passes down when the preview cookie is
+   * present, and what it must and must not lift is the whole point: the
+   * unpublished row appears, the soft-deleted one still does not.
+   */
+  it("resolves a draft service by slug in draft mode", async () => {
+    const { getServiceBySlug } = await import("@/lib/db/queries/services");
+
+    const service = await getServiceBySlug("draft-service", { draft: true });
+    expect(service?.slug).toBe("draft-service");
+    expect(service?.published).toBe(false);
+  });
+
+  it("still refuses a soft-deleted service in draft mode", async () => {
+    const { getServiceBySlug } = await import("@/lib/db/queries/services");
+    expect(await getServiceBySlug("deleted-service", { draft: true })).toBeNull();
+  });
+
+  it("lists drafts alongside published rows in draft mode", async () => {
+    const { getPublishedServices } = await import("@/lib/db/queries/services");
+
+    const services = await getPublishedServices({ draft: true });
+    expect(services.map((s) => s.slug).sort()).toEqual([
+      "draft-service",
+      "published-service",
+    ]);
+  });
+
   it("hides a published testimonial that has no recorded consent", async () => {
     const { getFeaturedTestimonials } = await import(
       "@/lib/db/queries/testimonials"
@@ -70,6 +99,57 @@ describeIfDb("public read guards", () => {
 
     const featured = await getFeaturedTestimonials(10);
     expect(featured.map((t) => t.slug)).toEqual(["consented"]);
+
+    // Draft mode lifts `published`, never consent: a preview URL is a real URL,
+    // and an unconsented quote on one is still published to whoever holds it.
+    const inDraft = await getFeaturedTestimonials(10, { draft: true });
+    expect(inDraft.map((t) => t.slug)).toEqual(["consented"]);
+  });
+
+  /**
+   * The same guard, one layer up: through `lib/content.ts`, which is the module
+   * `components/site/testimonials-section.tsx` imports and the only way the
+   * homepage reaches a testimonial.
+   *
+   * It stops at the content layer rather than rendering the component, because
+   * the unit runner has no JSX transform — `vitest.config.mts` includes `.ts`
+   * only and there is no React plugin, both of which are config changes that
+   * need Francis. What the component does with the result is one guard:
+   * `if (testimonials.length === 0) return null`. So an empty array here is the
+   * homepage rendering no testimonial section at all, and a one-element array
+   * is the section rendering exactly that one quote.
+   */
+  it("keeps a published, featured, unconsented quote off the homepage", async () => {
+    const { getFeaturedTestimonials } = await import("@/lib/content");
+
+    await db().execute(sql`
+      INSERT INTO testimonials (slug, patient_name, quote, date_given, featured,
+                                published, consent_given)
+      VALUES ('no-consent', 'B Patient', 'Placeholder quote.', '2026-01-01',
+              true, true, false)
+    `);
+
+    // Everything an editor can set from /admin/testimonials is set to its most
+    // visible value. Consent is the only thing withheld, and it is enough.
+    expect(await getFeaturedTestimonials()).toEqual([]);
+  });
+
+  it("shows a consented quote beside it, and only that one", async () => {
+    const { getFeaturedTestimonials } = await import("@/lib/content");
+
+    await db().execute(sql`
+      INSERT INTO testimonials (slug, patient_name, quote, date_given, featured,
+                                published, consent_given)
+      VALUES
+        ('consented-b',   'C Patient', 'Consented placeholder quote.',   '2026-01-01', true, true, true),
+        ('unconsented-b', 'D Patient', 'Unconsented placeholder quote.', '2026-01-01', true, true, false)
+    `);
+
+    const shown = await getFeaturedTestimonials();
+    expect(shown.map((t) => t.slug)).toEqual(["consented-b"]);
+    // The homepage renders `quote` verbatim, so this is the string that would
+    // have reached the page.
+    expect(shown.map((t) => t.quote)).not.toContain("Unconsented placeholder quote.");
   });
 });
 

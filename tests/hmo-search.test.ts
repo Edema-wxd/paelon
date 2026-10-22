@@ -9,7 +9,7 @@ function hmo(name: string, order: number, aliases: string[] = []): Hmo {
     slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name,
     aliases,
-    logo: null,
+    logo_id: null,
     coverage_notes: null,
     copay_applies: false,
     order,

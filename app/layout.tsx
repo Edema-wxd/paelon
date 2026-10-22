@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { UmamiScript } from "@/components/site/umami-script";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 import "@/styles/globals.css";
 
@@ -51,6 +52,9 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        {/* Analytics (spec §9). Last in the body and afterInteractive, so it
+            cannot delay first paint. */}
+        <UmamiScript />
       </body>
     </html>
   );

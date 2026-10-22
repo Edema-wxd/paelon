@@ -7,14 +7,14 @@ import type {
   ServiceOption,
 } from "@/components/booking/types";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
-import { getHmos, getLocations, getServices } from "@/lib/content";
+import { getHmos, getLocations, getServices, getSiteSettings } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import {
   describeDay,
   hasPublishedHours,
   todayInLagos,
 } from "@/lib/locations/hours-display";
-import { RESPONSE_TIME_PROMISE } from "@/lib/response-time";
+import { responseTimePromise } from "@/lib/response-time";
 import { resolveBookingPrefill } from "@/lib/booking/submit";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 
@@ -62,11 +62,14 @@ export default async function BookPage({
 }) {
   const params = await searchParams;
 
-  const [locations, services, hmos] = await Promise.all([
+  const [locations, services, hmos, settings] = await Promise.all([
     getLocations(),
     getServices(),
     getHmos(),
+    getSiteSettings(),
   ]);
+
+  const promise = responseTimePromise(settings.response_time_hours);
 
   const prefill = await resolveBookingPrefill({
     branch: firstParam(params.branch),
@@ -109,7 +112,7 @@ export default async function BookPage({
         </h1>
         <p className="mt-4 text-lg">
           Tell us where, what and when, and we will call to confirm a time.{" "}
-          {RESPONSE_TIME_PROMISE}
+          {promise}
         </p>
         {/* An emergency must never be routed through a six-step form. */}
         <p className="mt-4 rounded-xl border border-accent/40 bg-surface p-4 text-base">
@@ -120,6 +123,7 @@ export default async function BookPage({
 
       <div className="mt-10">
         <BookingWizard
+          responseTimePromise={promise}
           branches={branches}
           services={serviceOptions}
           hmos={hmoOptions}

@@ -4,9 +4,14 @@ import Link from "next/link";
 
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { isBookingReference } from "@/lib/booking/reference";
-import { getPrimaryLocation, toTelHref, toWhatsAppHref } from "@/lib/content";
+import {
+  getPrimaryLocation,
+  getSiteSettings,
+  toTelHref,
+  toWhatsAppHref,
+} from "@/lib/content";
 import { clientEnv } from "@/lib/env";
-import { RESPONSE_TIME_PROMISE } from "@/lib/response-time";
+import { responseTimePromise } from "@/lib/response-time";
 
 /**
  * `noindex` because the page is per-submission and carries a booking reference
@@ -42,7 +47,10 @@ export default async function BookingConfirmedPage({
   const raw = Array.isArray(params.ref) ? params.ref[0] : params.ref;
   const reference = raw && isBookingReference(raw) ? raw : null;
 
-  const location = await getPrimaryLocation();
+  const [location, settings] = await Promise.all([
+    getPrimaryLocation(),
+    getSiteSettings(),
+  ]);
 
   const whatsappHref = toWhatsAppHref(
     location?.whatsapp ?? clientEnv.NEXT_PUBLIC_WHATSAPP_NUMBER,
@@ -103,7 +111,7 @@ export default async function BookingConfirmedPage({
           </li>
           <li>
             We call you on the number you gave us to agree a time.{" "}
-            {RESPONSE_TIME_PROMISE}
+            {responseTimePromise(settings.response_time_hours)}
           </li>
           <li>
             Once you confirm, the appointment is booked and we will remind you

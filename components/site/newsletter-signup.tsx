@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
 import {
   newsletterSchema,
@@ -111,6 +112,10 @@ export function NewsletterSignup() {
         website: "",
         formRenderedAt: Date.now(),
       });
+      // `newsletter_signup` (spec §9). The double opt-in confirmation is a
+      // separate, server-side event and is not tracked here.
+      track("newsletter_signup");
+
       setStatus("success");
     } catch {
       setServerError("We could not reach the server. Please try again.");

@@ -1,16 +1,34 @@
+import { draftMode } from "next/headers";
+
 import {
   getLatestPost,
   getPostBySlug as getPostRow,
+  getPostsByTag as getPostsByTagRows,
   getPublishedPosts,
   getRelatedPosts as getRelatedPostRows,
+  getTagCounts,
+  searchPosts,
   type BlogPostWithAuthor,
+  type BlogTagCount,
 } from "@/lib/db/queries/blog";
+import { getAwards as getAwardRows } from "@/lib/db/queries/awards";
+import {
+  getDoctorBySlug as getDoctorRow,
+  getDoctorsByLocation as getDoctorRowsByLocation,
+  getLocationsByDoctor as getLocationRowsByDoctor,
+  getPublishedDoctors,
+} from "@/lib/db/queries/doctors";
 import { getPublishedHmos } from "@/lib/db/queries/hmos";
+import {
+  getSiteSettings as getSiteSettingsRow,
+  type SiteSettings,
+} from "@/lib/db/queries/site-settings";
 import {
   getLocationBySlug as getLocationRow,
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
 import { getFaqsByCategory as getFaqRows } from "@/lib/db/queries/faqs";
+import { getMediaByIds } from "@/lib/db/queries/media";
 import {
   getPublishedServices,
   getRelatedServices as getRelatedServiceRows,
@@ -18,12 +36,16 @@ import {
 } from "@/lib/db/queries/services";
 import { getFeaturedTestimonials as getFeaturedTestimonialRows } from "@/lib/db/queries/testimonials";
 import type {
+  Award as AwardRow,
+  Doctor as DoctorRow,
   Faq as FaqRow,
   Hmo as HmoRow,
   Location as LocationRow,
   Service as ServiceRow,
   Testimonial as TestimonialRow,
 } from "@/lib/db/schema";
+import type { ReadOptions } from "@/lib/db/queries/shared";
+import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
 import type { Hours } from "@/lib/validation/hours";
 
 /**
@@ -40,7 +62,33 @@ import type { Hours } from "@/lib/validation/hours";
  * components must not import anything from this module except **types**, which
  * TypeScript erases — importing a getter into a client bundle would pull the
  * Neon driver in with it.
+ *
+ * ## Draft mode
+ *
+ * This is also the one place that asks whether the request is in Next's draft
+ * mode (spec §8 Content editing, decision C4). Every getter checks it and, when
+ * it is on, reads unpublished rows straight from Postgres instead of through
+ * `cachedRead` — §5 forbids caching a read that depended on who was asking.
+ * The repository layer takes that answer as an argument and never reads the
+ * cookie itself, so a query stays callable from a script or a test.
  */
+
+/**
+ * An image on a content row, resolved from the `media` table.
+ *
+ * `url` and `alt` come from the media row, so one asset cannot be described
+ * two different ways on two pages. `width` and `height` are what `next/image`
+ * needs to reserve space before the bytes arrive; they are null only for rows
+ * uploaded before migration 0004, and a template with no dimensions renders
+ * the alt text rather than a figure that shifts the layout (spec §13).
+ */
+export interface ContentImage {
+  url: string;
+  /** "" means deliberately decorative — never "nobody has written one yet". */
+  alt: string;
+  width: number | null;
+  height: number | null;
+}
 
 export type ServiceFamily =
   | "family_healthcare"
@@ -55,7 +103,14 @@ export interface Service {
   family: ServiceFamily;
   /** Null when the seed has not supplied one — see `isSeedGap`. */
   short_description: string | null;
-  featured_image: string | null;
+  /**
+   * `media.id`, not a URL. No template renders a service image yet — the cards
+   * and the detail hero use their `SiteImage` slot, which is served by the
+   * build-time asset pipeline. This is here so the admin panel has somewhere to
+   * put an editorial upload; a template that wants one resolves it the way
+   * `BlogPost.hero_image` is resolved.
+   */
+  featured_image_id: string | null;
   order: number;
   published: boolean;
   /** Prose for the detail page. Null until the seed supplies it. */
@@ -65,7 +120,45 @@ export interface Service {
   /** Bullet list. Empty until the seed supplies one. */
   how_to_access: string[];
   typical_wait_time: string | null;
-  gallery_images: string[];
+}
+
+export interface Doctor {
+  id: string;
+  slug: string;
+  name: string;
+  /** "Consultant Paediatrician". Always present — the column is NOT NULL. */
+  title: string;
+  qualifications: string[];
+  /** Null when the number has not been supplied. Never inferred from anything. */
+  years_experience: number | null;
+  specialties: string[];
+  languages_spoken: string[];
+  /** Markdown, 80–120 words per spec §5. Rendered by `ArticleBody`. */
+  bio: string | null;
+  /**
+   * UploadThing key, not a URL and not rendered today. The profile template
+   * uses the local `portrait` asset slot like every other photo on the site —
+   * see the note in `app/(marketing)/doctors/[slug]/page.tsx`.
+   */
+  /** `media.id`, not a URL — see `Service.featured_image_id`. */
+  headshot_id: string | null;
+  in_house: boolean;
+  visiting: boolean;
+  order: number;
+  published: boolean;
+}
+
+export interface Award {
+  id: string;
+  slug: string;
+  name: string;
+  awarding_body: string;
+  year: number;
+  description: string | null;
+  /** Absolute URL to the awarding body's own page, when one was supplied. */
+  external_link: string | null;
+  order: number;
+  published: boolean;
 }
 
 export interface Faq {
@@ -86,7 +179,8 @@ export interface Hmo {
    * ("HMO", "Health") are stripped at match time rather than aliased per record.
    */
   aliases?: string[];
-  logo: string | null;
+  /** `media.id`, not a URL — see `Service.featured_image_id`. */
+  logo_id: string | null;
   coverage_notes: string | null;
   copay_applies: boolean;
   order: number;
@@ -98,7 +192,8 @@ export interface Testimonial {
   slug: string;
   patient_name: string;
   name_format: "full" | "first_only" | "initials";
-  avatar: string | null;
+  /** `media.id`, not a URL — see `Service.featured_image_id`. */
+  avatar_id: string | null;
   quote: string;
   featured: boolean;
   order: number;
@@ -137,8 +232,8 @@ export interface Location {
   hours?: Hours | Record<string, never>;
   parking_info?: string | null;
   accessibility_notes?: string | null;
-  hero_image?: string | null;
-  gallery_images?: string[];
+  /** `media.id`, not a URL — see `Service.featured_image_id`. */
+  hero_image_id?: string | null;
 }
 
 export type BlogCategory =
@@ -154,7 +249,8 @@ export interface BlogPost {
   excerpt: string;
   /** Markdown source. Rendered by `components/site/article-body.tsx`. */
   body: string;
-  hero_image: string | null;
+  /** Resolved from `media`. Null when no hero image has been set. */
+  hero_image: ContentImage | null;
   category: BlogCategory;
   tags: string[];
   /** ISO 8601. Never null here — the query layer only returns published posts. */
@@ -192,6 +288,32 @@ function realOrNull(value: string | null): string | null {
   return isSeedGap(value) ? null : value;
 }
 
+/**
+ * Fold a left-joined media row into a `ContentImage`.
+ *
+ * Null unless the asset is actually usable: no row, or no dimensions. A hero
+ * image whose width and height are unknown cannot be given to `next/image`
+ * without either guessing a ratio or shipping a layout shift, and CLS < 0.05 is
+ * a hard budget (spec §13). Those rows predate migration 0004; re-uploading the
+ * asset records its dimensions and the figure appears.
+ */
+function toContentImage(row: {
+  heroImageUrl: string | null;
+  heroImageAlt: string | null;
+  heroImageWidth: number | null;
+  heroImageHeight: number | null;
+}): ContentImage | null {
+  if (row.heroImageUrl === null) return null;
+  if (row.heroImageWidth === null || row.heroImageHeight === null) return null;
+
+  return {
+    url: row.heroImageUrl,
+    alt: row.heroImageAlt ?? "",
+    width: row.heroImageWidth,
+    height: row.heroImageHeight,
+  };
+}
+
 /** Drops unwritten placeholders from a seeded list. */
 function realEntries(values: string[]): string[] {
   return values.filter((value) => !isSeedGap(value));
@@ -204,14 +326,51 @@ function toService(row: ServiceRow): Service {
     name: row.name,
     family: row.family,
     short_description: realOrNull(row.shortDescription),
-    featured_image: row.featuredImage,
+    featured_image_id: row.featuredImageId,
     order: row.order,
     published: row.published,
     what_to_expect: realOrNull(row.whatToExpect),
     who_its_for: realEntries(row.whoItsFor),
     how_to_access: realEntries(row.howToAccess),
     typical_wait_time: realOrNull(row.typicalWaitTime),
-    gallery_images: realEntries(row.galleryImages),
+  };
+}
+
+/**
+ * `bio` is `NOT NULL` on the row, so an unwritten one arrives as the
+ * `TODO(seed)` sentinel rather than as null — `realOrNull` is what keeps those
+ * three words off a doctor's profile page.
+ */
+function toDoctor(row: DoctorRow): Doctor {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    title: row.title,
+    qualifications: realEntries(row.qualifications),
+    years_experience: row.yearsExperience,
+    specialties: realEntries(row.specialties),
+    languages_spoken: realEntries(row.languagesSpoken),
+    bio: realOrNull(row.bio),
+    headshot_id: row.headshotId,
+    in_house: row.inHouse,
+    visiting: row.visiting,
+    order: row.order,
+    published: row.published,
+  };
+}
+
+function toAward(row: AwardRow): Award {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    awarding_body: row.awardingBody,
+    year: row.year,
+    description: realOrNull(row.description),
+    external_link: row.externalLink,
+    order: row.order,
+    published: row.published,
   };
 }
 
@@ -231,7 +390,7 @@ function toHmo(row: HmoRow): Hmo {
     slug: row.slug,
     name: row.name,
     aliases: row.aliases,
-    logo: row.logo,
+    logo_id: row.logoId,
     coverage_notes: row.coverageNotes,
     copay_applies: row.copayApplies,
     order: row.order,
@@ -245,7 +404,7 @@ function toTestimonial(row: TestimonialRow): Testimonial {
     slug: row.slug,
     patient_name: row.patientName,
     name_format: row.nameFormat,
-    avatar: row.avatar,
+    avatar_id: row.avatarId,
     quote: row.quote,
     featured: row.featured,
     order: row.order,
@@ -273,8 +432,7 @@ function toLocation(row: LocationRow): Location {
     hours: row.hours,
     parking_info: row.parkingInfo,
     accessibility_notes: row.accessibilityNotes,
-    hero_image: row.heroImage,
-    gallery_images: row.galleryImages,
+    hero_image_id: row.heroImageId,
   };
 }
 
@@ -312,7 +470,7 @@ function toBlogPost(row: BlogPostWithAuthor): BlogPost {
     title: row.title,
     excerpt: row.excerpt,
     body: row.body,
-    hero_image: row.heroImage,
+    hero_image: toContentImage(row),
     category: row.category,
     tags: row.tags,
     published_at: toIsoString(row.publishedAt ?? row.createdAt),
@@ -322,17 +480,43 @@ function toBlogPost(row: BlogPostWithAuthor): BlogPost {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Draft mode                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read options for this request: `{ draft: true }` inside Next's draft mode.
+ *
+ * Draft mode is enabled by `/api/preview`, which admits nobody without a
+ * session and `read` on the resource being previewed. Reaching the cookie is
+ * therefore already an authorisation decision; this function only reports it.
+ *
+ * `draftMode()` throws when there is no request to read — a seed run, a unit
+ * test, a script importing a getter directly — so that case is caught and
+ * answered `false` rather than made every caller's problem. It does **not**
+ * throw during prerendering: `next build` gets an empty draft-mode provider and
+ * a `false`, with no bail-out, so every statically rendered route stays static
+ * and the §13 budgets are unaffected.
+ */
+async function readOptions(): Promise<ReadOptions> {
+  try {
+    return { draft: (await draftMode()).isEnabled };
+  } catch {
+    return { draft: false };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Getters                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** Published services, in display order. */
+/** Published services, in display order. Unpublished ones in draft mode. */
 export async function getServices(): Promise<Service[]> {
-  return (await getPublishedServices()).map(toService);
+  return (await getPublishedServices(await readOptions())).map(toService);
 }
 
 /** One published service by slug, or null when the slug is unknown. */
 export async function getServiceBySlug(slug: string): Promise<Service | null> {
-  const row = await getServiceRow(slug);
+  const row = await getServiceRow(slug, await readOptions());
   return row ? toService(row) : null;
 }
 
@@ -340,7 +524,55 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
 export async function getRelatedServices(
   serviceId: string,
 ): Promise<Service[]> {
-  return (await getRelatedServiceRows(serviceId)).map(toService);
+  return (await getRelatedServiceRows(serviceId, await readOptions())).map(
+    toService,
+  );
+}
+
+/** Published doctors, in display order. Unpublished ones in draft mode. */
+export async function getDoctors(): Promise<Doctor[]> {
+  return (await getPublishedDoctors(await readOptions())).map(toDoctor);
+}
+
+/** One doctor by slug, or null when the slug is unknown or unpublished. */
+export async function getDoctorBySlug(slug: string): Promise<Doctor | null> {
+  const row = await getDoctorRow(slug, await readOptions());
+  return row ? toDoctor(row) : null;
+}
+
+/** Doctors practising at one branch, in display order. */
+export async function getDoctorsByLocation(
+  locationId: string,
+): Promise<Doctor[]> {
+  return (await getDoctorRowsByLocation(locationId, await readOptions())).map(
+    toDoctor,
+  );
+}
+
+/**
+ * The branches one doctor practises at.
+ *
+ * Published branches only — the profile links to each one, and a link to an
+ * unpublished branch is a link to a 404.
+ */
+export async function getLocationsByDoctor(
+  doctorId: string,
+): Promise<Location[]> {
+  return (await getLocationRowsByDoctor(doctorId, await readOptions())).map(
+    toLocation,
+  );
+}
+
+/**
+ * Published awards, newest year first within display order.
+ *
+ * The `logo_id` and `certificate_image_id` columns are foreign keys into
+ * `media` and are not read here: nothing renders them yet, and resolving them
+ * would mean a join per award for an image the timeline does not show. The
+ * timeline is text, which is what spec §6 asks for.
+ */
+export async function getAwards(): Promise<Award[]> {
+  return (await getAwardRows(await readOptions())).map(toAward);
 }
 
 /**
@@ -352,17 +584,32 @@ export async function getRelatedServices(
  * question text.
  */
 export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
-  return (await getFaqRows(category)).map(toFaq);
+  return (await getFaqRows(category, await readOptions())).map(toFaq);
 }
 
-/** Published HMOs, in display order. */
+export type { SiteSettings };
+
+/**
+ * Site settings — the non-secret display values an operator can change without
+ * a deploy (decision C2 option B).
+ *
+ * No draft-mode branch: there is one row and nothing to preview. Returns the
+ * "nothing confirmed yet" shape rather than throwing when the row is missing,
+ * so a database that predates migration 0003 renders the placeholders instead
+ * of a 500 on every page carrying a form.
+ */
+export async function getSiteSettings(): Promise<SiteSettings> {
+  return getSiteSettingsRow();
+}
+
+/** Published HMOs, in display order. Unpublished ones in draft mode. */
 export async function getHmos(): Promise<Hmo[]> {
-  return (await getPublishedHmos()).map(toHmo);
+  return (await getPublishedHmos(await readOptions())).map(toHmo);
 }
 
-/** Published branch locations, in display order. */
+/** Published branch locations, in display order. Unpublished in draft mode. */
 export async function getLocations(): Promise<Location[]> {
-  return (await getPublishedLocations()).map(toLocation);
+  return (await getPublishedLocations(await readOptions())).map(toLocation);
 }
 
 /**
@@ -372,21 +619,26 @@ export async function getLocations(): Promise<Location[]> {
  * recorded consent, so a testimonial whose consent has not been confirmed does
  * not appear here — see seed/README.md. The component renders whatever this
  * returns rather than padding with invented content.
+ *
+ * Draft mode lifts `published` and nothing else: an unconsented quote stays
+ * invisible in a preview too, because a preview URL is a real URL.
  */
 export async function getFeaturedTestimonials(
   limit = 2,
 ): Promise<Testimonial[]> {
-  return (await getFeaturedTestimonialRows(limit)).map(toTestimonial);
+  return (await getFeaturedTestimonialRows(limit, await readOptions())).map(
+    toTestimonial,
+  );
 }
 
 /** Published posts, newest first. `limit` is optional — omit it for the index. */
 export async function getBlogPosts(limit?: number): Promise<BlogPost[]> {
-  return (await getPublishedPosts(limit)).map(toBlogPost);
+  return (await getPublishedPosts(limit, await readOptions())).map(toBlogPost);
 }
 
 /** Most recently published blog post, or null when none is published yet. */
 export async function getLatestBlogPost(): Promise<BlogPost | null> {
-  const post = await getLatestPost();
+  const post = await getLatestPost(await readOptions());
   return post ? toBlogPost(post) : null;
 }
 
@@ -394,7 +646,7 @@ export async function getLatestBlogPost(): Promise<BlogPost | null> {
 export async function getBlogPostBySlug(
   slug: string,
 ): Promise<BlogPost | null> {
-  const post = await getPostRow(slug);
+  const post = await getPostRow(slug, await readOptions());
   return post ? toBlogPost(post) : null;
 }
 
@@ -406,9 +658,68 @@ export async function getRelatedBlogPosts(
   post: BlogPost,
   limit = 3,
 ): Promise<BlogPost[]> {
-  const row = await getPostRow(post.slug);
+  const options = await readOptions();
+  const row = await getPostRow(post.slug, options);
   if (!row) return [];
-  return (await getRelatedPostRows(row, limit)).map(toBlogPost);
+  return (await getRelatedPostRows(row, limit, options)).map(toBlogPost);
+}
+
+/** One tag and how many published posts carry it. */
+export type BlogTag = BlogTagCount;
+
+/**
+ * Published posts matching a visitor's search terms, best match first.
+ *
+ * Not cached, and deliberately so. A search result is keyed on arbitrary input,
+ * so caching it would fill the cache with one entry per phrase anybody ever
+ * typed. The index behind it is what makes the query cheap instead.
+ */
+export async function searchBlogPosts(query: string): Promise<BlogPost[]> {
+  return (await searchPosts(query, await readOptions())).map(toBlogPost);
+}
+
+/** Published posts carrying one tag, newest first. */
+export async function getBlogPostsByTag(tag: string): Promise<BlogPost[]> {
+  return (await getPostsByTagRows(tag, await readOptions())).map(toBlogPost);
+}
+
+/** Every tag in use on a published post, most-used first. */
+export async function getBlogTags(): Promise<BlogTag[]> {
+  return getTagCounts(await readOptions());
+}
+
+/**
+ * The `media` rows a post body's figures reference, keyed by id.
+ *
+ * Handed to `components/site/article-body.tsx`, which renders what it is given
+ * and does no database work of its own. One indexed query by id, and only when
+ * the body actually contains a figure — a body with none does not touch the
+ * database at all.
+ *
+ * Not cached. The page that calls it is already revalidated on a schedule, and
+ * the media library is mutable in a way the public content tags do not cover:
+ * an editor fixing alt text should not have to wait out a second cache layer
+ * that nothing invalidates.
+ */
+export async function getBodyImages(
+  body: string,
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const ids = collectMediaIds(parseMarkdown(body));
+  if (ids.length === 0) return new Map();
+
+  const rows = await getMediaByIds(ids);
+  const resolved = new Map<string, ContentImage>();
+
+  for (const [id, row] of rows) {
+    resolved.set(id, {
+      url: row.url,
+      alt: row.alt,
+      width: row.width,
+      height: row.height,
+    });
+  }
+
+  return resolved;
 }
 
 /**
@@ -421,7 +732,7 @@ export async function getPrimaryLocation(): Promise<Location | null> {
 
 /** One published branch by slug, or null when it is unknown or unpublished. */
 export async function getLocationBySlug(slug: string): Promise<Location | null> {
-  const row = await getLocationRow(slug);
+  const row = await getLocationRow(slug, await readOptions());
   return row ? toLocation(row) : null;
 }
 

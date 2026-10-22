@@ -4,8 +4,9 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { ROLE_LABELS, type Role } from "@/lib/auth/policy";
-import { staffRowAction, type StaffActionState } from "@/lib/auth/user-actions";
+import { staffRowAction, type StaffState } from "@/lib/auth/user-actions";
 import type { StaffAccount } from "@/lib/db/queries/users";
+import { PASSWORD_MIN_LENGTH, staffPassword } from "@/lib/validation/password";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -15,7 +16,7 @@ import { Input } from "@/components/ui/input";
  * `canManage` decides whether the controls render; every action re-checks on the
  * server, so a row rendered read-only is not what makes it read-only.
  *
- * The guards that stop a super admin removing the last super admin, or editing
+ * The guards that stop an admin removing the last admin, or editing
  * their own role, live in `lib/auth/staff-guards.ts` and report through the same
  * `aria-live` region as everything else. They are not duplicated here — a client
  * copy of a rule is a copy that drifts.
@@ -47,14 +48,39 @@ function StaffRow({
   canManage: boolean;
 }) {
   const [resetting, setResetting] = useState(false);
-  const [state, formAction] = useActionState<StaffActionState, FormData>(
+  const [state, formAction] = useActionState<StaffState, FormData>(
     async (prev, formData) => {
+      // The password rule runs here too, against the same schema as the server.
+      if (formData.get("intent") === "password") {
+        const password = staffPassword.safeParse({
+          email: account.email,
+          password: formData.get("password") ?? "",
+        });
+        if (!password.success) {
+          const messages = password.error.issues.map((issue) => issue.message);
+          return {
+            ok: false,
+            error: messages[0] ?? "Choose a different password.",
+            fields: { password: messages },
+          };
+        }
+      }
+
       const result = await staffRowAction(prev, formData);
-      if (result.message) setResetting(false);
+      if (result.ok) setResetting(false);
       return result;
     },
-    {},
+    null,
   );
+
+  // A row has no visible input to hang a field error on — the account id is a
+  // hidden input — so the specific reason ("That account no longer exists.")
+  // replaces the wrapper's generic "Check the highlighted fields." line.
+  const fields = state && !state.ok ? state.fields : {};
+  const errorText =
+    state && !state.ok
+      ? (Object.values(fields).flat()[0] ?? state.error)
+      : null;
 
   const isLocked =
     account.lockedUntil !== null && new Date(account.lockedUntil) > new Date();
@@ -93,14 +119,18 @@ function StaffRow({
       </div>
 
       <div aria-live="polite" className="mt-3 empty:mt-0">
-        {state.message ? (
+        {state?.ok ? (
           <p className="rounded-md bg-secondary px-3 py-2 text-sm text-primary">
-            {state.message}
+            {state.data.message}
           </p>
         ) : null}
-        {state.error ? (
-          <p role="alert" className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive">
-            {state.error}
+        {errorText ? (
+          <p
+            id={`staff-row-error-${account.id}`}
+            role="alert"
+            className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
+          >
+            {errorText}
           </p>
         ) : null}
       </div>
@@ -121,6 +151,8 @@ function StaffRow({
                 id={`role-${account.id}`}
                 name="role"
                 defaultValue={account.role}
+                aria-invalid={fields.role?.length ? true : undefined}
+                aria-describedby={fields.role?.length ? `staff-row-error-${account.id}` : undefined}
                 disabled={isSelf}
                 className="h-10 rounded-md border border-input bg-white px-3 text-sm text-foreground disabled:opacity-60"
               >
@@ -189,7 +221,7 @@ function StaffRow({
               htmlFor={`password-${account.id}`}
               className="block text-xs text-muted-foreground"
             >
-              New password (at least 12 characters)
+              New password (at least {PASSWORD_MIN_LENGTH} characters)
             </label>
             <Input
               id={`password-${account.id}`}
@@ -197,6 +229,8 @@ function StaffRow({
               type="password"
               autoComplete="new-password"
               required
+              aria-invalid={fields.password?.length ? true : undefined}
+              aria-describedby={fields.password?.length ? `staff-row-error-${account.id}` : undefined}
               className="w-64"
             />
           </div>

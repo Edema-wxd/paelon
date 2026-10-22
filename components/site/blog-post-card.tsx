@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { format } from "date-fns";
+import Image from "next/image";
 import Link from "next/link";
 
 import { AssetPlaceholder } from "@/components/site/asset-placeholder";
@@ -12,18 +13,52 @@ import { BLOG_CATEGORY_LABELS, type BlogPost } from "@/lib/content";
  * a category would be announced as one long, unhelpful label; spec §11 also
  * requires descriptive link text, so the heading carries the link and the card
  * carries the context.
+ *
+ * `headingLevel` exists because the same card sits at two different depths and
+ * a heading level is a property of the page, not of the component. On
+ * `/blog/[slug]` the grid sits under "Read next", an `h2`, so `h3` is right and
+ * is the default. On `/blog` the grid sits directly under the page `h1`, where
+ * `h3` skips a level — which CLAUDE.md forbids outright.
  */
-export function BlogPostCard({ post }: { post: BlogPost }) {
+export function BlogPostCard({
+  post,
+  headingLevel = 3,
+}: {
+  post: BlogPost;
+  headingLevel?: 2 | 3;
+}) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const published = new Date(post.published_at);
   const validDate = !Number.isNaN(published.getTime());
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl bg-surface shadow-md">
-      <AssetPlaceholder
-        label={`Illustration for ${post.title}`}
-        className="aspect-video w-full"
-        decorative
-      />
+      {/* Decorative: the card's own heading and excerpt already name the
+          article, so describing the picture again would make a screen reader
+          read every card twice (spec §12). The placeholder holds the same box,
+          so a post gaining a hero image shifts nothing around it. */}
+      {post.hero_image ? (
+        // `fill` rather than the media row's width and height: the card crops
+        // every hero to 16:9 regardless of what was uploaded, so the box is
+        // already fixed by CSS and the intrinsic size would only be a ratio
+        // hint the crop ignores. Nothing here guesses a dimension.
+        <div className="relative aspect-video w-full">
+          <Image
+            src={post.hero_image.url}
+            alt=""
+            aria-hidden
+            fill
+            sizes="(min-width: 1024px) 24rem, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+          />
+        </div>
+      ) : (
+        <AssetPlaceholder
+          label={`Illustration for ${post.title}`}
+          className="aspect-video w-full"
+          decorative
+        />
+      )}
 
       <div className="flex flex-1 flex-col gap-3 p-6">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -37,14 +72,14 @@ export function BlogPostCard({ post }: { post: BlogPost }) {
           ) : null}
         </p>
 
-        <h3 className="text-xl text-primary">
+        <Heading className="text-xl text-primary">
           <Link
             href={`/blog/${post.slug}`}
             className="rounded-sm underline-offset-4 hover:underline"
           >
             {post.title}
           </Link>
-        </h3>
+        </Heading>
 
         <p className="text-base text-foreground/80">{post.excerpt}</p>
 

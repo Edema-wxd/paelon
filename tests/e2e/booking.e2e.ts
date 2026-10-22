@@ -16,6 +16,13 @@ import { expect, test } from "@playwright/test";
  * test the wizard against a fiction. Run it against a development database.
  */
 
+/**
+ * `MIN_SUBMIT_SECONDS` from `lib/spam.ts`, copied rather than imported.
+ * Playwright does not apply the tsconfig `@/*` mapping to a test's transitive
+ * imports, and `lib/spam.ts` reaches `@/lib/logger`. Keep the two in step.
+ */
+const MIN_SUBMIT_SECONDS = 2;
+
 /** A phone the Nigerian normaliser accepts, and an obviously-test identity. */
 const PATIENT = {
   name: "Playwright Test Patient",
@@ -128,6 +135,20 @@ test.describe("booking flow", () => {
     // Paying privately is a first-class answer, not an empty state.
     await page.getByRole("radio", { name: /paying privately/i }).check();
     await continueStep(page);
+
+    /*
+     * The bot defence in lib/spam.ts discards anything submitted less than
+     * MIN_SUBMIT_SECONDS after the form mounted, and returns the *success*
+     * shape with a null reference so a bot learns nothing. Playwright clicks
+     * through all six steps in well under a second, so without this wait the
+     * submission below is silently binned and the spec lands on
+     * `/book/confirmed` with no `?ref=` — which is exactly what it used to do,
+     * intermittently, depending on how fast the machine was.
+     *
+     * A real wait rather than a clock stub: the minimum dwell time is part of
+     * the contract this spec exists to exercise end to end.
+     */
+    await page.waitForTimeout(MIN_SUBMIT_SECONDS * 1000 + 500);
 
     // Consent is never pre-ticked (NDPR), so submitting without it must fail.
     await page.getByRole("button", { name: /request appointment/i }).click();
