@@ -9,11 +9,13 @@ import {
 } from "@/components/site/branch-arrival-rail";
 import { BranchHours } from "@/components/site/branch-hours";
 import { BranchMap } from "@/components/site/branch-map";
+import { ImageGallery } from "@/components/site/image-gallery";
 import { PendingNote } from "@/components/site/pending-note";
 import { Button } from "@/components/ui/button";
 import {
   formatAddress,
   getLocationBySlug,
+  getLocationGallery,
   getLocations,
   toDirectionsHref,
   toTelHref,
@@ -86,6 +88,7 @@ export default async function LocationDetailPage({ params }: PageProps) {
 
   if (!location) notFound();
 
+  const gallery = await getLocationGallery(location.id);
   const address = formatAddress(location);
   const url = new URL(`/locations/${location.slug}`, siteUrl).toString();
   const openingHours = toOpeningHoursSpecification(location.hours);
@@ -347,6 +350,16 @@ export default async function LocationDetailPage({ params }: PageProps) {
           ) : null}
         </section>
         </div>
+
+        {/* Editable in `/admin/locations`; renders only once an editor has
+            picked images for this branch. Outside the `max-w-3xl` reading
+            column — a three-up grid of photographs is not body copy. */}
+        <ImageGallery
+          images={gallery}
+          heading={`Inside the ${location.name} branch`}
+          headingId="branch-gallery-heading"
+          className="mt-14"
+        />
       </div>
     </>
   );

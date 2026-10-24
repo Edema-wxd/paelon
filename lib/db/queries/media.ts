@@ -3,7 +3,12 @@ import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
-import { media, type Media } from "@/lib/db/schema";
+import {
+  locationGalleryImages,
+  media,
+  serviceGalleryImages,
+  type Media,
+} from "@/lib/db/schema";
 
 /**
  * The `media` table repository (spec §8 Content editing).
@@ -151,6 +156,36 @@ export async function listGalleryMedia(
     .innerJoin(media, eq(media.id, mediaColumn))
     .where(and(eq(ownColumn, ownId), isNull(media.deletedAt)))
     .orderBy(sql`${orderColumn} asc`, desc(media.createdAt));
+}
+
+/**
+ * A service's gallery, in the order the editor arranged it.
+ *
+ * Named wrappers rather than four loose column arguments at every call site:
+ * the public templates read these, and a template is the wrong place to know
+ * which join column points where.
+ */
+export async function listServiceGallery(serviceId: string): Promise<Media[]> {
+  return listGalleryMedia(
+    serviceGalleryImages,
+    serviceGalleryImages.serviceId,
+    serviceGalleryImages.mediaId,
+    serviceGalleryImages.order,
+    serviceId,
+  );
+}
+
+/** A branch's gallery, in the order the editor arranged it. */
+export async function listLocationGallery(
+  locationId: string,
+): Promise<Media[]> {
+  return listGalleryMedia(
+    locationGalleryImages,
+    locationGalleryImages.locationId,
+    locationGalleryImages.mediaId,
+    locationGalleryImages.order,
+    locationId,
+  );
 }
 
 /**

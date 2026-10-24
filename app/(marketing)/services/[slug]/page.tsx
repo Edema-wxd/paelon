@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { FaqSection } from "@/components/site/faq-section";
+import { ImageGallery } from "@/components/site/image-gallery";
 import { PendingNote } from "@/components/site/pending-note";
 import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
   getPrimaryLocation,
   getRelatedServices,
   getServiceBySlug,
+  getServiceGallery,
   getServices,
   toTelHref,
 } from "@/lib/content";
@@ -104,10 +106,11 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   if (!service) notFound();
 
-  const [related, faqs, location] = await Promise.all([
+  const [related, faqs, location, gallery] = await Promise.all([
     getRelatedServices(service.id),
     getFaqs("services"),
     getPrimaryLocation(),
+    getServiceGallery(service.id),
   ]);
 
   const url = new URL(`/services/${service.slug}`, siteUrl).toString();
@@ -307,6 +310,15 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             ) : null}
           </aside>
         </div>
+
+        {/* Editable in `/admin/services`; renders only once an editor has
+            picked images for this service. */}
+        <ImageGallery
+          images={gallery}
+          heading={`${service.name} at Paelon`}
+          headingId="service-gallery-heading"
+          className="mx-auto max-w-360 px-4 pb-14 sm:px-6 lg:px-25 lg:pb-20"
+        />
       </article>
 
       {/* Renders nothing while the `faqs` table is empty, which it is. */}

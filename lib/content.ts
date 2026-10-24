@@ -28,7 +28,11 @@ import {
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
 import { getFaqsByCategory as getFaqRows } from "@/lib/db/queries/faqs";
-import { getMediaByIds } from "@/lib/db/queries/media";
+import {
+  getMediaByIds,
+  listLocationGallery,
+  listServiceGallery,
+} from "@/lib/db/queries/media";
 import {
   getPublishedServices,
   getRelatedServices as getRelatedServiceRows,
@@ -720,6 +724,48 @@ export async function getBodyImages(
   }
 
   return resolved;
+}
+
+/**
+ * A gallery's images, in the order an editor arranged them.
+ *
+ * `media` rows carry their own alt text and intrinsic dimensions, so a gallery
+ * needs no per-template mapping beyond this one. A row with no dimensions is
+ * dropped rather than rendered: `next/image` cannot reserve space for it and an
+ * unsized image in a grid is a CLS breach (spec §13). Only rows uploaded before
+ * migration 0004 lack them, and re-saving the asset in `/admin/media` fills
+ * them in.
+ *
+ * Alt text is passed through exactly as stored, `""` included — an editor who
+ * left it empty marked the image decorative, and inventing a description for a
+ * photograph of a hospital ward is the same failure as inventing its copy.
+ *
+ * Not cached, for the reason `getBodyImages` is not: an editor fixing alt text
+ * should not wait out a second cache layer that nothing invalidates.
+ */
+function toGallery(rows: readonly { url: string; alt: string; width: number | null; height: number | null }[]): ContentImage[] {
+  return rows
+    .filter((row) => row.width !== null && row.height !== null)
+    .map((row) => ({
+      url: row.url,
+      alt: row.alt,
+      width: row.width,
+      height: row.height,
+    }));
+}
+
+/** A service's gallery images, in the editor's order. Empty when it has none. */
+export async function getServiceGallery(
+  serviceId: string,
+): Promise<ContentImage[]> {
+  return toGallery(await listServiceGallery(serviceId));
+}
+
+/** A branch's gallery images, in the editor's order. Empty when it has none. */
+export async function getLocationGallery(
+  locationId: string,
+): Promise<ContentImage[]> {
+  return toGallery(await listLocationGallery(locationId));
 }
 
 /**
