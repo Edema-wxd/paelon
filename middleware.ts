@@ -67,7 +67,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://utfs.io https://*.ufs.sh`,
     `font-src 'self'`,
-    `connect-src 'self'${umamiOrigin ? ` ${umamiOrigin}` : ""}`,
+    `connect-src 'self'${umamiOrigin ? ` ${umamiOrigin}` : ""} ${UPLOADTHING_ORIGINS}`,
     `frame-src ${framesUmami ? shareOrigin : "'none'"}`,
     `frame-ancestors 'none'`,
     `object-src 'none'`,
@@ -78,6 +78,26 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
 
   return directives.join("; ");
 }
+
+/**
+ * Origins the browser-side uploader talks to (`connect-src`).
+ *
+ * The flow is: the uploader asks our own `/api/uploadthing` route for a
+ * presigned URL (same-origin, already covered by `'self'`), then `PUT`s the
+ * file straight to UploadThing's regional ingest host — `<region>.ingest.
+ * uploadthing.com`, the region coming from `UPLOADTHING_TOKEN`, which is why
+ * this is a wildcard rather than one host. `*.ufs.sh` is the CDN the uploaded
+ * object is served from; `img-src` already allows it, and `connect-src` needs
+ * it too for a client that reads a just-uploaded file back.
+ *
+ * `api.uploadthing.com` is deliberately absent: that is the server-side API
+ * `UTApi` calls, and nothing in the browser should reach it.
+ *
+ * Not conditional on an env var, unlike Umami: the admin uploader is part of
+ * the panel on every deployment, and a CSP that depends on configuration to be
+ * correct is a CSP that breaks on the one box where it was forgotten.
+ */
+const UPLOADTHING_ORIGINS = "https://*.ingest.uploadthing.com https://*.ufs.sh";
 
 /** Origin of a URL, or null if it is unparseable — never throw in middleware. */
 function safeOrigin(url: string): string | null {

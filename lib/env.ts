@@ -50,16 +50,6 @@ const serverSchema = z
      * the correct Phase 1 state — the site itself never uploads anything.
      */
     UPLOADTHING_TOKEN: optionalString,
-    /*
-     * Opens the upload endpoint while Phase 1 has no authentication.
-     *
-     * Fails closed by design: an unauthenticated upload route on a public
-     * hospital domain is free file hosting for whoever finds it. Set it only
-     * locally, to push editorial images before the admin panel exists. Phase 2
-     * deletes this and checks the Auth.js session instead — see
-     * lib/uploadthing/core.ts.
-     */
-    UPLOADTHING_UPLOADS_ENABLED: booleanFromString,
 
     // --- Email ---
     RESEND_ENABLED: booleanFromString,

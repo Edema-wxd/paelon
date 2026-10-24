@@ -27,15 +27,15 @@ import { logger } from "@/lib/logger";
  * ## Who may upload
  *
  * The middleware requires a signed-in admin account holding `create` on
- * `media` — super admin, admin or media personnel (lib/auth/policy.ts). An
- * upload endpoint that anyone on the internet can POST to is free file hosting
- * for whoever finds it, billed to Paelon and served from a hospital's domain,
- * so this fails closed on any missing or revoked session.
+ * `media` — an `admin`, an `editor` or a `contributor` (lib/auth/policy.ts).
+ * An upload endpoint that anyone on the internet can POST to is free file
+ * hosting for whoever finds it, billed to Paelon and served from a hospital's
+ * domain, so this fails closed on any missing or revoked session.
  *
- * This replaces the `UPLOADTHING_UPLOADS_ENABLED` escape hatch, which existed
- * only because Phase 1 had no authentication. That variable is now unread; it
- * is still declared in lib/env.ts and .env.example and should be removed from
- * both.
+ * It replaced the `UPLOADTHING_UPLOADS_ENABLED` escape hatch, which existed
+ * only because Phase 1 had no authentication. That variable was deleted from
+ * lib/env.ts and .env.example on 2026-10-23 (A8), so the session check is now
+ * the only gate — there is no flag left to leave in the wrong position.
  */
 
 const f = createUploadthing();
