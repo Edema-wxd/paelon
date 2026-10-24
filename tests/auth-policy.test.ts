@@ -19,12 +19,6 @@ const ACTIONS: Action[] = ["read", "create", "update", "delete", "publish"];
 
 const CLINICAL: Resource[] = ["services", "doctors", "locations", "hmos", "testimonials"];
 const EDITORIAL: Resource[] = ["authors", "blog_posts", "awards", "faqs"];
-/**
- * Content types whose rows own a public URL. An `editor` may do everything to
- * them except delete, which is admin-only (`SENSITIVE_RESOURCES`, 2026-09-28
- * narrowing of decision B2 option C).
- */
-const STRUCTURAL: Resource[] = ["services", "doctors", "locations", "hmos"];
 const PATIENT_DATA: Resource[] = [
   "bookings",
   "contact_submissions",
@@ -37,7 +31,6 @@ type Grants = Record<Resource, readonly Action[]>;
 
 const EVERYTHING = ACTIONS;
 const NOTHING: readonly Action[] = [];
-const ALL_BUT_DELETE: readonly Action[] = ["read", "create", "update", "publish"];
 
 /**
  * The expected answer of `can()` for every role × resource, written out by hand
@@ -70,10 +63,12 @@ const EXPECTED: Record<Role, Grants> = {
     about_content: ["read", "update"],
   },
   editor: {
-    services: ALL_BUT_DELETE,
-    doctors: ALL_BUT_DELETE,
-    locations: ALL_BUT_DELETE,
-    hmos: ALL_BUT_DELETE,
+    // Delete included (B5, 2026-10-23): §8 gives an editor CRUD on content and
+    // carves out no content type. Every content delete is soft.
+    services: EVERYTHING,
+    doctors: EVERYTHING,
+    locations: EVERYTHING,
+    hmos: EVERYTHING,
     testimonials: EVERYTHING,
     authors: EVERYTHING,
     blog_posts: EVERYTHING,
@@ -138,7 +133,7 @@ describe("can — full matrix", () => {
 describe("can — invariants", () => {
   it("lets only admin delete a sensitive resource", () => {
     expect([...SENSITIVE_RESOURCES].sort()).toEqual(
-      [...PATIENT_DATA, "users", ...STRUCTURAL].sort(),
+      [...PATIENT_DATA, "users"].sort(),
     );
     for (const resource of SENSITIVE_RESOURCES) {
       expect(can("admin", "delete", resource), resource).toBe(true);
