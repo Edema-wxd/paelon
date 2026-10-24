@@ -15,7 +15,7 @@ import { userRoleEnum, users } from "@/lib/db/schema";
  *
  * This exists because the panel has no self-registration and never should — an
  * open sign-up on a hospital back office is an open back office. The first
- * super admin has to come from somewhere outside the application, and that is
+ * admin has to come from somewhere outside the application, and that is
  * here.
  *
  * Re-running it for an existing email resets that account's password and clears

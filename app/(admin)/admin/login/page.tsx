@@ -12,7 +12,7 @@ import { getAdminUser } from "@/lib/auth/session";
  *
  * Carries no branding beyond the wordmark and says nothing about which hospital
  * systems sit behind it. There is no "forgot password" link because there is no
- * reset flow yet; a super admin resets a password with `npm run admin:passwd`.
+ * reset flow yet; an admin resets a password with `npm run admin:passwd`.
  */
 
 export const metadata: Metadata = {

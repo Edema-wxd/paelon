@@ -4,9 +4,9 @@ import type { Role } from "@/lib/auth/policy";
  * Rules about staff accounts that hold regardless of who is asking.
  *
  * `lib/auth/policy.ts` answers "may this role manage accounts at all". These are
- * the checks that still apply once the answer is yes — a super admin has
+ * the checks that still apply once the answer is yes — an admin has
  * permission to change any role, and must still be stopped from removing the
- * last super admin, because the result is a panel nobody can administer and a
+ * last admin, because the result is a panel nobody can administer and a
  * recovery that means running a script against production.
  *
  * The password rule is a Zod schema, `staffPassword` in `lib/validation/`, so
@@ -29,7 +29,7 @@ export interface StaffChangeContext {
   targetId: string;
   /** The target's current role. */
   targetRole: Role;
-  /** Active super admins right now, the target included if they are one. */
+  /** Active admins right now, the target included if they are one. */
   activeSuperAdmins: number;
 }
 
@@ -37,9 +37,9 @@ export interface StaffChangeContext {
  * May `actor` change `target`'s role to `nextRole`?
  *
  * Self-changes are refused outright rather than only when they would drop the
- * last super admin. Someone editing their own permissions is either a mistake or
+ * last admin. Someone editing their own permissions is either a mistake or
  * an escalation, and neither is worth supporting in a back office where a second
- * super admin can do it in ten seconds.
+ * admin can do it in ten seconds.
  */
 export function canChangeRole(
   context: StaffChangeContext,

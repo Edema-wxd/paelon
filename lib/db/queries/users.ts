@@ -223,9 +223,9 @@ export async function listStaffAccounts(): Promise<StaffAccount[]> {
 }
 
 /**
- * How many active super admins exist.
+ * How many active admins exist.
  *
- * Guards the one irreversible mistake this panel can make: the last super admin
+ * Guards the one irreversible mistake this panel can make: the last admin
  * demoting, deactivating or locking themselves out, after which nobody can
  * manage accounts and recovery means running a script against production.
  */

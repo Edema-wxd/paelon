@@ -15,8 +15,8 @@ import { getUserById, isLockedOut } from "@/lib/db/queries/users";
  * a session row on. So the strategy is JWT and the `sessions` table stays
  * empty, exactly as the comment on it in lib/db/schema.ts predicted.
  *
- * The cost of a JWT is that it is a snapshot: a user demoted from super admin
- * to media would keep their old role until the token expired. `SESSION_RECHECK`
+ * The cost of a JWT is that it is a snapshot: a user demoted from `admin`
+ * to `editor` would keep their old role until the token expired. `SESSION_RECHECK`
  * below closes that by re-reading the row periodically, which is the trade —
  * one query every few minutes rather than one on every request.
  *
