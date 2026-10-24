@@ -480,7 +480,12 @@ export const awards = pgTable("awards", {
     onDelete: "restrict",
   }),
   externalLink: text("external_link"),
-});
+}, (t) => [
+  // The unique slug every other content type has. Missing until migration
+  // 0006: without it `ON CONFLICT ("slug")` has no index to infer, so a
+  // re-seed of this table errored rather than upserting.
+  uniqueIndex("awards_slug_key").on(t.slug),
+]);
 
 export const faqs = pgTable("faqs", {
   ...contentColumns,
@@ -488,7 +493,11 @@ export const faqs = pgTable("faqs", {
   question: text("question").notNull(),
   answer: text("answer").notNull(),
   category: faqCategoryEnum("category").notNull(),
-});
+}, (t) => [
+  // As with `awards`: added by migration 0006, after a seed run proved the
+  // upsert could not work without it.
+  uniqueIndex("faqs_slug_key").on(t.slug),
+]);
 
 /* -------------------------------------------------------------------------- */
 /* Join tables                                                                */

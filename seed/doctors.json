@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "ngozi-onyia",
+    "name": "Dr. Ngozi Onyia",
+    "title": "Managing Director and Founding Partner",
+    "qualifications": [],
+    "years_experience": null,
+    "specialties": ["Paediatrics"],
+    "languages_spoken": [],
+    "bio": null,
+    "headshot": null,
+    "in_house": true,
+    "visiting": false,
+    "location_slugs": ["victoria-island"],
+    "order": 1,
+    "published": true
+  },
+  {
+    "slug": "micheal-talabi",
+    "name": "Dr. Micheal Talabi",
+    "title": "Chief Medical Officer",
+    "qualifications": [],
+    "years_experience": null,
+    "specialties": [],
+    "languages_spoken": [],
+    "bio": null,
+    "headshot": null,
+    "in_house": true,
+    "visiting": false,
+    "location_slugs": ["victoria-island"],
+    "order": 2,
+    "published": true
+  },
+  {
+    "slug": "paulyn-nwaukwa",
+    "name": "Dr. Paulyn Nwaukwa",
+    "title": "Head of Medical Services",
+    "qualifications": [],
+    "years_experience": null,
+    "specialties": [],
+    "languages_spoken": [],
+    "bio": null,
+    "headshot": null,
+    "in_house": true,
+    "visiting": false,
+    "location_slugs": ["victoria-island"],
+    "order": 3,
+    "published": true
+  }
+]

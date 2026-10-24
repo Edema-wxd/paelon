@@ -1,8 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-import { PendingNote } from "@/components/site/pending-note";
-
 /**
  * "For Patricia" block (spec §6): quiet, prominent, links to the About page.
  *
@@ -15,10 +13,11 @@ import { PendingNote } from "@/components/site/pending-note";
  * sides, so the restraint reads as a decision. See the ground sequence noted in
  * app/(marketing)/page.tsx.
  *
- * TODO(seed): the standfirst copy is still outstanding. Patricia is a real
- * person and the founding story is a real event, so placeholder prose here
- * would be a fabricated claim about the hospital rather than lorem ipsum. The
- * gap is stated plainly instead — see PendingNote's own docblock.
+ * The standfirst states only what Paelon publishes about Patricia on its own
+ * site: her name is the hospital's, and she was the founder's daughter. She is
+ * a real person and the founding story is a real event, so nothing here is
+ * drafted beyond those facts — the story itself is on /about, written in her
+ * mother's words.
  */
 export function ForPatriciaBlock() {
   return (
@@ -34,11 +33,11 @@ export function ForPatriciaBlock() {
           For Patricia
         </h2>
 
-        <PendingNote className="mt-8 text-left">
-          The line that belongs here has not been supplied yet. It is the one
-          piece of copy on this page that cannot be drafted for you — Patricia
-          is a real person, and the founding story is a real event.
-        </PendingNote>
+        <p className="mt-6 text-lg text-primary-foreground/85">
+          Paelon is named for Patricia Elozie Onyia, the daughter of our
+          founder, Dr. Ngozi Onyia. The hospital carries her name and the way
+          she met what she was given.
+        </p>
 
         {/*
           Cream, not `text-accent`. Brand maroon on brand navy measures 1.7:1,

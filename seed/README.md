@@ -12,13 +12,20 @@ a field is unknown it is `null` and listed below.
 
 These must be resolved with Francis before the site goes live.
 
-- **`locations.json` — phone and emergency line.** `+234 1234 5678` is the value
-  in the Figma export and is almost certainly a placeholder (sequential digits).
-  A wrong emergency number on a hospital site is a real-world safety issue, not
-  a cosmetic snag. Confirm the real hotline before launch.
-- **`locations.json` — missing branches.** Only Victoria Island appears in the
-  export, but `.env.example` implies four branches (VI, Ikeja, Moshood, Delta).
-  Addresses, hours, and per-branch phone numbers are needed for all four.
+- **`locations.json` — per-branch phone numbers.** Resolved for Victoria
+  Island on 2026-10-24 from paelonmemorial.com: `+234 912 512 0020` general,
+  `+234 912 512 0027` emergency. (The Figma export's `+234 1234 5678` was the
+  placeholder it looked like.) Ikeja and the Moshood Olugbani clinic still have
+  no number of their own — the live site publishes only hospital-wide numbers,
+  including `(01) 290 0844` for retainer enquiries and `0909 360 8138`. Confirm
+  whether each branch has a direct line, and confirm the emergency hotline is
+  answered 24/7 as the site states.
+- **`locations.json` — the fourth branch.** Three are now seeded from the live
+  site: Victoria Island (1221 Ahmadu Bello Way), Ikeja (9 Ajao Street,
+  outpatient 9am–5pm Mon–Fri) and Paelon Memorial Clinic (175b Moshood Olugbani
+  Street). `.env.example` implies a Delta branch, which the live site does not
+  mention at all. Confirm whether it exists. Coordinates are missing for all
+  three, so no map or directions link renders yet.
 - **`testimonials.json` — second testimonial.** The export shows the homepage
   testimonial block twice with the same name and identical quote text but
   different photos. Only one is seeded here. Spec §6 calls for two real
@@ -36,12 +43,17 @@ These must be resolved with Francis before the site goes live.
 
 ## Missing content, non-blocking
 
-- **`doctors.json` — the file does not exist**, so the `doctors` table is empty.
-  Three templates depend on it: the leadership team on `/about` renders nothing,
-  `/doctors/[slug]` resolves no slug, and `/doctors` — the Figma "Our
-  Specialists" page — shows its pending note instead of a card per clinician.
-  The mock's three names carry lorem-ipsum bios, so nothing there is
-  transcribable. A doctor's name, title,
+- **`doctors.json` — three clinicians, no biographies.** Seeded on 2026-10-24
+  from the live site's team section: Dr. Ngozi Onyia (Managing Director and
+  Founding Partner), Dr. Micheal Talabi (Chief Medical Officer) and Dr. Paulyn
+  Nwaukwa (Head of Medical Services). Names and titles only — the live site
+  publishes no bios, qualifications, years of experience or languages, and none
+  of that may be drafted. **The other nine people on the live team page are
+  non-clinical leadership** (ED-COO, Head of Account, HR Manager, Matron and
+  so on). They are deliberately not in `doctors`: that table feeds `/doctors`
+  and `Physician` structured data, which would assert that an accountant is a
+  physician. If `/about` should list them, they need their own content type —
+  ask Francis. A doctor's name, title,
   qualifications, specialties, languages, years of experience and biography are
   claims about a real clinician's credentials — the one kind of content on this
   site where a plausible placeholder would be a genuine harm — so none of it is
@@ -56,16 +68,25 @@ These must be resolved with Francis before the site goes live.
   `awarding_body`, `year`, `description`, and `external_link` where the body
   publishes its own page. The SafeCare 5-star rating the trust ribbon carries
   (spec §6) is presumably the first row.
-- **`faqs.json` — the file does not exist**, so every FAQ accordion is absent.
-  CLAUDE.md's conversion baseline requires one on the homepage and on every
-  service and location page, with `FAQPage` JSON-LD — all of which is built and
-  renders nothing. Needed per entry: `question`, `answer`, `slug`, and a
-  `category` from `general | booking | services | insurance | emergencies`.
-- **The `about_content` row — every field is null.** Not a seed file, and no
-  longer a file at all (migration 0005): it is written in `/admin/about`. Same
-  gap: the founding story, mission, vision, value proposition, motto and ESG
-  block for `/about`. See `content/README.md` for the field list and how the
-  page behaves until they are filled in.
+- **`faqs.json` — six entries, all `general` or `services`.** Seeded on
+  2026-10-24 from the live site's FAQ section. The conversion baseline wants an
+  accordion on the homepage and on every service and location page, and the
+  categories `booking`, `insurance` and `emergencies` have no entries at all —
+  so a service or location page still renders no FAQ. Booking, HMO cover and
+  what to do in an emergency are the three a patient most needs; ask Francis
+  for them rather than writing answers about how this hospital works.
+- **The `about_content` row — filled on 2026-10-24** from the live About and
+  For Patricia pages: intro, founding story, mission, vision, value
+  proposition, motto and the ESG paragraph, seeded from `seed/about.json` and
+  editable at `/admin/about`. The live page also carries a long welcome letter
+  from the Managing Director, which has no section in spec §6 — ask Francis
+  whether the new About page should have one.
+- **Statistics on the homepage.** The live site publishes 41+ doctors, 4+
+  digital laboratory, 45+ years of experience, 15+ winning awards and 10k+
+  satisfied clients — but also "44+ years" on the same page and "seven years of
+  existence" in the About copy, against a hospital founded in April 2010. The
+  figures are inconsistent at source, so none has been seeded. Confirm each
+  one.
 - `services.json` — every service has `short_description: null`. The export's
   cards show names only. Copy is needed for the services index and detail
   templates, along with `long_description`, `who_its_for`, `how_to_access`,

@@ -7,6 +7,7 @@ import type { z } from "zod";
 
 import { closePool, dbTx } from "@/lib/db/client";
 import {
+  aboutContent,
   authors,
   awards,
   blogPostRelated,
@@ -22,6 +23,7 @@ import {
   testimonials,
 } from "@/lib/db/schema";
 import {
+  aboutSeedSchema,
   authorSeedSchema,
   awardSeedSchema,
   blogPostSeedSchema,
@@ -80,6 +82,30 @@ function readSeed<S extends z.ZodType>(
     }
     return parsed.data;
   });
+}
+
+/**
+ * Read and validate `seed/about.json`, the one seed file that is an object.
+ *
+ * `about_content` holds a single row (migration 0005), so there is no array to
+ * map and no slug to key on. A missing file leaves the row as the migration
+ * created it: every field null, the page unwritten.
+ */
+function readAboutSeed(): z.infer<typeof aboutSeedSchema> | null {
+  const path = join(SEED_DIR, "about.json");
+  if (!existsSync(path)) return null;
+
+  const raw: unknown = JSON.parse(readFileSync(path, "utf8"));
+  const parsed = aboutSeedSchema.safeParse(raw);
+
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join("; ");
+    throw new Error(`about.json failed validation — ${detail}`);
+  }
+
+  return parsed.data;
 }
 
 /** Placeholder for a NOT NULL text column with no content yet. */
@@ -175,6 +201,37 @@ async function main(): Promise<void> {
       })
       .returning({ id: services.id });
     if (row) serviceIds.set(s.slug, row.id);
+  }
+
+  const about = readAboutSeed();
+
+  if (about) {
+    /*
+     * The singleton, upserted like everything else here. `id: 1` is the
+     * conflict target because there is no slug — and no second row to collide
+     * with, which the CHECK in 0005 enforces.
+     */
+    await db
+      .insert(aboutContent)
+      .values({
+        id: 1,
+        published: about.published,
+        placeholder: about.placeholder,
+        intro: about.intro,
+        foundingStory: about.founding_story,
+        mission: about.mission,
+        vision: about.vision,
+        valueProposition: about.value_proposition,
+        motto: about.motto,
+        esg: about.esg,
+      })
+      .onConflictDoUpdate({
+        target: aboutContent.id,
+        set: conflictSet(aboutContent, [
+          "published", "placeholder", "intro", "foundingStory", "mission",
+          "vision", "valueProposition", "motto", "esg",
+        ]),
+      });
   }
 
   for (const s of doctorSeeds) {

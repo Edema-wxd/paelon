@@ -159,10 +159,30 @@ describe("content/legal/privacy.json", () => {
     expect(legalDocumentSchema.safeParse(privacyJson).success).toBe(true);
   });
 
-  it("ships unpublished and marked placeholder, so it cannot go live by accident", () => {
+  /*
+   * Published since 2026-10-24: the file now carries Paelon's own policy,
+   * v3.0 of March 2026, which their counsel approved and which is live on
+   * paelonmemorial.com. The guard that matters is no longer "must not go
+   * live" but "must not go live as a skeleton", and the schema enforces that
+   * on every parse — a published document with an empty section, no effective
+   * date, or `placeholder` still set does not parse at all.
+   */
+  it("is published, with counsel's text rather than placeholder prose", () => {
     const doc = legalDocumentSchema.parse(privacyJson);
-    expect(doc.published).toBe(false);
-    expect(doc.placeholder).toBe(true);
+    expect(doc.published).toBe(true);
+    expect(doc.placeholder).toBe(false);
+  });
+
+  it("carries the effective date a published policy is cited by", () => {
+    expect(legalDocumentSchema.parse(privacyJson).effective_date).toBe(
+      "2026-03-01",
+    );
+  });
+
+  it("names the Data Protection Officer's route, which the NDPA requires", () => {
+    const doc = legalDocumentSchema.parse(privacyJson);
+    const contact = doc.sections.find((s) => s.id === "contact-us");
+    expect(contact?.body.join(" ")).toMatch(/privacy@paelonmemorial\.com/);
   });
 
   it("has unique section ids", () => {
@@ -172,7 +192,7 @@ describe("content/legal/privacy.json", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("has a body in every section, since it is placeholder text not a skeleton", () => {
+  it("has a body in every section", () => {
     const doc = legalDocumentSchema.parse(privacyJson);
     expect(doc.sections.every((s) => s.body.length > 0)).toBe(true);
   });

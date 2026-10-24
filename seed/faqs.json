@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "is-paelon-only-for-women-and-children",
+    "question": "Is Paelon only a women and children's hospital?",
+    "answer": "No. Virtually every specialty is available at Paelon, either in-house or on a visiting basis.",
+    "category": "general",
+    "order": 1,
+    "published": true
+  },
+  {
+    "slug": "does-paelon-offer-retainer-services",
+    "question": "Does Paelon offer retainer services?",
+    "answer": "Yes. Details are available at reception, or call (01) 290 0844 for more information.",
+    "category": "general",
+    "order": 2,
+    "published": true
+  },
+  {
+    "slug": "comprehensive-health-assessment",
+    "question": "Can I have a comprehensive health assessment at Paelon?",
+    "answer": "Yes. We offer a wide range of bespoke health assessments, with a team dedicated to making sure you receive an accurate and detailed report.",
+    "category": "services",
+    "order": 3,
+    "published": true
+  },
+  {
+    "slug": "why-pay-for-a-medical-report",
+    "question": "Why do I pay for a medical report or a fit-to-fly certificate?",
+    "answer": "Writing these reports is a service, and every service is rendered at a cost. As with everything else we do, we provide it at the highest quality.",
+    "category": "services",
+    "order": 4,
+    "published": true
+  },
+  {
+    "slug": "why-see-a-doctor-before-tests",
+    "question": "Why must I see a doctor first when I already know which tests I want?",
+    "answer": "In line with global best practice, certain tests have to be requested by a doctor, much as some drugs have to be prescribed before they can be bought. Some tests, such as a pregnancy test, can be done without seeing a doctor first.",
+    "category": "services",
+    "order": 5,
+    "published": true
+  },
+  {
+    "slug": "is-the-ikeja-branch-open-24-hours",
+    "question": "Is the Ikeja branch open 24 hours?",
+    "answer": "Not yet. Ikeja runs an outpatient clinic from 9am to 5pm, Monday to Friday, and is closed on Saturdays and Sundays. The Victoria Island hospital is open 24 hours.",
+    "category": "general",
+    "order": 6,
+    "published": true
+  }
+]

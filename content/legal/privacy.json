@@ -1,134 +1,151 @@
 {
   "slug": "privacy",
   "title": "Privacy Policy",
-  "published": false,
-  "placeholder": true,
-  "effective_date": null,
+  "published": true,
+  "placeholder": false,
+  "effective_date": "2026-03-01",
   "sections": [
     {
-      "id": "about-this-policy",
-      "heading": "About this policy",
+      "id": "introduction",
+      "heading": "Introduction",
       "body": [
-        "This policy explains how Paelon Memorial Hospital handles personal information collected through this website. It covers the booking form, the contact form, the corporate enquiry form and the newsletter signup.",
-        "It does not cover your clinical records. Medical records are held under the hospital's separate clinical records policy and are not accessible through this website.",
-        "This policy is written to align with the Nigeria Data Protection Regulation (NDPR). [TO CONFIRM]: whether the hospital is also within scope of any sector-specific rules that need naming here."
-      ]
-    },
-    {
-      "id": "who-we-are",
-      "heading": "Who we are",
-      "body": [
-        "Paelon Memorial Hospital is the data controller for the information described in this policy. [TO CONFIRM]: registered entity name, RC number and registered address.",
-        "Our branch addresses and phone numbers are listed on the locations page of this website."
-      ]
-    },
-    {
-      "id": "information-we-collect",
-      "heading": "Information we collect",
-      "body": [
-        "When you request an appointment we collect your name, phone number, email address, date of birth, the branch and service you selected, your preferred date and time, whether you are an existing patient, your HMO details if you give them, and the reason for your visit if you choose to describe it.",
-        "When you use the contact form or the corporate enquiry form we collect your name, email address, phone number, and the content of your message. Corporate enquiries also include your organisation name and the size of your workforce.",
-        "When you subscribe to the newsletter we collect your email address only.",
-        "We do not ask for payment details anywhere on this website."
-      ]
-    },
-    {
-      "id": "how-we-use-it",
-      "heading": "How we use your information",
-      "body": [
-        "We use appointment requests to contact you, confirm a time, and prepare for your visit. An appointment request is a request, not a confirmed booking, until a member of staff contacts you.",
-        "We use contact and corporate enquiries to answer you. We use your newsletter subscription to send the newsletter, and nothing else.",
-        "We do not sell your information, and we do not use it for automated decision-making or profiling."
-      ]
-    },
-    {
-      "id": "legal-basis",
-      "heading": "Legal basis for processing",
-      "body": [
-        "We rely on your consent for the newsletter, and on the steps necessary to provide care you have asked for in the case of appointment requests and enquiries. [TO CONFIRM]: counsel to confirm the correct NDPR lawful basis for each form.",
-        "Where we rely on consent you can withdraw it at any time, and withdrawing it does not affect anything we did before you withdrew it."
+        "To provide our services to you and deliver on our promises, Paelon Memorial Hospital Limited requires the use of certain personal data. To access our services — whether onsite, offsite, or through our online platforms — we may require you to provide personal data so that we can deliver a personalised experience.",
+        "In line with our commitment to preserve, protect and safeguard your data privacy rights under our applicable statutory obligations and internationally recognised standards, this policy sets out how we collect, store, protect and process your personal data.",
+        "It also explains how you can control your data, and how we manage, store, protect, share, retain or delete it. It will tell you about your privacy rights and how Nigerian law protects you.",
+        "This Privacy Policy is issued by Paelon Memorial Hospital Limited (\"Paelon\" or \"the Hospital\"). The words \"we\", \"us\" and \"our\" refer to Paelon Memorial Hospital Limited."
       ]
     },
     {
       "id": "consent",
       "heading": "Consent",
       "body": [
-        "Every form on this website that collects personal information has a consent checkbox that is never ticked for you. You have to tick it yourself before the form will submit.",
-        "We record which version of this policy was in force when you gave consent, so that we can tell you later exactly what you agreed to."
+        "Please read this Privacy Policy together with any other privacy notice or fair processing policy we provide on specific occasions when we collect or process personal data about you, so that you are fully aware of how and why we are using your data.",
+        "By ticking the consent box on any of our forms, you agree to the terms of this Privacy Policy and allow us to use your data to provide you with the best possible experience. Every form on this website records which version of this policy you agreed to.",
+        "This Privacy Policy supplements our other notices and policies and is not intended to override them."
       ]
     },
     {
-      "id": "who-we-share-with",
-      "heading": "Who we share your information with",
+      "id": "scope",
+      "heading": "Scope of this policy",
       "body": [
-        "Your information is handled by hospital staff at the branch you selected, and by the service providers that run this website on our behalf: our database host, our email delivery provider, and our hosting provider.",
-        "[TO CONFIRM]: counsel to confirm whether each provider needs naming individually, and whether a data processing agreement is in place with each.",
-        "We share information with third parties outside this list only where the law requires it."
+        "This Privacy Policy applies to personal data collected and processed in connection with the business of Paelon Memorial Hospital Limited. It sets out the Hospital's approach to personal data received from people accessing any of our services, whether in person, online, or through third-party referrals.",
+        "On this website, that means the appointment booking form, the contact form, the corporate enquiry form and the newsletter signup."
       ]
     },
     {
-      "id": "international-transfers",
-      "heading": "International transfers",
+      "id": "information-we-collect",
+      "heading": "What information do we collect?",
       "body": [
-        "Some of the service providers that run this website store data outside Nigeria. [TO CONFIRM]: counsel to confirm the transfer mechanism relied on and the destinations to disclose."
+        "We collect personal data: any information relating to an identified or identifiable living individual, or pieces of information which, combined, can lead to the identification of a person. This includes data such as name, email address, phone number, home address and identification numbers. It does not include anonymised data.",
+        "Identity data — full name, maiden name, date of birth, marital status, title, gender, biometric data, next-of-kin details.",
+        "Contact data — home address, email address, telephone number.",
+        "Financial data — salary structure, bank information and payment details.",
+        "Transaction data — details of payments and services you have received from us.",
+        "Health data — medical history, diagnoses, treatment records and clinical notes relevant to your care.",
+        "Communications data — your preferences for receiving communications from us, and your communication history with us.",
+        "A booking made through this website collects your name, phone number, email address, preferred branch, service and appointment time, and anything you choose to tell us about your reason for visiting. Clinical records themselves are created and held in the hospital, not on this website."
       ]
     },
     {
-      "id": "how-long-we-keep-it",
-      "heading": "How long we keep your information",
+      "id": "how-we-collect",
+      "heading": "How do we collect your data?",
       "body": [
-        "We keep appointment requests for twelve months after the appointment date. After that we remove the personal details and keep only anonymous records for planning purposes.",
-        "[TO CONFIRM]: retention periods for contact enquiries, corporate enquiries and newsletter subscriptions.",
-        "You can ask us to delete your information sooner. See your rights below."
+        "Direct interactions — when you register as a patient, fill in forms, correspond with us by phone, email or in person, or use our services directly.",
+        "Automated technologies — as you interact with our website we may automatically collect technical data about your device and browsing behaviour.",
+        "Third parties — we may receive your data from employers, health maintenance organisations, referral sources, or publicly available sources where you have lawfully provided consent for such sharing.",
+        "We do not use your data for any purpose beyond those listed in this policy, and we do not sell, lend or rent your personal data to any third party."
       ]
     },
     {
-      "id": "how-we-protect-it",
-      "heading": "How we protect your information",
+      "id": "why-we-collect",
+      "heading": "Why do we collect data?",
       "body": [
-        "Information you submit is sent over an encrypted connection and stored in an access-controlled database. Access is limited to staff who need it to do their job.",
-        "The reason-for-visit field you may fill in when booking is treated as health information: it is stored with your booking and is never included in notification emails or in our system logs."
+        "To process your requests and provide you with our healthcare services.",
+        "To communicate with you about your treatment, care plan and related services.",
+        "To enable you to receive benefits with third parties such as health insurance or pre-employment medical checks.",
+        "To respond to queries and resolve problems related to our services.",
+        "To meet our legal and regulatory obligations under Nigerian law.",
+        "To maintain accurate and up-to-date medical and administrative records."
+      ]
+    },
+    {
+      "id": "lawful-basis",
+      "heading": "Lawful basis for processing your data",
+      "body": [
+        "Under the Nigeria Data Protection Act 2023 (NDPA) and the Nigeria Data Protection Regulation 2019 (NDPR), we process personal data on one or more of the following lawful bases.",
+        "Consent — you have given clear consent for us to process your data for a specific purpose.",
+        "Contract — processing is necessary for the performance of a contract with you.",
+        "Legal obligation — processing is necessary to comply with the law.",
+        "Vital interests — processing is necessary to protect someone's life.",
+        "Public interest — processing is necessary for public health or safety purposes.",
+        "Legitimate interests — processing is necessary for our legitimate interests, provided these are not overridden by your rights.",
+        "While we primarily process your data with your consent, we may rely on any of the above bases depending on the circumstances."
       ]
     },
     {
       "id": "your-rights",
-      "heading": "Your rights",
+      "heading": "How you can control your data",
       "body": [
-        "Under the NDPR you can ask us for a copy of the information we hold about you, ask us to correct it if it is wrong, ask us to delete it, object to how we are using it, or ask us to restrict its use.",
-        "To make any of these requests, email us at the address in the contact section below. We will respond within [TO CONFIRM] days. There is no charge.",
-        "Requests are reviewed by a member of staff rather than handled automatically, so please give us enough detail to find your records."
+        "You have the right to limit the data you provide to us. You also have the following rights under the NDPA.",
+        "Request access to the personal data we hold about you.",
+        "Request correction of inaccurate or outdated personal data.",
+        "Request restriction of how we process your data.",
+        "Request partial or complete erasure of your personal data.",
+        "Object to the processing of your data for direct marketing purposes.",
+        "Object to automated decision-making that significantly affects you.",
+        "Request the transfer of your personal data to another party.",
+        "Withdraw consent at any time, without affecting the lawfulness of processing carried out before you withdrew it.",
+        "To exercise any of these rights, contact our Data Protection Officer using the details below."
+      ]
+    },
+    {
+      "id": "sharing",
+      "heading": "Does Paelon share your data?",
+      "body": [
+        "It may be necessary to share your personal data with the parties below, and we will seek your consent before doing so.",
+        "Corporate entities, where you are an employee referred to us for medical services.",
+        "The National Health Insurance Authority (NHIA) and other regulatory bodies.",
+        "Health Maintenance Organisations (HMOs).",
+        "Service providers acting on our behalf.",
+        "Law enforcement agencies or government officials, where required by law.",
+        "We do not share your personal data without your authorisation except where required by law or by contract, and we do not sell your data to any party for commercial purposes."
+      ]
+    },
+    {
+      "id": "protection-and-retention",
+      "heading": "How we manage, store, protect and retain your information",
+      "body": [
+        "We maintain appropriate technical and organisational security measures to prevent your data from being accidentally lost, accessed without authorisation, or misused. Access to your personal data is limited to authorised personnel on a strict need-to-know basis.",
+        "We have procedures in place to handle suspected personal data breaches, and will notify you and any applicable regulator — including the Nigeria Data Protection Commission (NDPC) — where legally required to do so, within the timeframes the law sets.",
+        "While no system is entirely immune to security threats, we commit to taking all reasonable and proportionate measures to protect your data.",
+        "We retain your personal data only for as long as necessary to fulfil the purposes for which it was collected, including satisfying legal, accounting or regulatory requirements. Once there is no further lawful basis to retain your data, it is securely deleted or destroyed."
       ]
     },
     {
       "id": "cookies-and-analytics",
-      "heading": "Cookies and analytics",
+      "heading": "Cookies and analytics on this website",
       "body": [
-        "This website does not use advertising or tracking cookies, and it does not show a cookie banner because it does not need your consent for anything it stores.",
-        "We measure how the site is used with privacy-focused analytics that do not set cookies and do not collect personal information. We can see that a page was viewed; we cannot see who viewed it."
+        "This website measures how many people visit each page using analytics that set no cookies and build no profile of you. We do not track you across other websites, and there is no advertising network on this site.",
+        "The pages you visit are counted; you are not identified by them. Because nothing is stored on your device for this purpose, there is no cookie banner to dismiss.",
+        "[TO CONFIRM] with counsel at the next review: this section describes the new website and is not carried over from the March 2026 policy."
       ]
     },
     {
-      "id": "childrens-privacy",
-      "heading": "Children's privacy",
-      "body": [
-        "We treat information about children with the same care as any other patient information. Appointment requests for a child should be made by a parent or guardian. [TO CONFIRM]: counsel to confirm the age threshold and consent wording that applies."
-      ]
-    },
-    {
-      "id": "changes-to-this-policy",
+      "id": "changes",
       "heading": "Changes to this policy",
       "body": [
-        "If we change this policy we will update the effective date at the top of this page. Where the change is significant we will say so on the website.",
-        "We keep previous versions so that we can tell you which one applied when you gave consent."
+        "We review this Privacy Policy regularly and may update it from time to time. The current version was last updated in March 2026 and supersedes all previous versions. Any material changes will be communicated to you where reasonably practicable.",
+        "Please make sure the personal data you provide to us stays accurate and up to date, and tell us promptly if any of your details change."
       ]
     },
     {
       "id": "contact-us",
-      "heading": "Contact us and complaints",
+      "heading": "Contact information",
       "body": [
-        "[TO CONFIRM]: name and email address of the hospital's Data Protection Officer. This is required in the footer of every page under the NDPR and is still outstanding.",
-        "If you are not satisfied with how we have handled your information, you can complain to the Nigeria Data Protection Commission.",
-        "For anything else, use the contact form on this website or call the branch you dealt with."
+        "For any query about your data or this Privacy Policy, contact our Data Protection Officer.",
+        "The Data Protection Officer, Paelon Memorial Hospital Limited, 1221 Ahmadu Bello Way, Victoria Island, Lagos.",
+        "Email privacy@paelonmemorial.com or call +234 809 888 8978.",
+        "If you are not satisfied with our response, you may complain to the Nigeria Data Protection Commission."
       ]
     }
   ]

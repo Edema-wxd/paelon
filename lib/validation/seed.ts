@@ -156,6 +156,32 @@ export const faqSeedSchema = z.object({
   ]),
 });
 
+/**
+ * `seed/about.json` — the `about_content` singleton, not a list.
+ *
+ * The only seed file that is a JSON object rather than an array, because the
+ * table it fills holds exactly one row (migration 0005). It exists so the copy
+ * is reproducible across environments: `/admin/about` is where Paelon edits
+ * the page, but a fresh database needs somewhere to start, and "re-type the
+ * founding story into production by hand" is not a deployment step.
+ *
+ * Re-seeding overwrites the row, so an edit made in the panel and not mirrored
+ * here is lost on the next `npm run db:seed`. That is the same bargain every
+ * other seed file strikes.
+ */
+export const aboutSeedSchema = z.object({
+  published: z.boolean().default(false),
+  placeholder: z.boolean().default(false),
+  intro: nullableText,
+  founding_story: nullableText,
+  mission: nullableText,
+  vision: nullableText,
+  value_proposition: nullableText,
+  motto: nullableText,
+  esg: nullableText,
+});
+
+export type AboutSeed = z.infer<typeof aboutSeedSchema>;
 export type ServiceSeed = z.infer<typeof serviceSeedSchema>;
 export type DoctorSeed = z.infer<typeof doctorSeedSchema>;
 export type LocationSeed = z.infer<typeof locationSeedSchema>;
