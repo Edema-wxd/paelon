@@ -765,7 +765,7 @@ Both deep links skip the pre-filled step and land on the next step directly.
 Role stored on the `users` table. Three roles, labelled in the UI by their enum names:
 
 - **`admin`** — Full CRUD on all content, including deleting patient data (bookings, contact submissions, corporate enquiries). User management. Audit log.
-- **`editor`** — Create, update, publish and soft-delete content, except `services`, `doctors`, `locations` and `hmos`, whose rows own a public URL and which only an `admin` may delete (B5, provisional). Reads patient submissions, but cannot delete them. No access to the staff list or user management.
+- **`editor`** — Create, update, publish and soft-delete content, every content type included. The 2026-09-28 carve-out that made `services`, `doctors`, `locations` and `hmos` `admin`-only to delete was reverted on 2026-10-23 (B5): an editor has CRUD on content without exception, every content delete is soft, and the confirmation dialog still names the public URL that will start returning 404. Reads patient submissions, but cannot delete them. No access to the staff list or user management.
 - **`contributor`** — Limited to `blog_posts`, `authors`, `faqs`, `awards` and media. May create rows of those types and update only rows they created (`created_by_user_id`, written on insert and checked alongside `can()`); media likewise, through `uploaded_by` on the `media` table. Publish requires an editor or admin. No access to services, doctors, locations, HMOs, testimonials or patient data.
 
 All content deletes are soft deletes.
@@ -837,7 +837,7 @@ Interface features:
 ### Audit log
 
 - `audit_log` records sign-ins, staff account changes, media deletes, and each open of a booking, contact submission or corporate enquiry detail page. List views are not logged.
-- **Testimonials additionally record the change itself, not just the fact of one.** Any edit that turns `consent_given` on or off writes the before and after value; any edit to `quote` writes a SHA-256 of each side. The digest is deliberate — a patient's own words are personal data, and the audit log must not become a second store of it with its own retention problem (D4). Nothing else writes a before/after pair.
+- **Testimonials additionally record the change itself, not just the fact of one.** Any edit that turns `consent_given` on or off writes the before and after value; any edit to `quote` writes the wording of each side verbatim. This was a SHA-256 digest until 2026-10-23, when D4 was settled the other way: a consent dispute is answered by reading what the patient said and what it was changed to, which a digest cannot do. The consequence is accepted and bounded — those entries hold personal data, so they fall under the same retention rule as the testimonial row itself (§14), a DSAR covering a patient with a testimonial must search `audit_log` metadata as well, and `quote` is the only such column. Nothing else writes a before/after pair.
 - The IP address is stored as a salted hash, using the same scheme as the rate limiter. It is never stored raw.
 - Readable by `admin` only, at `/admin/audit`.
 - Retention period: `TODO`, set by counsel together with the §14 retention periods.
@@ -1263,17 +1263,17 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
   - A7: `@node-rs/argon2` approved (§2, §14 Auth).
   - A8: `UPLOADTHING_TOKEN` replaces the v6 pair, `UPLOADTHING_UPLOADS_ENABLED` removed, `AUTH_SECRET`/`AUTH_URL` required in production, `trustHost` kept (§14).
   - B1: UI role labels match the enum names (§8 Roles).
-  - B2: editors may soft-delete content. Patient-data deletes and the staff list are `admin` only (§8 Roles). Narrowed by B5.
+  - B2: editors may soft-delete content. Patient-data deletes and the staff list are `admin` only (§8 Roles). Narrowed by B5 on 2026-09-28, restored in full on 2026-10-23.
 - Phase 2, 2026-09-28. `/admin/services`, `/admin/doctors`, `/admin/locations`
   and `/admin/hmos` built on the shared CRUD kit. Join tables
   (`service_locations`, `service_related`, `doctor_locations`, `hmo_locations`)
   are edited as multi-selects and synced by the action after the row is
   written; `locations.hours` is edited against `lib/validation/hours.ts` behind
   an explicit "confirmed" tick, and stays `{}` until it is ticked.
-  - B5 (**provisional, awaiting Francis**): delete on `services`, `doctors`,
-    `locations` and `hmos` is `admin` only, and the confirmation names the URL
-    that will start returning 404. Editors keep unpublish. This narrows B2 and
-    is not yet ratified (§8 Roles).
+  - B5 (**reverted 2026-10-23**, see that date's entry): delete on `services`,
+    `doctors`, `locations` and `hmos` was made `admin` only, with the
+    confirmation naming the URL that would start returning 404. The warning
+    stayed; the permission narrowing did not (§8 Roles).
   - B3: contributors keep a resource allow-list and may update only rows they created (§8 Roles).
   - B4: audit log added: detail-page opens of patient records are logged, IPs stored as salted hashes, `/admin/audit` for `admin`, retention `TODO` (§8 Audit log).
   - C1: the spec's per-type admin routes stand, with `/admin/media` and `/admin/audit` added (§8 Admin routes).
@@ -1290,3 +1290,31 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
   - E4: separate CSP for `/admin/*` (§14 Headers).
   - E5: retention is anonymise-in-place, 12 months from `preferred_date`, run by a `JOBS_SECRET`-guarded job endpoint; other periods `TODO` with counsel (§14 NDPR, env vars).
   - F1: WCAG 2.1 AA applies to the admin panel; performance budgets do not (§12, §13).
+- Phase 2, 2026-10-23. The four decisions left open in
+  `docs/phase-2-decisions.md` were settled by Francis, and the galleries built
+  in September were given somewhere to render.
+  - B5 **reverted**: `services`, `doctors`, `locations` and `hmos` came back out
+    of `SENSITIVE_RESOURCES`, restoring B2 option C in full. §8 gives an
+    `editor` CRUD on content and carves out no content type; the `deleteWarning`
+    on those four configs is what makes the cost of a delete legible, and it
+    stays (§8 Roles).
+  - D4 **settled the other way**: `testimonials.quote` is audited verbatim on
+    both sides rather than as a SHA-256 digest, because a consent dispute needs
+    the words. The audit log therefore holds personal data for those rows, under
+    the testimonial's own retention rule, and `lib/admin/audit.ts` documents it
+    as the single exception (§8 Audit log, §14 NDPR).
+  - B1 and B3 **ratified as built**: UI role labels are the enum names, and a
+    `contributor` keeps the resource allow-list plus own-rows-only updates
+    through `canOnRow()`. The comments that still said "super admin" and "media
+    personnel" were brought in line with the enum (§8 Roles).
+  - A8 completed: `UPLOADTHING_UPLOADS_ENABLED` deleted from `lib/env.ts` and
+    `.env.example`. The session check in `lib/uploadthing/core.ts` is the only
+    gate (§14 Env vars).
+  - `connect-src` now allows `https://*.ingest.uploadthing.com` and
+    `https://*.ufs.sh`, so the browser-side uploader survives CSP enforcement
+    (§14 Headers).
+  - Service and branch galleries render on `/services/[slug]` and
+    `/locations/[slug]` as a static grid of `next/image` figures —
+    `components/site/image-gallery.tsx`, no slider, no client JavaScript. Rows
+    without intrinsic dimensions are dropped rather than shipped unsized
+    (§6, §13).
