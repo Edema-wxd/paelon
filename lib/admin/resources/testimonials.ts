@@ -36,8 +36,10 @@ import {
  *     editorial decision and consent is a recorded fact about a patient, and
  *     one must never be able to imply the other.
  *  3. **Changes to either are audited with before and after.** See `auditDiff`
- *     on the testimonials entry in `./server.ts`, which also explains why the
- *     quote is recorded as a digest rather than as text.
+ *     on the testimonials entry in `./server.ts`. The quote's before and after
+ *     are the words themselves (D4, 2026-10-23) — the one place the audit log
+ *     deliberately holds personal data, and `lib/admin/audit.ts` says what
+ *     follows from that.
  *
  * `name_format` is required for the same reason: how much of a patient's name
  * may appear is part of what they consented to, so it is answered explicitly

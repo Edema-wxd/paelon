@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { headers } from "next/headers";
 
 import type { Resource } from "@/lib/auth/policy";
@@ -12,8 +10,28 @@ import { clientIpFrom, hashIdentifier } from "@/lib/rate-limit";
  *
  * The row is evidence of *what happened*, not a copy of the data it happened
  * to. Metadata carries ids, enum values and counts — never a name, an email or
- * anything a patient typed — so the audit log never becomes a second store of
- * personal data with its own NDPR retention problem.
+ * anything a patient typed — so the audit log does not become a second store
+ * of personal data with its own NDPR retention problem.
+ *
+ * ## The one exception: a testimonial's quote (D4, 2026-10-23)
+ *
+ * `auditDiff` on `testimonials` writes the before and after of `quote`
+ * verbatim. Francis ruled that a consent dispute is answered by reading the
+ * patient's words and what they were changed to, which a digest cannot do —
+ * it can only confirm a sentence somebody already holds.
+ *
+ * So for those rows the log *does* hold personal data, deliberately, and that
+ * has consequences this module cannot enforce on its own:
+ *
+ *  - those entries fall under the same retention rule as the testimonial row
+ *    they describe (§14, E5), not a longer one;
+ *  - a DSAR for a patient with a testimonial has to search `audit_log`
+ *    metadata as well as `testimonials`;
+ *  - `stripPii` does not list `quote`, and must not start to — that would
+ *    silently drop the evidence this exception exists to keep.
+ *
+ * Nothing else may follow it. A new column records its value only when the
+ * question the log has to answer cannot be answered without it.
  *
  * IP addresses are stored only as the same salted SHA-256 the rate limiter
  * uses (`hashIdentifier`), so one DSAR lookup covers both tables.
@@ -71,25 +89,6 @@ export function stripPii(metadata: AuditMetadata): AuditMetadata {
   }
 
   return kept;
-}
-
-/**
- * A SHA-256 of a text value, for auditing a change to a field whose *content*
- * must not be copied into the audit log.
- *
- * `testimonials.quote` is the case this exists for: a patient's own words are
- * personal data, so the log records that the wording changed and a digest of
- * each side, rather than two copies of the sentence. Any candidate text can
- * still be hashed and compared against what was recorded, which is what an
- * audit of "did someone edit this quote" needs to answer.
- *
- * Unsalted on purpose, so the same check works from a different process a year
- * later. These are not secrets — a quote's plaintext is destined for a public
- * website — so there is nothing here for a salt to protect.
- */
-export function digestOf(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  return createHash("sha256").update(String(value), "utf8").digest("hex");
 }
 
 /** The requesting client's IP, or `null` when no proxy header says. */

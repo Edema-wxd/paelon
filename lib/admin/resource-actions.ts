@@ -11,7 +11,7 @@ import {
   type ActionResult,
   type ActionState,
 } from "@/lib/admin/action";
-import { digestOf, type AuditMetadata } from "@/lib/admin/audit";
+import { type AuditMetadata } from "@/lib/admin/audit";
 import { can } from "@/lib/auth/policy";
 import type { AdminUser } from "@/lib/auth/session";
 import { authorResource } from "@/lib/admin/resources/authors";
@@ -185,14 +185,13 @@ function auditDiffFor(
 ): AuditMetadata {
   const metadata: AuditMetadata = {};
 
-  for (const { column, mode } of columns) {
+  for (const { column } of columns) {
     // A column the form did not submit was not part of this edit.
     if (!(column in after)) continue;
 
     const read = (source: Record<string, unknown> | null): string | boolean | null => {
       if (source === null) return null;
       const value = source[column];
-      if (mode === "digest") return digestOf(value);
       if (typeof value === "boolean") return value;
       return value === null || value === undefined ? null : String(value);
     };

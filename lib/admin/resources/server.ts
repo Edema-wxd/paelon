@@ -115,20 +115,21 @@ export interface ResourceReference {
  * A column whose *change* is part of the audit record, not just the fact that
  * a row was updated.
  *
- * `mode` is the difference between a fact and a copy of patient data:
+ * Both sides are written literally. `testimonials.quote` was recorded as a
+ * SHA-256 of each side until 2026-10-23, when Francis ruled on D4: a consent
+ * dispute is settled by reading what the patient actually said and what it was
+ * changed to, and a digest can only confirm a sentence somebody already has.
+ * The cost is accepted and named — the audit log now holds a patient's words
+ * for those rows, so it inherits the retention question the testimonial row
+ * carries (§14, E5), and `lib/admin/audit.ts` documents it as the one
+ * exception to "metadata is never what a patient typed".
  *
- *  - `value` writes the before and after literally. Only for flags and enums —
- *    `consent_given` is the case this exists for, and a boolean is not PII.
- *  - `digest` writes a SHA-256 of each side instead. `testimonials.quote` is a
- *    real patient's words, and `lib/admin/audit.ts` is explicit that the audit
- *    log must not become a second store of personal data with its own NDPR
- *    retention problem. The digest still proves *that* the wording changed and
- *    lets any candidate text be checked against what was recorded, which is
- *    what an audit of "did someone edit a patient's quote" actually needs.
+ * This is the narrow exception, not a new licence: a column only earns a place
+ * here when the question the log has to answer cannot be answered without the
+ * value.
  */
 export interface AuditDiffColumn {
   column: string;
-  mode: "value" | "digest";
 }
 
 export interface ResourceServerConfig {
@@ -344,11 +345,9 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
       },
     ],
     // The two facts that decide whether a real person's words are on a public
-    // website, and in what form. Every change to either is evidence.
-    auditDiff: [
-      { column: "consentGiven", mode: "value" },
-      { column: "quote", mode: "digest" },
-    ],
+    // website, and in what form. Every change to either is evidence, and the
+    // quote's evidence is the wording itself (D4, 2026-10-23).
+    auditDiff: [{ column: "consentGiven" }, { column: "quote" }],
   },
 
   authors: {

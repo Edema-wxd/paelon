@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TESTIMONIAL_AVATAR } from "@/lib/admin/resources/testimonials";
@@ -11,10 +9,11 @@ import type { AdminUser } from "@/lib/auth/session";
  * A testimonial is a real patient's words plus a record of what they agreed to,
  * so two edits are not ordinary content edits: turning consent on or off, and
  * changing the wording of the quote. Both must leave evidence of the before and
- * the after, and the quote's evidence must not be a second copy of the quote —
- * `lib/admin/audit.ts` is explicit that the audit log is not a store of
- * personal data. It records a SHA-256 of each side instead, which still proves
- * the wording changed and can still be checked against a candidate text.
+ * the after, and for the quote that evidence is the wording itself — D4,
+ * 2026-10-23: a consent dispute is answered by reading what the patient said
+ * and what it was changed to, which the SHA-256 digest this used to record
+ * could not do. `lib/admin/audit.ts` documents it as the one place the log
+ * deliberately holds personal data, and the retention that follows from it.
  *
  * The database, the session, the cache and the audit writer are mocked: this is
  * a test of the wiring, and the consent filter on the public side is proved
@@ -54,9 +53,6 @@ const ROW_ID = "9c1f2a3b-4d5e-4f60-8a71-b2c3d4e5f607";
 const ORIGINAL_QUOTE = "Placeholder quote text, entered as given.";
 const EDITED_QUOTE = "Placeholder quote text, entered as given today.";
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
 
 function user(role: AdminUser["role"] = "admin"): AdminUser {
   return { id: "actor-1", name: "Staff", email: "staff@example.test", role, roleLabel: role };
@@ -142,18 +138,26 @@ describe("testimonial audit trail", () => {
     });
   });
 
-  it("records the quote change as digests, never as the words", async () => {
+  it("records the quote change in the patient's own words, both sides", async () => {
     await actions.updateTestimonialAction(
       null,
       form({ quote: EDITED_QUOTE, published: "on" }),
     );
 
     const metadata = auditMetadata();
-    expect(metadata.quote_before).toBe(sha256(ORIGINAL_QUOTE));
-    expect(metadata.quote_after).toBe(sha256(EDITED_QUOTE));
+    expect(metadata.quote_before).toBe(ORIGINAL_QUOTE);
+    expect(metadata.quote_after).toBe(EDITED_QUOTE);
+  });
 
-    // The point of the digest: no part of what the patient said is in the row.
-    expect(JSON.stringify(metadata)).not.toContain("Placeholder quote");
+  it("keeps the quote out of `stripPii`'s reach", async () => {
+    await actions.updateTestimonialAction(
+      null,
+      form({ quote: EDITED_QUOTE, published: "on" }),
+    );
+
+    // The wording is the evidence D4 asked for, so the PII backstop must not
+    // be taught to recognise `quote` as a personal-data key.
+    expect(auditMetadata()).toHaveProperty("quote_after", EDITED_QUOTE);
   });
 
   it("says nothing about a column that did not change", async () => {
@@ -173,7 +177,7 @@ describe("testimonial audit trail", () => {
       consent_given_before: null,
       consent_given_after: true,
       quote_before: null,
-      quote_after: sha256(ORIGINAL_QUOTE),
+      quote_after: ORIGINAL_QUOTE,
     });
   });
 });

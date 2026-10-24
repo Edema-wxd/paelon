@@ -86,9 +86,14 @@ export function isFiltered(query: AuditQuery): boolean {
 /**
  * Metadata as `key: value` pairs for display.
  *
- * Values are already free of personal data — `writeAudit` strips keys that name
- * any — so this only has to render them readably. Arrays are joined and
- * anything else is JSON, so an unexpected shape shows rather than throwing.
+ * Values are free of personal data with one deliberate exception — `writeAudit`
+ * strips keys that name any, and `testimonials.quote` is recorded verbatim on
+ * purpose (D4; see `lib/admin/audit.ts`). `/admin/audit` is `admin`-only, which
+ * is the same bar as reading the testimonial itself, so this renders what it is
+ * given rather than re-deciding it here.
+ *
+ * Arrays are joined and anything else is JSON, so an unexpected shape shows
+ * rather than throwing.
  */
 export function metadataPairs(
   metadata: Record<string, unknown>,
