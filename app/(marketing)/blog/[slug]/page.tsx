@@ -58,15 +58,14 @@ export async function generateMetadata({
    * the same way in both places and the page inherits the real not-found
    * metadata instead of a bespoke title.
    *
-   * It does not fix the *status*, and neither would moving it: an unknown slug
-   * still answers HTTP 200 with the not-found body — a soft 404, which search
-   * engines index as a real page. The cause is `app/(marketing)/loading.tsx`
-   * (and `blog/loading.tsx`): a `loading.tsx` above a dynamic segment makes Next
-   * flush the shell before the page runs, and the status is already sent by the
-   * time `notFound()` is reached. Verified — deleting those boundaries makes all
-   * three detail routes 404 correctly, with `revalidate` left as it is, and the
-   * trade is the route-level loading fallbacks. `/services/[slug]` and
-   * `/locations/[slug]` are identical. Awaiting a decision on which to keep.
+   * It also now carries the right status. An unknown slug used to answer HTTP
+   * 200 with the not-found body — a soft 404, which search engines index as a
+   * real page — because a `loading.tsx` above a dynamic segment makes Next
+   * flush the shell before the page runs, sending the status before `notFound()`
+   * is reached. The marketing `loading.tsx` boundaries were removed for that
+   * reason; `/blog` keeps its loader as a `<Suspense>` inside the page, which
+   * reaches no sibling route. Do not reintroduce a `loading.tsx` at or above
+   * `app/(marketing)/` — it silently un-fixes this on four routes at once.
    */
   if (!post) notFound();
 

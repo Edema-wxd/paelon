@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { BlogPostCard } from "@/components/site/blog-post-card";
 import { PendingNote } from "@/components/site/pending-note";
 import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
+import { RouteLoader } from "@/components/site/route-loader";
 import { BlogSearchForm } from "@/components/site/blog-search-form";
 import {
   BLOG_CATEGORY_LABELS,
@@ -114,6 +116,82 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
   const tag = (params.tag ?? "").trim();
   const query = readQuery(params.q);
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Health articles",
+        item: new URL("/blog", siteUrl).toString(),
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        // JSON.stringify output of a literal we construct — no user input.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+
+      <div className="mx-auto max-w-360 px-4 py-16 sm:px-6 lg:px-25 lg:py-24">
+        <h1 className="max-w-3xl text-4xl font-bold text-primary lg:text-5xl">
+          Health articles
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg text-foreground/80 lg:text-xl">
+          {DESCRIPTION}
+        </p>
+
+        <BlogSearchForm query={query} category={active} tag={tag} />
+
+        <Suspense
+          /* Keyed on the filters so a new search shows the loader again rather
+             than holding the previous results on screen while the next query
+             runs. */
+          key={`${query}|${tag}|${active ?? ""}`}
+          fallback={
+            <RouteLoader
+              label="Loading articles"
+              description="Fetching the latest from Paelon Memorial Hospital."
+              className="min-h-100"
+            />
+          }
+        >
+          <BlogResults query={query} tag={tag} active={active} />
+        </Suspense>
+
+        <PreferredSourceBadge className="mt-16 max-w-2xl" />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Everything on the index that needs the database.
+ *
+ * Split out of the page so the heading and the search form paint from the first
+ * flush while the queries are still running — `?q=` and `?tag=` make this route
+ * server-rendered per request, so it is the one marketing route where the wait
+ * is real. It is also why the section-level `loading.tsx` files are gone: a
+ * `loading.tsx` above a dynamic segment makes Next flush the shell before the
+ * page runs, which sent HTTP 200 ahead of every `notFound()` in
+ * `blog/[slug]`, `services/[slug]`, `doctors/[slug]` and `locations/[slug]`. A
+ * boundary inside the page reaches no sibling route, so the fallback survives
+ * and the detail routes answer 404.
+ */
+async function BlogResults({
+  query,
+  tag,
+  active,
+}: {
+  query: string;
+  tag: string;
+  active: BlogCategory | null;
+}) {
   /**
    * One of three readers, not three filters layered on each other.
    *
@@ -155,173 +233,140 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
     return queryString.length > 0 ? `/blog?${queryString}` : "/blog";
   };
 
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Health articles",
-        item: new URL("/blog", siteUrl).toString(),
-      },
-    ],
-  };
-
   return (
     <>
-      <script
-        type="application/ld+json"
-        // JSON.stringify output of a literal we construct — no user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
-
-      <div className="mx-auto max-w-360 px-4 py-16 sm:px-6 lg:px-25 lg:py-24">
-        <h1 className="max-w-3xl text-4xl font-bold text-primary lg:text-5xl">
-          Health articles
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-foreground/80 lg:text-xl">
-          {DESCRIPTION}
-        </p>
-
-        <BlogSearchForm query={query} category={active} tag={tag} />
-
-        {available.length > 0 ? (
-          <nav aria-label="Filter articles by category" className="mt-10">
-            <ul className="flex flex-wrap gap-3">
-              <li>
+      {available.length > 0 ? (
+        <nav aria-label="Filter articles by category" className="mt-10">
+          <ul className="flex flex-wrap gap-3">
+            <li>
+              <CategoryLink
+                href={withFilters({ category: null })}
+                label="All articles"
+                active={active === null}
+              />
+            </li>
+            {available.map((key) => (
+              <li key={key}>
                 <CategoryLink
-                  href={withFilters({ category: null })}
-                  label="All articles"
-                  active={active === null}
+                  href={withFilters({ category: key })}
+                  label={BLOG_CATEGORY_LABELS[key]}
+                  active={active === key}
                 />
               </li>
-              {available.map((key) => (
-                <li key={key}>
-                  <CategoryLink
-                    href={withFilters({ category: key })}
-                    label={BLOG_CATEGORY_LABELS[key]}
-                    active={active === key}
-                  />
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+
+      {tags.length > 0 ? (
+        <nav aria-label="Filter articles by tag" className="mt-6">
+          <ul className="flex flex-wrap gap-2">
+            {tags.map((entry) => {
+              const isActive = entry.tag.toLowerCase() === tag.toLowerCase();
+              return (
+                <li key={entry.tag}>
+                  <Link
+                    href={withFilters({
+                      // Clicking the active tag clears it. A filter with no
+                      // way out is a dead end on a touch device, where there
+                      // is no obvious "back to everything".
+                      tag: isActive ? null : entry.tag,
+                      // A tag and a search term are alternative ways of
+                      // narrowing, and the index reads one or the other —
+                      // so choosing a tag drops the search rather than
+                      // appearing to apply both.
+                      q: null,
+                    })}
+                    aria-current={isActive ? "true" : undefined}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none ${
+                      isActive
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border text-foreground/80 hover:border-accent hover:text-primary"
+                    }`}
+                  >
+                    {entry.tag}
+                    <span className="text-xs opacity-70">{entry.count}</span>
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
+              );
+            })}
+          </ul>
+        </nav>
+      ) : null}
 
-        {tags.length > 0 ? (
-          <nav aria-label="Filter articles by tag" className="mt-6">
-            <ul className="flex flex-wrap gap-2">
-              {tags.map((entry) => {
-                const isActive = entry.tag.toLowerCase() === tag.toLowerCase();
-                return (
-                  <li key={entry.tag}>
-                    <Link
-                      href={withFilters({
-                        // Clicking the active tag clears it. A filter with no
-                        // way out is a dead end on a touch device, where there
-                        // is no obvious "back to everything".
-                        tag: isActive ? null : entry.tag,
-                        // A tag and a search term are alternative ways of
-                        // narrowing, and the index reads one or the other —
-                        // so choosing a tag drops the search rather than
-                        // appearing to apply both.
-                        q: null,
-                      })}
-                      aria-current={isActive ? "true" : undefined}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none ${
-                        isActive
-                          ? "border-accent bg-accent text-accent-foreground"
-                          : "border-border text-foreground/80 hover:border-accent hover:text-primary"
-                      }`}
-                    >
-                      {entry.tag}
-                      <span className="text-xs opacity-70">{entry.count}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        ) : null}
+      {posts.length > 0 ? (
+        <>
+          {/* Announced on filter changes; the heading below stays the anchor
+              for anyone navigating by landmark. */}
+          <p aria-live="polite" className="mt-10 text-sm text-muted-foreground">
+            {posts.length} {posts.length === 1 ? "article" : "articles"}
+            {query.length > 0 ? ` matching “${query}”` : ""}
+            {tag.length > 0 && query.length === 0 ? ` tagged “${tag}”` : ""}
+            {active ? ` in ${BLOG_CATEGORY_LABELS[active]}` : ""}
+          </p>
 
-        {posts.length > 0 ? (
-          <>
-            {/* Announced on filter changes; the heading below stays the anchor
-                for anyone navigating by landmark. */}
-            <p aria-live="polite" className="mt-10 text-sm text-muted-foreground">
-              {posts.length} {posts.length === 1 ? "article" : "articles"}
-              {query.length > 0 ? ` matching “${query}”` : ""}
-              {tag.length > 0 && query.length === 0 ? ` tagged “${tag}”` : ""}
-              {active ? ` in ${BLOG_CATEGORY_LABELS[active]}` : ""}
-            </p>
-
-            <ul className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
-                <li key={post.id} className="flex">
-                  <div className="flex w-full">
-                    {/* Directly under the page `h1`, so `h2` — see the card. */}
-                    <BlogPostCard post={post} headingLevel={2} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <PendingNote className="mt-10">
-            {allPosts.length === 0 ? (
-              <>
-                {/* TODO(seed): real editorial content is outstanding — the only
-                    post seeded is a layout fixture. See seed/README.md. */}
-                Health articles from our clinicians are on the way.{" "}
-                <Link
-                  href="/contact"
-                  className="text-accent underline underline-offset-4 hover:no-underline"
-                >
-                  Contact us
-                </Link>{" "}
-                in the meantime.
-              </>
-            ) : query.length > 0 ? (
-              <>
-                Nothing matched “{query}”. Try a broader term, or{" "}
-                <Link
-                  href="/blog"
-                  className="text-accent underline underline-offset-4 hover:no-underline"
-                >
-                  browse every article
-                </Link>
-                .
-              </>
-            ) : tag.length > 0 ? (
-              <>
-                Nothing tagged “{tag}” yet.{" "}
-                <Link
-                  href="/blog"
-                  className="text-accent underline underline-offset-4 hover:no-underline"
-                >
-                  See all articles
-                </Link>
-                .
-              </>
-            ) : (
-              <>
-                Nothing in that category yet.{" "}
-                <Link
-                  href="/blog"
-                  className="text-accent underline underline-offset-4 hover:no-underline"
-                >
-                  See all articles
-                </Link>
-                .
-              </>
-            )}
-          </PendingNote>
-        )}
-
-        <PreferredSourceBadge className="mt-16 max-w-2xl" />
-      </div>
+          <ul className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <li key={post.id} className="flex">
+                <div className="flex w-full">
+                  {/* Directly under the page `h1`, so `h2` — see the card. */}
+                  <BlogPostCard post={post} headingLevel={2} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <PendingNote className="mt-10">
+          {allPosts.length === 0 ? (
+            <>
+              {/* TODO(seed): real editorial content is outstanding — the only
+                  post seeded is a layout fixture. See seed/README.md. */}
+              Health articles from our clinicians are on the way.{" "}
+              <Link
+                href="/contact"
+                className="text-accent underline underline-offset-4 hover:no-underline"
+              >
+                Contact us
+              </Link>{" "}
+              in the meantime.
+            </>
+          ) : query.length > 0 ? (
+            <>
+              Nothing matched “{query}”. Try a broader term, or{" "}
+              <Link
+                href="/blog"
+                className="text-accent underline underline-offset-4 hover:no-underline"
+              >
+                browse every article
+              </Link>
+              .
+            </>
+          ) : tag.length > 0 ? (
+            <>
+              Nothing tagged “{tag}” yet.{" "}
+              <Link
+                href="/blog"
+                className="text-accent underline underline-offset-4 hover:no-underline"
+              >
+                See all articles
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              Nothing in that category yet.{" "}
+              <Link
+                href="/blog"
+                className="text-accent underline underline-offset-4 hover:no-underline"
+              >
+                See all articles
+              </Link>
+              .
+            </>
+          )}
+        </PendingNote>
+      )}
     </>
   );
 }

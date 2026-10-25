@@ -170,8 +170,6 @@ test.describe("blog article", () => {
     await expect(share).toHaveAttribute("rel", /noopener/);
   });
 
-  test("an unknown slug is a 404, not a 500", async ({ page }) => {
-    const response = await page.goto("/blog/no-such-post");
-    expect(response?.status()).toBe(404);
-  });
+  // The unknown-slug status is asserted in `not-found.e2e.ts`, alongside the
+  // other three dynamic routes that share the cause.
 });
