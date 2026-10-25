@@ -4,7 +4,18 @@
     "slug": "paediatrics",
     "name": "Paediatrics Department",
     "family": "women_and_children",
-    "short_description": null,
+    "short_description": "Care for infants, children and adolescents, with paediatricians available daily and well-baby vaccine clinics twice a week.",
+    "long_description": "Our paediatricians see infants, children and adolescents daily, from routine check-ups to the management of childhood illness. Well-baby vaccine clinics run twice a week, so vaccinations stay on schedule. We track growth and development at every visit, because a delay found early is a delay that can be acted on, and we give parents guidance on nutrition, safety and day-to-day care. In an emergency, paediatric staff are on hand.",
+    "who_its_for": [
+      "Infants, children and adolescents",
+      "Parents keeping a child's vaccinations on schedule",
+      "Families who want growth and development tracked over time"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "A consultation with a paediatrician, with growth and development checked as a matter of course. Vaccinations are given at the well-baby clinics, which run twice a week.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["family-health", "obstetrics-and-gynaecology"],
     "order": 1,
     "published": true
   },
@@ -13,7 +24,19 @@
     "slug": "obstetrics-and-gynaecology",
     "name": "Obstetrics & Gynaecology",
     "family": "women_and_children",
-    "short_description": null,
+    "short_description": "Women's health across antenatal care, family planning, screening and menopause, including a specialised Well Woman Clinic.",
+    "long_description": "Our gynaecologists run a Well Woman Clinic alongside the department's general work. That covers antenatal care through pregnancy, with regular check-ups and prenatal screening for mother and baby; family planning and contraceptive options; gynaecological screening including Pap smears and HPV testing; fertility assessment and investigation; and support through menopause.",
+    "who_its_for": [
+      "Women who are pregnant or planning a pregnancy",
+      "Women due for cervical or other gynaecological screening",
+      "Women making decisions about contraception or family planning",
+      "Women going through menopause"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "A consultation with a gynaecologist. Screening and investigations are carried out at the hospital, and a fertility assessment can be referred on to the Paelon Lily Fertility Clinic.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["lily-fertility-clinic", "paediatrics"],
     "order": 2,
     "published": true
   },
@@ -22,7 +45,18 @@
     "slug": "lily-fertility-clinic",
     "name": "Paelon Lily Fertility Clinic",
     "family": "specialist",
-    "short_description": null,
+    "short_description": "Assisted conception for couples facing difficulty getting pregnant, from ovulation induction through IVF and ICSI.",
+    "long_description": "The clinic is staffed by doctors, nurses and embryologists working on male and female infertility, with a treatment plan built around each couple. We treat conditions including anovulation, endometriosis, PCOS, tubal blockage, fibroids and abnormal sperm parameters.\n\nTreatments include ovulation induction, intra-uterine insemination (IUI), in-vitro fertilisation and intracytoplasmic sperm injection (IVF/ICSI), testicular sperm aspiration (TESA) and percutaneous epididymal sperm aspiration (PESA). Sperm freezing, embryo freezing and surrogacy are also available.",
+    "who_its_for": [
+      "Couples who have had difficulty conceiving",
+      "Couples who have not previously had a fertility assessment or diagnosis",
+      "Patients referred from Obstetrics & Gynaecology after an assessment"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "An assessment of both partners first, then a treatment plan discussed with you before anything begins.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["obstetrics-and-gynaecology"],
     "order": 3,
     "published": true
   },
@@ -31,17 +65,96 @@
     "slug": "general-practice",
     "name": "General Practice",
     "family": "family_healthcare",
-    "short_description": null,
+    "short_description": "First point of contact for patients of any age: check-ups, diagnosis and treatment, preventive care and referral on where it is needed.",
+    "long_description": "Our general practitioners see patients from infancy to old age, and are the first point of contact for most things. That means health assessments and routine check-ups, diagnosis and treatment of acute and chronic conditions, prescriptions, screening and vaccination, and a referral to a specialist when one is the right answer.\n\nWe put weight on explaining what is going on, so that decisions about treatment are made with you rather than for you.",
+    "who_its_for": [
+      "Anyone who needs to see a doctor and is not sure which department",
+      "Patients managing a long-term condition",
+      "Anyone due a routine check-up or health assessment"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "A consultation with a GP, who will either treat you or refer you on. Tests requested at that visit are run at the hospital.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["family-health"],
     "order": 4,
     "published": true
   },
   {
     "id": "09b3e6a2-7c15-42d8-9e64-3a1f8c07b5e9",
     "slug": "family-health",
-    "name": "Family Health",
+    "name": "Family Healthcare",
     "family": "family_healthcare",
-    "short_description": null,
+    "short_description": "One hospital for every member of a family, from paediatric to geriatric care.",
+    "long_description": "Family healthcare at Paelon means GPs, paediatricians and gynaecologists working together, with other specialists brought in as needed, so that a family is cared for as a family rather than as separate appointments.\n\nIt covers paediatric care and vaccination, women's health and gynaecology, general practice for all ages, and geriatric care for older patients, including the management of age-related conditions.",
+    "who_its_for": [
+      "Families who would rather be seen in one place",
+      "Older patients who need care for age-related conditions",
+      "Parents arranging care for children alongside their own"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "An appointment with the right clinician for the family member who needs one, with the rest of the team available in the same hospital.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["general-practice", "paediatrics", "obstetrics-and-gynaecology"],
     "order": 5,
+    "published": true
+  },
+  {
+    "slug": "endoscopy-suite",
+    "name": "Scope City Endoscopy Suite",
+    "family": "diagnostics",
+    "short_description": "Screening, diagnosis and treatment of gastrointestinal conditions, including the capsule endoscopy (PillCam) service.",
+    "long_description": "Scope City was set up for patients who need the gastrointestinal tract examined, invasively or otherwise, in a setting built around being comfortable rather than clinical. Procedures are carried out by trained endoscopists.\n\nCapsule endoscopy — the PillCam — is non-invasive: after a two-day bowel preparation you swallow a capsule, which records images of the gastrointestinal tract and can show inflammation, ulcers, tumours and occult bleeding in the small intestine.\n\nFor invasive procedures we offer oesophago-gastro-duodenoscopy (OGD), the gold standard test for upper gastrointestinal symptoms, and colonoscopy, which allows the lining of the large bowel to be seen directly, biopsied and treated in the same visit where that is needed.",
+    "who_its_for": [
+      "Patients with upper gastrointestinal symptoms",
+      "Patients who need the small intestine examined",
+      "Patients referred for bowel screening or biopsy"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "Bowel preparation before the procedure — two days for a capsule endoscopy — then the procedure itself with an endoscopist, and the findings explained to you afterwards.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["general-practice"],
+    "order": 6,
+    "published": true
+  },
+  {
+    "slug": "travel-clinic",
+    "name": "Travel Clinic",
+    "family": "specialist",
+    "short_description": "Pre-travel consultations, destination-specific advice and vaccination, overseen by a certified travel health physician.",
+    "long_description": "The clinic is overseen by a certified travel health physician. Before a trip, that means a consultation, advice specific to where you are going, and the vaccinations that destination calls for, alongside routine ones you may be due. We also cover food and water safety, insect-borne disease and the other practical risks of the itinerary.\n\nAfter a trip, you can come back for a post-travel assessment if something has arisen while you were away.",
+    "who_its_for": [
+      "Travellers who need destination-specific health advice",
+      "Travellers due travel vaccinations or routine boosters",
+      "Travellers who have returned unwell or want a check afterwards"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "A consultation covering your itinerary, the vaccinations it needs and the precautions to take. Bring your vaccination record if you have one.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": ["general-practice"],
+    "order": 7,
+    "published": true
+  },
+  {
+    "slug": "high-dependency-care",
+    "name": "High Dependency Care",
+    "family": "specialist",
+    "short_description": "A two-bed high dependency unit under a UK-trained intensivist and anaesthetist, for patients needing close monitoring.",
+    "long_description": "The High Dependency Unit takes patients whose condition needs continuous monitoring and intensive support — vital signs and other critical parameters watched without a break, by staff trained for it. It is overseen by a UK-trained intensivist and anaesthetist, and specialists from other departments are brought in as a patient's condition requires.\n\nTwo beds is a deliberate size: it is what allows each patient close, individual attention. The unit also takes patients recovering from major surgery, so that the move out of theatre is a managed one.",
+    "who_its_for": [
+      "Patients whose condition needs continuous monitoring",
+      "Patients recovering from major surgery",
+      "Patients who need intensive medical support short of intensive care"
+    ],
+    "how_to_access": [],
+    "typical_wait_time": null,
+    "what_to_expect": "Admission is arranged by the clinical team caring for you. Families are kept informed by the staff on the unit.",
+    "location_slugs": ["victoria-island"],
+    "related_slugs": [],
+    "order": 8,
     "published": true
   }
 ]

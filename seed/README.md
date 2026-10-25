@@ -87,10 +87,23 @@ These must be resolved with Francis before the site goes live.
   existence" in the About copy, against a hospital founded in April 2010. The
   figures are inconsistent at source, so none has been seeded. Confirm each
   one.
-- `services.json` — every service has `short_description: null`. The export's
-  cards show names only. Copy is needed for the services index and detail
-  templates, along with `long_description`, `who_its_for`, `how_to_access`,
-  `typical_wait_time`, `what_to_expect`.
+- **`services.json` — eight services, written up from the live site**
+  (2026-10-25). The five that existed gained a short description, an overview,
+  who it is for and what to expect; Scope City (endoscopy), the Travel Clinic
+  and High Dependency Care were added. Two fields stay empty everywhere
+  because the live site never states them: `how_to_access` (private, corporate
+  and HMO routes, which spec §6 asks each service page for) and
+  `typical_wait_time`. Both need Paelon, not a website.
+- **Which services run at which branch is unknown.** Every service is linked
+  to Victoria Island only, because that is the hospital the live pages
+  describe. Ikeja is an outpatient clinic and the Moshood Olugbani site is a
+  clinic, so some of this list certainly does not run there — but the site
+  does not say which, and guessing would send someone to the wrong address.
+- **Corporate Healthcare and The Paelon Guarantee are not in `services.json`.**
+  Corporate healthcare has its own template in spec §6 (`/for-corporates`,
+  still unbuilt) and does not belong in a `service_family`; the Guarantee is a
+  promise page, not a service. The live site also lists a vaccines service,
+  which has no page of its own to transcribe. Confirm how each should appear.
 - `services.json` — `family` values are a best-guess mapping onto the spec §5
   enum (`family_healthcare | women_and_children | specialist | diagnostics`).
   Paediatrics and Obstetrics are filed under `women_and_children`, Lily
