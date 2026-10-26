@@ -28,6 +28,8 @@ import {
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
 import { getFaqsByCategory as getFaqRows, getFaqsForService } from "@/lib/db/queries/faqs";
+import { getAboutSectionRows, getServiceSectionRows } from "@/lib/db/queries/sections";
+import { sectionMediaIds, type Section } from "@/lib/validation/sections";
 import {
   getMediaByIds,
   listLocationGallery,
@@ -874,6 +876,44 @@ export async function getHmoLogos(
     }
   }
 
+  return resolved;
+}
+
+export type { Section };
+
+/**
+ * A service page's blocks, in the editor's order (`/admin/services`, Page
+ * layout). An empty list means the page has none yet, and the template falls
+ * back to the legacy `long_description` / `what_to_expect` fields.
+ */
+export async function getServiceSections(serviceId: string): Promise<Section[]> {
+  return getServiceSectionRows(serviceId);
+}
+
+/** The About page's blocks, in the editor's order (`/admin/about`). */
+export async function getAboutSections(): Promise<Section[]> {
+  return getAboutSectionRows();
+}
+
+/**
+ * Every image a page's blocks reference — figures inside text blocks, image
+ * blocks and galleries — resolved in one query and keyed by `media.id`.
+ *
+ * Not cached, for the reason `getBodyImages` is not. A block whose image is
+ * missing here renders without it (see `ContentSections`) rather than guessing
+ * a size.
+ */
+export async function getSectionImages(
+  sections: readonly Section[],
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const ids = sectionMediaIds(sections, (body) => collectMediaIds(parseMarkdown(body)));
+  if (ids.length === 0) return new Map();
+
+  const rows = await getMediaByIds(ids);
+  const resolved = new Map<string, ContentImage>();
+  for (const [id, row] of rows) {
+    resolved.set(id, { url: row.url, alt: row.alt, width: row.width, height: row.height });
+  }
   return resolved;
 }
 

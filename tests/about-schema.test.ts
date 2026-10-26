@@ -90,57 +90,43 @@ describe("aboutContentSchema", () => {
  * not exist.
  */
 describe("aboutFormSchema", () => {
-  /** What the form posts when every section is written and the page is live. */
+  /**
+   * What the form posts for a live page. Since migration 0008 the five prose
+   * sections are blocks in Page layout, not form fields; the form carries the
+   * intro, the motto and the two flags.
+   */
   function submission(overrides: Record<string, string> = {}) {
     return {
       published: "on",
       intro: "One sentence.",
-      founding_story: "The story.",
-      mission: "The mission.",
-      vision: "The vision.",
-      value_proposition: "The offer.",
       motto: "A motto.",
-      esg: "The certification.",
       ...overrides,
     };
   }
 
-  it("accepts a fully written, published submission", () => {
+  it("accepts a written, published submission", () => {
     const parsed = aboutFormSchema.safeParse(submission());
     expect(parsed.success).toBe(true);
     expect(parsed.success && parsed.data.published).toBe(true);
     expect(parsed.success && parsed.data.placeholder).toBe(false);
   });
 
-  it("accepts an empty draft — every section is optional at rest", () => {
-    const parsed = aboutFormSchema.safeParse({
-      intro: "",
-      founding_story: "",
-      mission: "",
-      vision: "",
-      value_proposition: "",
-      motto: "",
-      esg: "",
-    });
-
+  it("accepts an empty draft", () => {
+    const parsed = aboutFormSchema.safeParse({ intro: "", motto: "" });
     expect(parsed.success).toBe(true);
     expect(parsed.success && parsed.data.published).toBe(false);
     expect(parsed.success && parsed.data.intro).toBeNull();
   });
 
-  it("stores a cleared section as null, not an empty string", () => {
-    // An empty string would make the template render a heading with nothing
-    // under it; null is what makes it skip the section.
-    const draft: Record<string, string> = submission({ esg: "  " });
-    delete draft.published;
-    const parsed = aboutFormSchema.safeParse(draft);
+  it("strips the legacy prose fields, so a save can never overwrite them", () => {
+    // They are the template's fallback; the action must not receive them.
+    const parsed = aboutFormSchema.safeParse({ ...submission(), founding_story: "", esg: "x" });
     expect(parsed.success).toBe(true);
-    expect(parsed.success && parsed.data.esg).toBeNull();
+    expect(parsed.success && "founding_story" in parsed.data).toBe(false);
+    expect(parsed.success && "esg" in parsed.data).toBe(false);
   });
 
   it("reads an unticked checkbox — an absent key — as false", () => {
-    // A browser omits an unticked box entirely, so this is the shape every
-    // draft save arrives in.
     const draft: Record<string, string> = submission();
     delete draft.published;
     const parsed = aboutFormSchema.safeParse(draft);
@@ -148,33 +134,20 @@ describe("aboutFormSchema", () => {
     expect(parsed.success && parsed.data.published).toBe(false);
   });
 
-  it("refuses to publish with a missing section", () => {
-    const parsed = aboutFormSchema.safeParse(
-      submission({ founding_story: "", mission: "" }),
-    );
-
+  it("refuses to publish without an intro", () => {
+    const parsed = aboutFormSchema.safeParse(submission({ intro: "  " }));
     expect(parsed.success).toBe(false);
-    expect(parsed.success === false && parsed.error.issues[0]?.message).toMatch(
-      /founding_story, mission/,
-    );
+    expect(parsed.success === false && parsed.error.issues[0]?.message).toMatch(/intro/i);
   });
 
   it("refuses to publish copy still marked as a draft", () => {
-    const parsed = aboutFormSchema.safeParse({
-      ...submission(),
-      placeholder: "on",
-    });
-
+    const parsed = aboutFormSchema.safeParse({ ...submission(), placeholder: "on" });
     expect(parsed.success).toBe(false);
-    expect(parsed.success === false && parsed.error.issues[0]?.message).toMatch(
-      /placeholder/i,
-    );
+    expect(parsed.success === false && parsed.error.issues[0]?.message).toMatch(/placeholder/i);
   });
 
   it("rejects a motto longer than the database allows", () => {
-    const parsed = aboutFormSchema.safeParse(
-      submission({ motto: "x".repeat(201) }),
-    );
+    const parsed = aboutFormSchema.safeParse(submission({ motto: "x".repeat(201) }));
     expect(parsed.success).toBe(false);
   });
 });

@@ -11,7 +11,6 @@ import {
   imageAltRule,
   type ImageFieldNames,
   imageFields,
-  markdownBodyRules,
   optionalText,
   orderField,
   requiredText,
@@ -54,8 +53,6 @@ export const serviceSchema = z
     slug: slugField,
     family: z.enum(serviceFamilyEnum.enumValues, "Choose a family."),
     shortDescription: requiredText("a short description", 200),
-    longDescription: requiredText("a long description", 8000),
-    whatToExpect: requiredText("what to expect", 8000),
     whoItsFor: tagsField("“who it’s for”"),
     howToAccess: tagsField("“how to access”"),
     typicalWaitTime: optionalText(120),
@@ -66,8 +63,7 @@ export const serviceSchema = z
     [SERVICE_GALLERY_FIELD]: galleryField(),
     ...imageFields(SERVICE_IMAGE),
   })
-  .check(imageAltRule(SERVICE_IMAGE))
-  .check(markdownBodyRules(["longDescription", "whatToExpect"]));
+  .check(imageAltRule(SERVICE_IMAGE));
 
 export type ServiceInput = z.output<typeof serviceSchema>;
 
@@ -103,33 +99,12 @@ const FIELDS: readonly Field[] = [
   {
     type: "textarea",
     name: "shortDescription",
-    section: "Page content",
+    section: "Summary",
     label: "Short description",
     required: true,
     rows: 3,
     maxLength: 200,
     hint: "One or two sentences. Used on the services index and in the page’s meta description, so it is capped at 200 characters.",
-  },
-  {
-    type: "markdown",
-    name: "longDescription",
-    section: "Page content",
-    label: "Long description",
-    required: true,
-    rows: 14,
-    figures: true,
-    hint: "The main text of the service page, under its name. Headings start new sections of the page; the Image button places a picture between paragraphs. Links are written as [text](/path) and must point at pages that exist.",
-  },
-  {
-    type: "markdown",
-    name: "whatToExpect",
-    section: "Page content",
-    label: "What to expect",
-    required: true,
-    rows: 8,
-    figures: true,
-    headingOffset: 1,
-    hint: "What happens on the day, from the patient’s side. Shown under its own “What to expect” heading, so a Heading here becomes a subsection of it.",
   },
   {
     type: "tags",

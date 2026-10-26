@@ -6,8 +6,10 @@ import { NotPermitted } from "@/components/admin/not-permitted";
 import { can } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 import { getAboutForAdmin } from "@/lib/db/queries/about";
-import { getMediaByIds } from "@/lib/db/queries/media";
-import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
+import { SectionsEditor } from "@/components/admin/sections-editor";
+import { sectionPickableMedia } from "@/lib/admin/section-media";
+import { saveAboutSectionsAction } from "@/lib/admin/sections-actions";
+import { getSectionsForEditor } from "@/lib/db/queries/sections";
 
 /**
  * About page copy (migration 0005).
@@ -44,23 +46,9 @@ export default async function AdminAboutPage() {
 
   const about = await getAboutForAdmin();
 
-  // Images the saved sections already place, so the editor preview renders
-  // them. One query for all six sections.
-  const placedIds = [
-    ...new Set(
-      [about?.foundingStory, about?.mission, about?.vision, about?.valueProposition, about?.esg]
-        .filter((body): body is string => typeof body === "string")
-        .flatMap((body) => collectMediaIds(parseMarkdown(body))),
-    ),
-  ];
-  const media = [...(await getMediaByIds(placedIds)).values()].map((asset) => ({
-    id: asset.id,
-    url: asset.url,
-    alt: asset.alt,
-    filename: asset.filename,
-    width: asset.width,
-    height: asset.height,
-  }));
+  const sections = await getSectionsForEditor({ page: "about" });
+  const sectionMedia = await sectionPickableMedia(sections);
+
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -96,19 +84,23 @@ export default async function AdminAboutPage() {
       )}
 
       <AboutForm
-        media={media}
         values={{
           published: about?.published ?? false,
           placeholder: about?.placeholder ?? false,
           intro: about?.intro ?? "",
-          founding_story: about?.foundingStory ?? "",
-          mission: about?.mission ?? "",
-          vision: about?.vision ?? "",
-          value_proposition: about?.valueProposition ?? "",
           motto: about?.motto ?? "",
-          esg: about?.esg ?? "",
         }}
       />
+
+      <div className="mt-8">
+        <SectionsEditor
+          initialSections={sections}
+          media={sectionMedia}
+          save={saveAboutSectionsAction}
+          target={{}}
+          pageName="the About page, between the intro and the leadership team"
+        />
+      </div>
 
       {about?.updatedAt && (
         <p className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">

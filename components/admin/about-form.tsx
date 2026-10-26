@@ -5,7 +5,6 @@ import { useActionState, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { MarkdownField } from "@/components/admin/markdown-field";
-import type { PickableMedia } from "@/components/admin/markdown-media-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveAboutAction, type AboutState } from "@/lib/admin/about-actions";
@@ -18,61 +17,28 @@ import { saveAboutAction, type AboutState } from "@/lib/admin/about-actions";
  * and all required to publish — the server enforces that pair, and the
  * checkbox hint below says so before the save rather than after.
  *
- * Prose goes through `MarkdownField`, the same editor the blog body uses, so
- * the preview is the renderer that will run on the public page. The five
- * sections take figures (images between paragraphs) and headings, which the
- * public page renders one level under each section's own h2 — so the preview
- * is given the same `headingOffset`. The intro is a short lead under the h1
- * and stays plain: no images, no headings.
+ * The intro goes through `MarkdownField`, the same editor the blog body uses,
+ * so the preview is the renderer the public page runs. It is a short lead under
+ * the h1 and stays plain: no images, no headings. The page's sections are
+ * blocks in Page layout, edited and saved below this form.
  *
  * No optimistic state. Saving the hospital's founding story is rare and worth
  * a round trip; showing copy as saved before the write lands is how someone
  * walks away from a failed save believing the page changed.
  */
 
-/** The prose sections, in page order. */
+/**
+ * The prose this form edits. Since migration 0008 the story, mission, vision,
+ * value proposition and ESG sections are blocks in Page layout (below this
+ * form), so only the intro — the lead under the h1 — remains here.
+ */
 const SECTIONS = [
   {
     name: "intro",
     label: "Intro",
-    hint: "One or two sentences under the page heading. No images or headings here.",
+    hint: "One or two sentences under the page heading. Required to publish. The sections below it are edited in Page layout.",
     rows: 4,
     rich: false,
-  },
-  {
-    name: "founding_story",
-    label: "Founding story",
-    hint: "Spec §6: Patricia, and Dr. Ngozi Onyia. Required to publish.",
-    rows: 12,
-    rich: true,
-  },
-  {
-    name: "mission",
-    label: "Mission",
-    hint: "Required to publish.",
-    rows: 6,
-    rich: true,
-  },
-  {
-    name: "vision",
-    label: "Vision",
-    hint: "Required to publish.",
-    rows: 6,
-    rich: true,
-  },
-  {
-    name: "value_proposition",
-    label: "Value proposition",
-    hint: "Required to publish.",
-    rows: 6,
-    rich: true,
-  },
-  {
-    name: "esg",
-    label: "ESG and certification",
-    hint: "Optional. Describe the IFC EDGE certification in words rather than asserting it with a flag — it is a claim about a real certificate.",
-    rows: 8,
-    rich: true,
   },
 ] as const;
 
@@ -82,12 +48,7 @@ export interface AboutFormValues {
   published: boolean;
   placeholder: boolean;
   intro: string;
-  founding_story: string;
-  mission: string;
-  vision: string;
-  value_proposition: string;
   motto: string;
-  esg: string;
 }
 
 /** The first server message for `field`, rendered under its control. */
@@ -118,14 +79,7 @@ function SubmitButton() {
   );
 }
 
-export function AboutForm({
-  values,
-  media = [],
-}: {
-  values: AboutFormValues;
-  /** Images the saved sections already place, so the preview can render them. */
-  media?: readonly PickableMedia[];
-}) {
+export function AboutForm({ values }: { values: AboutFormValues }) {
   const [state, formAction] = useActionState<AboutState, FormData>(
     saveAboutAction,
     null,
@@ -138,11 +92,6 @@ export function AboutForm({
    */
   const [prose, setProse] = useState<Record<SectionName, string>>({
     intro: values.intro,
-    founding_story: values.founding_story,
-    mission: values.mission,
-    vision: values.vision,
-    value_proposition: values.value_proposition,
-    esg: values.esg,
   });
 
   const fields = state && !state.ok ? state.fields : undefined;
@@ -178,8 +127,6 @@ export function AboutForm({
               name={section.name}
               figures={section.rich}
               headings={section.rich}
-              headingOffset={section.rich ? 1 : 0}
-              figureImages={media}
               value={prose[section.name]}
               onChange={(next) =>
                 setProse((current) => ({ ...current, [section.name]: next }))

@@ -3,13 +3,16 @@ import type { Metadata } from "next";
 import { ArticleBody } from "@/components/site/article-body";
 import { AwardsTimeline } from "@/components/site/awards-timeline";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
+import { ContentSections } from "@/components/site/content-sections";
 import { DoctorCard } from "@/components/site/doctor-card";
 import { PendingNote } from "@/components/site/pending-note";
 import { Button } from "@/components/ui/button";
 import { getAboutContent, isAboutEmpty } from "@/lib/about";
 import {
+  getAboutSections,
   getAwards,
   getBodyImages,
+  getSectionImages,
   getDoctors,
   getPrimaryLocation,
   toTelHref,
@@ -103,22 +106,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
-  const about = await getAboutContent();
+  const [about, sections] = await Promise.all([getAboutContent(), getAboutSections()]);
+
+  // The page's blocks (Page layout in /admin/about) when it has any; otherwise
+  // the five legacy prose fields, kept as the fallback since migration 0008.
+  const useSections = sections.length > 0;
 
   const [doctors, awards, primary, images] = await Promise.all([
     getDoctors(),
     getAwards(),
     getPrimaryLocation(),
-    // Figures across the five sections, in one query. Joined with blank lines
-    // so each body stays its own blocks to the parser.
-    getBodyImages(
-      [about.founding_story, about.mission, about.vision, about.value_proposition, about.esg]
-        .filter(Boolean)
-        .join("\n\n"),
-    ),
+    useSections
+      ? getSectionImages(sections)
+      : getBodyImages(
+          // Joined with blank lines so each body stays its own blocks.
+          [about.founding_story, about.mission, about.vision, about.value_proposition, about.esg]
+            .filter(Boolean)
+            .join("\n\n"),
+        ),
   ]);
 
-  const nothingWritten = isAboutEmpty(about);
+  const nothingWritten = !useSections && isAboutEmpty(about);
   const organizationLd = medicalOrganizationLd(siteUrl, primary);
 
   return (
@@ -166,18 +174,28 @@ export default async function AboutPage() {
           </PendingNote>
         ) : null}
 
-        <Prose
-          heading="Our story"
-          id="founding-story"
-          source={about.founding_story} images={images}
-        />
-        <Prose heading="Our mission" id="mission" source={about.mission} images={images} />
-        <Prose heading="Our vision" id="vision" source={about.vision} images={images} />
-        <Prose
-          heading="What we offer"
-          id="value-proposition"
-          source={about.value_proposition} images={images}
-        />
+        {useSections ? (
+          <div className="mt-16">
+            <ContentSections sections={sections} images={images} idPrefix="about-section" />
+          </div>
+        ) : (
+          <>
+            <Prose
+              heading="Our story"
+              id="founding-story"
+              source={about.founding_story}
+              images={images}
+            />
+            <Prose heading="Our mission" id="mission" source={about.mission} images={images} />
+            <Prose heading="Our vision" id="vision" source={about.vision} images={images} />
+            <Prose
+              heading="What we offer"
+              id="value-proposition"
+              source={about.value_proposition}
+              images={images}
+            />
+          </>
+        )}
 
         {about.motto ? (
           <figure className="mt-16 max-w-2xl border-l-2 border-accent pl-6">
@@ -213,11 +231,15 @@ export default async function AboutPage() {
           </section>
         ) : null}
 
-        <Prose
-          heading="Sustainability and certification"
-          id="esg"
-          source={about.esg} images={images}
-        />
+        {/* In the blocks when the page has them; the legacy field otherwise. */}
+        {useSections ? null : (
+          <Prose
+            heading="Sustainability and certification"
+            id="esg"
+            source={about.esg}
+            images={images}
+          />
+        )}
       </div>
     </>
   );

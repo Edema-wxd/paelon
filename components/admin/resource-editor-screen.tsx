@@ -62,6 +62,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   config,
   id,
   renderAside,
+  renderBelow,
 }: {
   resource: ResourceName;
   config: ResourceConfig<R>;
@@ -72,6 +73,12 @@ export async function ResourceEditorScreen<R extends ContentRow>({
    * row. Not called for a new row — there is nothing saved to describe.
    */
   renderAside?: (row: R) => React.ReactNode | Promise<React.ReactNode>;
+  /**
+   * Server-rendered content under the form for the saved row — the page-layout
+   * editor, which saves on its own. Not called for a new row: a layout belongs
+   * to a row that exists.
+   */
+  renderBelow?: (row: R) => React.ReactNode | Promise<React.ReactNode>;
 }) {
   const user = await requireAdminUser();
   const server = RESOURCE_SERVER[resource];
@@ -299,7 +306,10 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     defaults[field.name] = value === null || value === undefined ? "" : String(value);
   }
 
-  const aside = row && renderAside ? await renderAside(row) : null;
+  const [aside, below] = await Promise.all([
+    row && renderAside ? renderAside(row) : null,
+    row && renderBelow ? renderBelow(row) : null,
+  ]);
 
   const heading = row
     ? String(row[config.titleField] ?? config.singular)
@@ -384,6 +394,8 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           aside={aside}
         />
       </div>
+
+      {below ? <div className="mt-8">{below}</div> : null}
 
       {canDelete && id ? (
         <section aria-labelledby="danger-heading" className="mt-12 border-t border-border pt-6">

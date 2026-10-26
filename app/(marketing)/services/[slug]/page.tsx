@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/site/article-body";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
+import { ContentSections } from "@/components/site/content-sections";
 import { FaqSection } from "@/components/site/faq-section";
 import { ImageGallery } from "@/components/site/image-gallery";
 import { PendingNote } from "@/components/site/pending-note";
@@ -15,6 +16,8 @@ import {
   getRelatedServices,
   getServiceBySlug,
   getBodyImages,
+  getSectionImages,
+  getServiceSections,
   getServiceGallery,
   getServices,
   toTelHref,
@@ -109,18 +112,26 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   if (!service) notFound();
 
-  const [related, faqs, location, gallery] = await Promise.all([
+  const [related, faqs, location, gallery, sections] = await Promise.all([
     getRelatedServices(service.id),
     getServiceFaqs(service.id),
     getPrimaryLocation(),
     getServiceGallery(service.id),
+    getServiceSections(service.id),
   ]);
 
-  // Figures in either body, resolved in one query. Joined with a blank line so
-  // the two bodies stay separate blocks to the parser.
-  const bodyImages = await getBodyImages(
-    [service.long_description, service.what_to_expect].filter(Boolean).join("\n\n"),
-  );
+  // The page's blocks (Page layout in /admin/services) when it has any;
+  // otherwise the legacy fields, kept as the fallback since migration 0008.
+  const useSections = sections.length > 0;
+  const [sectionImages, bodyImages] = await Promise.all([
+    useSections ? getSectionImages(sections) : Promise.resolve(new Map()),
+    useSections
+      ? Promise.resolve(new Map())
+      : getBodyImages(
+          // Joined with a blank line so the two bodies stay separate blocks.
+          [service.long_description, service.what_to_expect].filter(Boolean).join("\n\n"),
+        ),
+  ]);
 
   const url = new URL(`/services/${service.slug}`, siteUrl).toString();
 
@@ -148,6 +159,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   };
 
   const hasDetail =
+    useSections ||
     service.long_description !== null ||
     service.what_to_expect !== null ||
     service.who_its_for.length > 0 ||
@@ -213,16 +225,25 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <div>
             {hasDetail ? (
               <>
-                {/* The service's main text, directly under its h1: an
-                    editor's Heading here is an h2, a section of the page in
-                    its own right. Figures are placed between paragraphs. */}
-                {service.long_description ? (
+                {useSections ? (
+                  <div className="mb-14">
+                    <ContentSections
+                      sections={sections}
+                      images={sectionImages}
+                      idPrefix="service-section"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Legacy fallback, for a service with no blocks: the main
+                    text directly under the h1, then "What to expect". */}
+                {!useSections && service.long_description ? (
                   <div className="mb-12">
                     <ArticleBody source={service.long_description} images={bodyImages} />
                   </div>
                 ) : null}
 
-                {service.what_to_expect ? (
+                {!useSections && service.what_to_expect ? (
                   <section aria-labelledby="what-to-expect">
                     <h2
                       id="what-to-expect"
