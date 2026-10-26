@@ -48,9 +48,9 @@ function slugPath(base: string, row: PreviewRow): string | null {
  *    is previewed.
  *  - `faqs` and `testimonials` are sections of other pages too, but of several
  *    of them: an FAQ shows on the homepage and on every service and location
- *    page, and a testimonial on the homepage and on the service it is attached
- *    to. There is no single honest target, so they have no button — previewing
- *    one means previewing a page it appears on.
+ *    page. A testimonial shows only on the homepage today (no service page
+ *    lists them), but a preview could not show an unconsented quote anyway —
+ *    draft mode keeps the consent check — so it has no button either.
  */
 const PREVIEW_TARGETS: Partial<Record<ResourceName, PreviewTarget>> = {
   services: {
@@ -86,7 +86,7 @@ const PREVIEW_TARGETS: Partial<Record<ResourceName, PreviewTarget>> = {
 const PREVIEW_UNAVAILABLE: Partial<Record<ResourceName, string>> = {
   faqs: "FAQs show on the homepage and on every service and branch page. Preview one of those.",
   testimonials:
-    "A quote shows on the homepage and on the service it is attached to. Preview one of those.",
+    "A quote shows only on the homepage, and only once consent is recorded — preview cannot show it before that.",
 };
 
 /** The page this row is previewed on, or null when the type has no page yet. */

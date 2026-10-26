@@ -56,7 +56,8 @@ export async function TestimonialsSection() {
                   />
                   <figcaption>
                     <p className="text-base font-medium">
-                      {testimonial.patient_name}
+                      {/* Already reduced to what the patient agreed to show. */}
+                      {testimonial.display_name}
                     </p>
                     {/* TODO(seed): the export labels this "New Mother". No
                         structured field exists for it in the spec §5

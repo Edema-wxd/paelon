@@ -1,9 +1,7 @@
-import { CircleCheck, CircleMinus, CircleSlash } from "lucide-react";
-
 import { hasSiteImage, SiteImage } from "@/components/site/site-image";
 import { getMediaById } from "@/lib/db/queries/media";
 import type { Hmo } from "@/lib/db/schema";
-import { cn } from "@/lib/utils";
+import { UsagePanel, type Usage } from "@/components/admin/usage-panel";
 
 /**
  * Where an HMO actually appears on the public site, from its saved state.
@@ -58,15 +56,7 @@ export async function HmoUsagePanel({ hmo }: { hmo: Hmo }) {
   };
 
   return (
-    <section
-      aria-labelledby="hmo-usage-heading"
-      className="rounded-lg border border-border bg-surface p-5"
-    >
-      <h2 id="hmo-usage-heading" className="text-base font-semibold text-primary">
-        Where it appears
-      </h2>
-      <p className="mt-1 text-xs text-muted-foreground">From the last saved version.</p>
-
+    <UsagePanel id="hmo" usages={[logo, search, details]}>
       {builtIn && hmo.published ? (
         <div className="mt-4 flex h-16 items-center justify-center rounded-md border border-border bg-background p-2">
           <SiteImage
@@ -77,44 +67,6 @@ export async function HmoUsagePanel({ hmo }: { hmo: Hmo }) {
           />
         </div>
       ) : null}
-
-      <ul className="mt-4 space-y-4">
-        {[logo, search, details].map((usage) => (
-          <UsageRow key={usage.title} usage={usage} />
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-interface Usage {
-  /** on: live on the site · off: not shown · pending: stored, no surface yet. */
-  state: "on" | "off" | "pending";
-  title: string;
-  detail: string;
-}
-
-const STATE = {
-  on: { icon: CircleCheck, label: "Shown", tone: "text-emerald-700" },
-  off: { icon: CircleMinus, label: "Not shown", tone: "text-muted-foreground" },
-  pending: { icon: CircleSlash, label: "Not shown yet", tone: "text-amber-700" },
-} as const;
-
-function UsageRow({ usage }: { usage: Usage }) {
-  const { icon: Icon, label, tone } = STATE[usage.state];
-  return (
-    <li className="flex gap-2.5">
-      <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", tone)} />
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-primary">
-          {usage.title}
-          {/* The state as a word, not only an icon colour. */}
-          <span className={cn("ml-1.5 text-xs font-normal", tone)}>· {label}</span>
-        </p>
-        <p className="mt-0.5 text-xs leading-relaxed break-words text-muted-foreground">
-          {usage.detail}
-        </p>
-      </div>
-    </li>
+    </UsagePanel>
   );
 }

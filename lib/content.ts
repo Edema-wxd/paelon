@@ -38,7 +38,10 @@ import {
   getRelatedServices as getRelatedServiceRows,
   getServiceBySlug as getServiceRow,
 } from "@/lib/db/queries/services";
-import { getFeaturedTestimonials as getFeaturedTestimonialRows } from "@/lib/db/queries/testimonials";
+import {
+  getFeaturedTestimonials as getFeaturedTestimonialRows,
+  HOMEPAGE_TESTIMONIAL_LIMIT,
+} from "@/lib/db/queries/testimonials";
 import type {
   Award as AwardRow,
   Doctor as DoctorRow,
@@ -50,6 +53,7 @@ import type {
 } from "@/lib/db/schema";
 import type { ReadOptions } from "@/lib/db/queries/shared";
 import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
+import { displayPatientName } from "@/lib/testimonials/display-name";
 import type { Hours } from "@/lib/validation/hours";
 
 /**
@@ -194,7 +198,12 @@ export interface Hmo {
 export interface Testimonial {
   id: string;
   slug: string;
-  patient_name: string;
+  /**
+   * The name as the patient agreed it may appear — full, first name, or
+   * initials — from `displayPatientName`. The full name is deliberately not on
+   * this type: a template cannot leak what it was never given.
+   */
+  display_name: string;
   name_format: "full" | "first_only" | "initials";
   /** `media.id`, not a URL — see `Service.featured_image_id`. */
   avatar_id: string | null;
@@ -406,7 +415,7 @@ function toTestimonial(row: TestimonialRow): Testimonial {
   return {
     id: row.id,
     slug: row.slug,
-    patient_name: row.patientName,
+    display_name: displayPatientName(row.patientName, row.nameFormat),
     name_format: row.nameFormat,
     avatar_id: row.avatarId,
     quote: row.quote,
@@ -628,7 +637,7 @@ export async function getLocations(): Promise<Location[]> {
  * invisible in a preview too, because a preview URL is a real URL.
  */
 export async function getFeaturedTestimonials(
-  limit = 2,
+  limit = HOMEPAGE_TESTIMONIAL_LIMIT,
 ): Promise<Testimonial[]> {
   return (await getFeaturedTestimonialRows(limit, await readOptions())).map(
     toTestimonial,
