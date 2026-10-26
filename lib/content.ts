@@ -812,6 +812,47 @@ export async function getDoctorHeadshots(
 }
 
 /**
+ * The logos uploaded in `/admin/hmos`, keyed by HMO id.
+ *
+ * The same trip `getDoctorHeadshots` makes. HMOs with no uploaded logo, or one
+ * uploaded before migration 0004 recorded dimensions, are absent from the map,
+ * and the caller falls back to the bundled file in `assets/hmo-logo/`.
+ *
+ * Not cached, for the reason `getBodyImages` is not.
+ */
+export async function getHmoLogos(
+  hmos: readonly Hmo[],
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const byMediaId = new Map<string, string[]>();
+
+  for (const hmo of hmos) {
+    if (!hmo.logo_id) continue;
+    const hmoIds = byMediaId.get(hmo.logo_id) ?? [];
+    hmoIds.push(hmo.id);
+    byMediaId.set(hmo.logo_id, hmoIds);
+  }
+
+  if (byMediaId.size === 0) return new Map();
+
+  const rows = await getMediaByIds([...byMediaId.keys()]);
+  const resolved = new Map<string, ContentImage>();
+
+  for (const [mediaId, row] of rows) {
+    if (row.width === null || row.height === null) continue;
+    for (const hmoId of byMediaId.get(mediaId) ?? []) {
+      resolved.set(hmoId, {
+        url: row.url,
+        alt: row.alt,
+        width: row.width,
+        height: row.height,
+      });
+    }
+  }
+
+  return resolved;
+}
+
+/**
  * The branch whose details front the site (footer contact block, emergency
  * line). Victoria Island is the only branch seeded; see seed/README.md.
  */

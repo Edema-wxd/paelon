@@ -1,6 +1,8 @@
+import Image from "next/image";
+
 import { hasSiteImage, SiteImage } from "@/components/site/site-image";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
-import { getHmos } from "@/lib/content";
+import { getHmoLogos, getHmos, type ContentImage, type Hmo } from "@/lib/content";
 
 /**
  * "Accessing Care" block plus the HMO confirmation widget required by spec §6.
@@ -10,9 +12,13 @@ import { getHmos } from "@/lib/content";
  */
 export async function HmoAccessSection() {
   const hmos = await getHmos();
-  // The strip is "some of" the HMOs, so it shows only providers whose logo has
-  // been delivered; the typeahead below searches the full list.
-  const withLogos = hmos.filter((hmo) => hasSiteImage("hmo-logo", hmo.slug));
+  const uploaded = await getHmoLogos(hmos);
+  // The strip is "some of" the HMOs, so it shows only providers with a logo:
+  // one uploaded in /admin/hmos wins, else the bundled file in
+  // assets/hmo-logo/. The typeahead below searches the full list.
+  const withLogos = hmos.filter(
+    (hmo) => uploaded.has(hmo.id) || hasSiteImage("hmo-logo", hmo.slug),
+  );
 
   return (
     <section
@@ -63,16 +69,10 @@ export async function HmoAccessSection() {
           <ul className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-6 lg:grid-cols-6 lg:gap-8">
             {withLogos.map((hmo) => (
               <li key={hmo.id}>
-                {/* TODO(asset): 26 of the 29 logos are in assets/hmo-logo/,
-                    most taken from each provider's own website. Bastion and
-                    Regenix publish white-only wordmarks and Phillips HMO could
-                    not be identified; a file named by slug adds each one. */}
-                <SiteImage
-                  kind="hmo-logo"
-                  name={hmo.slug}
-                  alt={hmo.name}
-                  className="h-16 w-full rounded-md object-contain sm:h-20"
-                />
+                {/* TODO(asset): Bastion, Regenix and Phillips HMO have no
+                    logo yet. Uploading one in /admin/hmos adds it here, and
+                    replaces the bundled file for any provider that has one. */}
+                <HmoLogo hmo={hmo} uploaded={uploaded.get(hmo.id)} />
               </li>
             ))}
           </ul>
@@ -83,5 +83,36 @@ export async function HmoAccessSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+const LOGO_CLASS = "h-16 w-full rounded-md object-contain sm:h-20";
+
+/**
+ * One provider's logo: the upload from `/admin/hmos` when there is one, else
+ * the bundled file. A logo is the only label its list item has, so an empty
+ * ("decorative") alt on the media row falls back to the provider's name rather
+ * than hiding the provider from screen readers.
+ */
+function HmoLogo({ hmo, uploaded }: { hmo: Hmo; uploaded?: ContentImage }) {
+  if (uploaded && uploaded.width !== null && uploaded.height !== null) {
+    return (
+      <Image
+        src={uploaded.url}
+        alt={uploaded.alt || hmo.name}
+        width={uploaded.width}
+        height={uploaded.height}
+        sizes="176px"
+        className={LOGO_CLASS}
+      />
+    );
+  }
+  return (
+    <SiteImage
+      kind="hmo-logo"
+      name={hmo.slug}
+      alt={hmo.name}
+      className={LOGO_CLASS}
+    />
   );
 }
