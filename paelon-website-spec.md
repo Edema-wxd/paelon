@@ -1108,7 +1108,11 @@ NEXT_PUBLIC_UMAMI_SCRIPT_URL=
 NEXT_PUBLIC_UMAMI_SHARE_URL=
 
 NEXT_PUBLIC_SITE_URL=
+
+SITE_NOINDEX=false
 ```
+
+`SITE_NOINDEX=true` sends `X-Robots-Tag: noindex, nofollow` on every response from middleware, for a review build or a preview that is shared by link but must stay out of search. It is the env-driven gate the robots baseline asks for instead of `Disallow: /`, and is left unset at launch.
 
 `AUTH_SECRET` and `AUTH_URL` are required in production, enforced by a `superRefine` the same way as the Resend vars. `UPLOADTHING_TOKEN` is UploadThing v7's single token, replacing the v6 `UPLOADTHING_SECRET`/`UPLOADTHING_APP_ID` pair. `UPLOADTHING_UPLOADS_ENABLED` is removed.
 

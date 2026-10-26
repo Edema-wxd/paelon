@@ -2,28 +2,22 @@ import Image from "next/image";
 
 import { hasSiteImage, SiteImage } from "@/components/site/site-image";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
-import { getHmoLogos, getHmos } from "@/lib/content";
+import { getHmoLogos, getHmos, type ContentImage, type Hmo } from "@/lib/content";
 
 /**
  * "Accessing Care" block plus the HMO confirmation widget required by spec §6.
  *
  * The export shows the three access routes as an ordered list and the HMOs as
  * a static logo strip; the typeahead is additional.
- *
- * Each logo is the committed design asset for the provider's slug — built by
- * the image pipeline, so it ships as optimised AVIF/WebP. A logo uploaded in
- * `/admin/hmos` is used only where no design asset exists, so a provider that
- * has none can be given one without a deploy, while the pipeline's versions
- * stay the ones the strip shows everywhere else.
  */
 export async function HmoAccessSection() {
   const hmos = await getHmos();
   const uploaded = await getHmoLogos(hmos);
-  // The strip is "some of" the HMOs, so it shows only providers whose logo has
-  // been delivered — as a design asset or an upload; the typeahead below
-  // searches the full list.
+  // The strip is "some of" the HMOs, so it shows only providers with a logo:
+  // one uploaded in /admin/hmos wins, else the bundled file in
+  // assets/hmo-logo/. The typeahead below searches the full list.
   const withLogos = hmos.filter(
-    (hmo) => hasSiteImage("hmo-logo", hmo.slug) || uploaded.has(hmo.id),
+    (hmo) => uploaded.has(hmo.id) || hasSiteImage("hmo-logo", hmo.slug),
   );
 
   return (
@@ -75,21 +69,10 @@ export async function HmoAccessSection() {
           <ul className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-6 lg:grid-cols-6 lg:gap-8">
             {withLogos.map((hmo) => (
               <li key={hmo.id}>
-                {/* TODO(asset): 26 of the 29 logos are in assets/hmo-logo/,
-                    most taken from each provider's own website. Bastion and
-                    Regenix publish white-only wordmarks and Phillips HMO could
-                    not be identified; a file named by slug, or an upload in
-                    /admin/hmos, adds each one. */}
-                {hasSiteImage("hmo-logo", hmo.slug) ? (
-                  <SiteImage
-                    kind="hmo-logo"
-                    name={hmo.slug}
-                    alt={hmo.name}
-                    className="h-16 w-full rounded-md object-contain sm:h-20"
-                  />
-                ) : (
-                  <UploadedLogo logo={uploaded.get(hmo.id)!} name={hmo.name} />
-                )}
+                {/* TODO(asset): Bastion, Regenix and Phillips HMO have no
+                    logo yet. Uploading one in /admin/hmos adds it here, and
+                    replaces the bundled file for any provider that has one. */}
+                <HmoLogo hmo={hmo} uploaded={uploaded.get(hmo.id)} />
               </li>
             ))}
           </ul>
@@ -103,26 +86,33 @@ export async function HmoAccessSection() {
   );
 }
 
-/** An `/admin/hmos` upload, sized to the same cell as the design assets. */
-function UploadedLogo({
-  logo,
-  name,
-}: {
-  logo: { url: string; alt: string; width: number | null; height: number | null };
-  name: string;
-}) {
-  return (
-    <div className="flex h-16 items-center justify-center sm:h-20">
+const LOGO_CLASS = "h-16 w-full rounded-md object-contain sm:h-20";
+
+/**
+ * One provider's logo: the upload from `/admin/hmos` when there is one, else
+ * the bundled file. A logo is the only label its list item has, so an empty
+ * ("decorative") alt on the media row falls back to the provider's name rather
+ * than hiding the provider from screen readers.
+ */
+function HmoLogo({ hmo, uploaded }: { hmo: Hmo; uploaded?: ContentImage }) {
+  if (uploaded && uploaded.width !== null && uploaded.height !== null) {
+    return (
       <Image
-        src={logo.url}
-        // The provider's name when the upload has none: a logo is never
-        // decorative here, it is the list item.
-        alt={logo.alt || name}
-        width={logo.width ?? undefined}
-        height={logo.height ?? undefined}
-        sizes="(min-width: 1024px) 160px, 30vw"
-        className="h-full w-auto max-w-full object-contain"
+        src={uploaded.url}
+        alt={uploaded.alt || hmo.name}
+        width={uploaded.width}
+        height={uploaded.height}
+        sizes="176px"
+        className={LOGO_CLASS}
       />
-    </div>
+    );
+  }
+  return (
+    <SiteImage
+      kind="hmo-logo"
+      name={hmo.slug}
+      alt={hmo.name}
+      className={LOGO_CLASS}
+    />
   );
 }

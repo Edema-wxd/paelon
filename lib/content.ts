@@ -231,9 +231,11 @@ export interface Location {
   city: string;
   state: string;
   country: string;
-  phone: string;
+  /** Null until seeded — `NOT NULL` on the row, so a gap arrives as the sentinel. */
+  phone: string | null;
   whatsapp: string | null;
-  emergency_line: string;
+  /** Null until seeded, as `phone`. */
+  emergency_line: string | null;
   order: number;
   published: boolean;
 
@@ -445,9 +447,9 @@ function toLocation(row: LocationRow): Location {
     city: row.city,
     state: row.state,
     country: row.country,
-    phone: row.phone,
-    whatsapp: row.whatsapp,
-    emergency_line: row.emergencyLine,
+    phone: realOrNull(row.phone),
+    whatsapp: realOrNull(row.whatsapp),
+    emergency_line: realOrNull(row.emergencyLine),
     order: row.order,
     published: row.published,
     latitude: row.latitude,
@@ -877,17 +879,13 @@ export async function getDoctorHeadshots(
 }
 
 /**
- * The uploaded logos for a set of HMOs, keyed by HMO id.
+ * The logos uploaded in `/admin/hmos`, keyed by HMO id.
  *
- * `Hmo.logo_id` is a `media.id` set in `/admin/hmos`, resolved in one query for
- * the whole strip — the same trip `getDoctorHeadshots` makes. An HMO with no
- * logo, or whose logo has no recorded dimensions, is absent from the map and
- * the caller falls back to the design asset for its slug: `next/image` cannot
- * reserve space for an unsized image, and a logo strip that shifts is a CLS
- * breach (spec §13).
+ * The same trip `getDoctorHeadshots` makes. HMOs with no uploaded logo, or one
+ * uploaded before migration 0004 recorded dimensions, are absent from the map,
+ * and the caller falls back to the bundled file in `assets/hmo-logo/`.
  *
- * Not cached, for the reason `getBodyImages` is not: an editor who swaps a logo
- * or fixes its alt text should not wait out a second cache layer.
+ * Not cached, for the reason `getBodyImages` is not.
  */
 export async function getHmoLogos(
   hmos: readonly Hmo[],

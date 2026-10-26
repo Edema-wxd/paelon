@@ -126,7 +126,7 @@ const FIELDS: readonly Field[] = [
     altName: HMO_LOGO.alt,
     altLabel: "Logo alt text",
     section: "Logo",
-    hint: "Used in the homepage logo strip only when this provider has no built-in logo — “Where it appears” shows which applies. Alt text should name the provider, not say “logo”.",
+    hint: "Shown in the homepage logo strip, in place of the built-in logo if there is one — “Where it appears” shows which applies. Alt text should name the provider, not say “logo”.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {

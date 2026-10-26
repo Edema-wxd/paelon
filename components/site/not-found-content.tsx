@@ -80,7 +80,9 @@ export async function NotFoundContent() {
   const location = await getPrimaryLocation();
   const destinations = await getDestinations();
 
-  const telHref = location ? toTelHref(location.emergency_line) : null;
+  const telHref = location?.emergency_line
+    ? toTelHref(location.emergency_line)
+    : null;
 
   return (
     <div className="mx-auto max-w-360 px-4 py-16 sm:px-6 lg:px-25 lg:py-24">

@@ -95,14 +95,16 @@ export default async function ServicesPage() {
             <Button asChild size="pill" className="w-full sm:w-auto sm:min-w-50">
               <Link href="/book">Book an appointment</Link>
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="pill"
-              className="w-full sm:w-auto sm:min-w-50"
-            >
-              <a href={toTelHref(location.phone)}>Call {location.phone}</a>
-            </Button>
+            {location.phone ? (
+              <Button
+                asChild
+                variant="outline"
+                size="pill"
+                className="w-full sm:w-auto sm:min-w-50"
+              >
+                <a href={toTelHref(location.phone)}>Call {location.phone}</a>
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </section>

@@ -202,7 +202,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 Book {service.name}
               </Link>
             </Button>
-            {location ? (
+            {location?.phone ? (
               <Button
                 asChild
                 variant="outline"
@@ -304,7 +304,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                */
               <PendingNote
                 action={
-                  location ? (
+                  location?.phone ? (
                     <Button asChild variant="outline" size="sm">
                       <a href={toTelHref(location.phone)}>
                         Call {location.phone}

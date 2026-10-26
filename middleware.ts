@@ -188,6 +188,20 @@ function draftHeaders(request: NextRequest, response: NextResponse): void {
   response.headers.set("Cache-Control", "no-store, must-revalidate");
 }
 
+/**
+ * Keep a whole deployment out of search: a client review build, a preview, or
+ * anything else that should be reachable by link but never indexed.
+ *
+ * A header rather than `Disallow: /` in robots.txt, because a disallowed URL
+ * can still be indexed from inbound links, and a crawler that is not allowed
+ * to fetch a page never sees its `noindex`. Off unless `SITE_NOINDEX=true`.
+ */
+function siteNoindexHeaders(response: NextResponse): void {
+  if (process.env.SITE_NOINDEX !== "true") return;
+
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+}
+
 export function middleware(request: NextRequest): NextResponse {
   // crypto.randomUUID is available on the Edge runtime and is cheap enough to
   // run per request.
@@ -221,6 +235,7 @@ export function middleware(request: NextRequest): NextResponse {
     "geolocation=(), microphone=(), camera=()",
   );
 
+  siteNoindexHeaders(response);
   draftHeaders(request, response);
 
   return response;

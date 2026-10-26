@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import {
   BranchArrivalRail,
+  phoneCells,
   type ArrivalCell,
 } from "@/components/site/branch-arrival-rail";
 import { BranchHours } from "@/components/site/branch-hours";
@@ -104,8 +105,9 @@ export default async function LocationDetailPage({ params }: PageProps) {
     `Hello Paelon Memorial Hospital, I have a question about the ${location.name} branch.`,
   );
 
+  const phones = phoneCells(location);
   const cells: ArrivalCell[] = [
-    { label: "Call", value: location.phone, href: toTelHref(location.phone) },
+    ...phones.call,
     // TODO(seed): no branch WhatsApp number is seeded, and the provider is
     // still open (spec §18). The cell appears the moment a number lands rather
     // than shipping a dead "not available" tile.
@@ -119,12 +121,7 @@ export default async function LocationDetailPage({ params }: PageProps) {
           } satisfies ArrivalCell,
         ]
       : []),
-    {
-      label: "Emergency",
-      value: location.emergency_line,
-      href: toTelHref(location.emergency_line),
-      emergency: true,
-    },
+    ...phones.emergency,
     {
       label: "Directions",
       value: "Open in maps",
@@ -146,7 +143,7 @@ export default async function LocationDetailPage({ params }: PageProps) {
     "@type": "Hospital",
     name: `Paelon Memorial Hospital, ${location.name}`,
     url,
-    telephone: location.phone,
+    ...(location.phone ? { telephone: location.phone } : {}),
     address: {
       "@type": "PostalAddress",
       streetAddress: [location.address_line_1, location.address_line_2]
@@ -341,12 +338,21 @@ export default async function LocationDetailPage({ params }: PageProps) {
             <PendingNote
               className="mt-8"
               action={
-                <a
-                  href={toTelHref(location.phone)}
-                  className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
-                >
-                  Call {location.phone}
-                </a>
+                location.phone ? (
+                  <a
+                    href={toTelHref(location.phone)}
+                    className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
+                  >
+                    Call {location.phone}
+                  </a>
+                ) : (
+                  <Link
+                    href="/contact"
+                    className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
+                  >
+                    Contact us
+                  </Link>
+                )
               }
             >
               Parking and step-free access details for this branch have not been

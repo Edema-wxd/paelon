@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { PendingNote } from "@/components/site/pending-note";
 import { toTelHref } from "@/lib/content";
 import {
@@ -12,7 +14,7 @@ import type { Hours } from "@/lib/validation/hours";
 interface BranchHoursProps {
   hours: Hours | Record<string, never> | undefined;
   /** Offered as the fallback when the schedule has not been confirmed. */
-  phone: string;
+  phone: string | null;
   branchName: string;
 }
 
@@ -28,19 +30,30 @@ export function BranchHours({ hours, phone, branchName }: BranchHoursProps) {
     return (
       <PendingNote
         action={
-          <a
-            href={toTelHref(phone)}
-            className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
-          >
-            Call {branchName} on {phone}
-          </a>
+          phone ? (
+            <a
+              href={toTelHref(phone)}
+              className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
+            >
+              Call {branchName} on {phone}
+            </a>
+          ) : (
+            <Link
+              href="/contact"
+              className="rounded-md text-sm font-medium text-accent underline underline-offset-4"
+            >
+              Contact us
+            </Link>
+          )
         }
       >
         {/* TODO(seed): locations.json carries no `hours`. Publishing a guessed
             schedule for a hospital would send someone to a locked gate, so the
             gap is stated instead. See seed/README.md. */}
-        Opening hours for this branch have not been confirmed. Call the front
-        desk and someone will tell you when to come in.
+        Opening hours for this branch have not been confirmed.
+        {phone
+          ? " Call the front desk and someone will tell you when to come in."
+          : " Get in touch and someone will tell you when to come in."}
       </PendingNote>
     );
   }

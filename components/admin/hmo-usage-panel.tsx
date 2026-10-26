@@ -14,30 +14,43 @@ import { UsagePanel, type Usage } from "@/components/admin/usage-panel";
  * is private. This panel says what is true, per surface, and is recomputed on
  * every load so it cannot drift from the code the way a hint can.
  *
- * The logo rule mirrors `components/site/hmo-access-section.tsx`: the
- * committed design asset wins; an upload is used only where none exists.
+ * The logo rule mirrors `components/site/hmo-access-section.tsx` (since #9):
+ * an upload with recorded dimensions wins; otherwise the built-in file for the
+ * slug is used.
  */
 export async function HmoUsagePanel({ hmo }: { hmo: Hmo }) {
   const builtIn = hasSiteImage("hmo-logo", hmo.slug);
   const upload = hmo.logoId ? await getMediaById(hmo.logoId) : null;
   const searchNames = [hmo.name, ...hmo.aliases];
 
+  // Dimensions decide it, as on the homepage: `next/image` cannot reserve space
+  // for an unsized upload, so the strip falls back to the built-in file.
+  const usableUpload = upload !== null && upload.width !== null && upload.height !== null;
+
   const logo: Usage = !hmo.published
     ? { state: "off", title: "Homepage logo strip", detail: "Hidden while this HMO is a draft." }
-    : builtIn
+    : usableUpload
       ? {
           state: "on",
           title: "Homepage logo strip",
-          detail: upload
-            ? "Shows the built-in logo. Your upload is not used while a built-in logo exists."
-            : "Shows the built-in logo.",
+          detail: builtIn
+            ? "Shows your uploaded logo, in place of the built-in one."
+            : "Shows your uploaded logo.",
         }
-      : upload
-        ? { state: "on", title: "Homepage logo strip", detail: "Shows your uploaded logo." }
+      : builtIn
+        ? {
+            state: "on",
+            title: "Homepage logo strip",
+            detail: upload
+              ? "Shows the built-in logo: your upload has no recorded size. Re-upload it to use it."
+              : "Shows the built-in logo.",
+          }
         : {
             state: "off",
             title: "Homepage logo strip",
-            detail: "Not shown — there is no logo. Upload one under Logo to add it.",
+            detail: upload
+              ? "Not shown — the upload has no recorded size. Re-upload it."
+              : "Not shown — there is no logo. Upload one under Logo to add it.",
           };
 
   const search: Usage = hmo.published

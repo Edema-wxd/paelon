@@ -323,7 +323,7 @@ export default async function DoctorProfilePage({ params }: PageProps) {
                  a clinician's training and career — not something to draft. */
               <PendingNote
                 action={
-                  primary ? (
+                  primary?.phone ? (
                     <Button asChild variant="outline" size="sm">
                       <a href={toTelHref(primary.phone)}>
                         Call {primary.phone}
@@ -342,7 +342,7 @@ export default async function DoctorProfilePage({ params }: PageProps) {
               <Button asChild size="pill" className="w-full sm:w-auto sm:min-w-50">
                 <Link href={bookHref}>Book an appointment</Link>
               </Button>
-              {primary ? (
+              {primary?.phone ? (
                 <Button
                   asChild
                   variant="outline"
