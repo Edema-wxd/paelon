@@ -42,5 +42,60 @@
     "plan_notes": null,
     "order": 4,
     "published": true
+  },
+  {
+    "id": "e42c7e9c-0226-4fdf-9ecc-b11c9d8f0d80",
+    "slug": "allianz",
+    "name": "Allianz",
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 5,
+    "published": true
+  },
+  {
+    "id": "125cdc6d-fda7-48be-b8db-8818a4061d7a",
+    "slug": "bupa",
+    "name": "Bupa",
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 6,
+    "published": true
+  },
+  {
+    "id": "8beeb481-74a3-4ace-8b52-a2c41531d10d",
+    "slug": "hygeia",
+    "name": "Hygeia",
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 7,
+    "published": true
+  },
+  {
+    "id": "e9e898fc-ad7c-49a2-a280-31b4db6cfaec",
+    "slug": "liberty",
+    "name": "Liberty",
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 8,
+    "published": true
+  },
+  {
+    "id": "9729e1e6-0c32-4dfb-b42f-296d19dd8f2f",
+    "slug": "reliancehealth",
+    "name": "RelianceHealth",
+    "branch_ids": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 9,
+    "published": true
   }
 ]

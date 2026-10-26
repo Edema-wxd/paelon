@@ -812,6 +812,51 @@ export async function getDoctorHeadshots(
 }
 
 /**
+ * The uploaded logos for a set of HMOs, keyed by HMO id.
+ *
+ * `Hmo.logo_id` is a `media.id` set in `/admin/hmos`, resolved in one query for
+ * the whole strip — the same trip `getDoctorHeadshots` makes. An HMO with no
+ * logo, or whose logo has no recorded dimensions, is absent from the map and
+ * the caller falls back to the design asset for its slug: `next/image` cannot
+ * reserve space for an unsized image, and a logo strip that shifts is a CLS
+ * breach (spec §13).
+ *
+ * Not cached, for the reason `getBodyImages` is not: an editor who swaps a logo
+ * or fixes its alt text should not wait out a second cache layer.
+ */
+export async function getHmoLogos(
+  hmos: readonly Hmo[],
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const byMediaId = new Map<string, string[]>();
+
+  for (const hmo of hmos) {
+    if (!hmo.logo_id) continue;
+    const hmoIds = byMediaId.get(hmo.logo_id) ?? [];
+    hmoIds.push(hmo.id);
+    byMediaId.set(hmo.logo_id, hmoIds);
+  }
+
+  if (byMediaId.size === 0) return new Map();
+
+  const rows = await getMediaByIds([...byMediaId.keys()]);
+  const resolved = new Map<string, ContentImage>();
+
+  for (const [mediaId, row] of rows) {
+    if (row.width === null || row.height === null) continue;
+    for (const hmoId of byMediaId.get(mediaId) ?? []) {
+      resolved.set(hmoId, {
+        url: row.url,
+        alt: row.alt,
+        width: row.width,
+        height: row.height,
+      });
+    }
+  }
+
+  return resolved;
+}
+
+/**
  * The branch whose details front the site (footer contact block, emergency
  * line). Victoria Island is the only branch seeded; see seed/README.md.
  */
