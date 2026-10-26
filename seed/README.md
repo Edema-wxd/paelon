@@ -109,7 +109,12 @@ These must be resolved with Francis before the site goes live.
   Paediatrics and Obstetrics are filed under `women_and_children`, Lily
   Fertility under `specialist`, General Practice and Family Health under
   `family_healthcare`. Confirm.
-- `hmos.json` — `branch_ids`, `coverage_notes`, and `copay_applies` are unknown.
+- `hmos.json` — the full list of 29 accepted HMOs, supplied 2026-10-26. Names
+  are exactly as given; `aliases` only split combined names ("Vanbreda/Cigna")
+  and never guess an expansion. `cigna` keeps its slug so its delivered logo
+  still resolves. Logos exist for 4 of the 29 (`axa-mansard`, `leadway`, `avon`,
+  `cigna`); the homepage strip shows only those, the typeahead searches all.
+  `location_slugs`, `coverage_notes`, and `copay_applies` are unknown.
   `copay_applies` currently defaults to `false`, which is a guess; the HMO
   coverage check template (spec §6) needs the real values.
 - `blog-posts.json` — empty. `RecentBlogCard` renders an empty state until a

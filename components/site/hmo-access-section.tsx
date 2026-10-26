@@ -1,4 +1,4 @@
-import { SiteImage } from "@/components/site/site-image";
+import { hasSiteImage, SiteImage } from "@/components/site/site-image";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
 import { getHmos } from "@/lib/content";
 
@@ -10,6 +10,9 @@ import { getHmos } from "@/lib/content";
  */
 export async function HmoAccessSection() {
   const hmos = await getHmos();
+  // The strip is "some of" the HMOs, so it shows only providers whose logo has
+  // been delivered; the typeahead below searches the full list.
+  const withLogos = hmos.filter((hmo) => hasSiteImage("hmo-logo", hmo.slug));
 
   return (
     <section
@@ -57,11 +60,11 @@ export async function HmoAccessSection() {
               left-aligned column and turning four providers into ~800px of
               scroll. Fluid columns keep the strip compact at every width. */}
           <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8">
-            {hmos.map((hmo) => (
+            {withLogos.map((hmo) => (
               <li key={hmo.id}>
-                {/* TODO(asset): HMO logos were not delivered. The provider name
-                    carries the meaning in the meantime, which is also the
-                    accessible text once the logo replaces it. */}
+                {/* TODO(asset): only four of the 29 HMO logos have been
+                    delivered. Each new file in assets/hmo-logo/, named by
+                    slug, adds its provider to this strip. */}
                 <SiteImage
                   kind="hmo-logo"
                   name={hmo.slug}
