@@ -1,14 +1,11 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { track } from "@/lib/analytics/track";
-import {
-  newsletterSchema,
-  type NewsletterInput,
-} from "@/lib/validation/newsletter";
+import { lazyZodResolver, preloadWhenIdle } from "@/lib/forms/lazy-zod-resolver";
+import type { NewsletterInput } from "@/lib/validation/newsletter";
 
 export type NewsletterStatus = "idle" | "submitting" | "success" | "error";
 
@@ -21,6 +18,18 @@ type FieldName = (typeof FIELD_NAMES)[number];
 function isFieldName(value: string): value is FieldName {
   return (FIELD_NAMES as readonly string[]).includes(value);
 }
+
+/**
+ * The shared newsletter schema, downloaded after the page is interactive
+ * rather than with it — this form is on the homepage, `/contact` and `/blog`,
+ * and Zod in their first-load JS put them over budget. See `lazyZodResolver`.
+ */
+const validation = lazyZodResolver(() =>
+  Promise.all([
+    import("@hookform/resolvers/zod"),
+    import("@/lib/validation/newsletter"),
+  ]).then(([{ zodResolver }, { newsletterSchema }]) => zodResolver(newsletterSchema)),
+);
 
 function emptyValues(): NewsletterInput {
   return {
@@ -49,9 +58,11 @@ export function useNewsletterForm(onSuccess?: () => void) {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<NewsletterInput>({
-    resolver: zodResolver(newsletterSchema),
+    resolver: validation.resolver,
     defaultValues: emptyValues(),
   });
+
+  useEffect(() => preloadWhenIdle(validation.preload), []);
 
   const { setError, reset } = form;
 
