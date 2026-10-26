@@ -114,10 +114,11 @@ export async function ResourceListScreen<R extends ContentRow>({
       <section aria-labelledby="list-heading" className="mt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="list-heading" className="text-lg font-medium text-primary">
-            {list.total}{" "}
-            {list.total === 1
-              ? inSentence(config.singular)
-              : inSentence(config.plural)}
+            {/* One text node: as three, the accessibility tree drops the
+                whitespace-only middle one and the heading reads "1post". */}
+            {`${list.total} ${
+              list.total === 1 ? inSentence(config.singular) : inSentence(config.plural)
+            }`}
           </h2>
           {list.total > 0 ? (
             <p className="text-sm text-muted-foreground">

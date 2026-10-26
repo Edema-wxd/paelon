@@ -4,7 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/site/article-body";
-import { AssetPlaceholder } from "@/components/site/asset-placeholder";
+import { AuthorCard } from "@/components/site/author-card";
 import { BlogPostCard } from "@/components/site/blog-post-card";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { NewsletterPopup } from "@/components/site/newsletter-popup";
@@ -12,6 +12,7 @@ import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
 import { ShareLinks } from "@/components/site/share-links";
 import {
   BLOG_CATEGORY_LABELS,
+  getBlogAuthor,
   getBlogPostBySlug,
   getBlogPosts,
   getBodyImages,
@@ -73,6 +74,21 @@ export async function generateMetadata({
 
   const url = new URL(`/blog/${post.slug}`, siteUrl).toString();
 
+  // The post's own hero is its share card when it has one (baseline item 7:
+  // a share image per page); the branded card is the fallback, not the rule.
+  const hero = post.hero_image;
+  const ogImages = hero
+    ? [
+        {
+          url: hero.url,
+          width: hero.width ?? undefined,
+          height: hero.height ?? undefined,
+          alt: hero.alt || post.title,
+        },
+      ]
+    : OG_IMAGES;
+  const twitterImages = hero ? [hero.url] : TWITTER_IMAGES;
+
   return {
     title: post.title,
     description: post.excerpt,
@@ -85,13 +101,13 @@ export async function generateMetadata({
       description: post.excerpt,
       publishedTime: post.published_at,
       authors: [post.author_name],
-      images: OG_IMAGES,
+      images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
       title: `${post.title} | Paelon Memorial Hospital`,
       description: post.excerpt,
-      images: TWITTER_IMAGES,
+      images: twitterImages,
     },
   };
 }
@@ -102,9 +118,10 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   if (!post) notFound();
 
-  const [related, bodyImages] = await Promise.all([
+  const [related, bodyImages, author] = await Promise.all([
     getRelatedBlogPosts(post),
     getBodyImages(post.body),
+    getBlogAuthor(post),
   ]);
 
   // Dimensions are what make the hero renderable: `next/image` needs both to
@@ -140,7 +157,14 @@ export default async function BlogPostPage({ params }: PageProps) {
     headline: post.title,
     description: post.excerpt,
     datePublished: post.published_at,
-    author: { "@type": "Person", name: post.author_name },
+    author: {
+      "@type": "Person",
+      name: post.author_name,
+      ...(author?.role ? { jobTitle: author.role } : {}),
+      ...(author?.doctor_slug
+        ? { url: new URL(`/doctors/${author.doctor_slug}`, siteUrl).toString() }
+        : {}),
+    },
     publisher: {
       "@type": "Organization",
       name: "Paelon Memorial Hospital",
@@ -190,8 +214,10 @@ export default async function BlogPostPage({ params }: PageProps) {
           </header>
 
           {/* The hero is the LCP candidate on this template, so it carries
-              `priority` and its real dimensions — the placeholder below holds
-              the same box, so landing an image shifts nothing. */}
+              `priority` and its real dimensions. It is optional: a post
+              without one goes straight from the byline to the body, rather
+              than showing a grey "Illustration for …" box that reads as a
+              broken image. */}
           {hero ? (
             <Image
               src={hero.url}
@@ -202,23 +228,18 @@ export default async function BlogPostPage({ params }: PageProps) {
               sizes="(min-width: 1024px) 80rem, 100vw"
               className="mt-10 aspect-[21/9] w-full rounded-xl object-cover"
             />
-          ) : (
-            <AssetPlaceholder
-              label={`Illustration for ${post.title}`}
-              className="mt-10 aspect-[21/9] w-full rounded-xl"
-              decorative
-            />
-          )}
+          ) : null}
 
           <div className="mt-12">
             <ArticleBody source={post.body} images={bodyImages} />
           </div>
 
           <footer className="mt-16 max-w-2xl border-t border-border pt-8">
-            <h2 className="text-xl text-primary">About the author</h2>
-            <p className="mt-3 text-base text-foreground/80">
-              {post.author_name}
-            </p>
+            {author ? (
+              <AuthorCard author={author} />
+            ) : (
+              <p className="text-base text-foreground/80">By {post.author_name}</p>
+            )}
 
             <div className="mt-8">
               <ShareLinks title={post.title} url={url} />

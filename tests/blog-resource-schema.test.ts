@@ -107,6 +107,16 @@ describe("authorSchema", () => {
     }
   });
 
+  it("keeps bold, lists and links in a bio", () => {
+    const bio = "Leads **family medicine**. Sees patients at [our branches](/locations).\n\n- Paediatrics";
+    expect(authorSchema.safeParse({ ...validAuthor, bio }).success).toBe(true);
+  });
+
+  it("refuses headings in a bio, which sits under the card's own h2", () => {
+    const result = authorSchema.safeParse({ ...validAuthor, bio: "## Training\n\nPlaceholder." });
+    expect(issueOn(result, "bio")).toMatch(/Headings are not used/);
+  });
+
   it("rejects a slug that is not kebab-case", () => {
     const result = authorSchema.safeParse({ ...validAuthor, slug: "Not A Slug" });
     expect(issueOn(result, "slug")).toMatch(/lowercase/);

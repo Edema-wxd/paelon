@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BlogPostUsagePanel } from "@/components/admin/blog-post-usage-panel";
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
 import { blogPostResource } from "@/lib/admin/resources";
 
@@ -24,5 +25,12 @@ export default async function EditBlogPostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="blog" config={blogPostResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="blog"
+      config={blogPostResource}
+      id={id}
+      renderAside={(post) => <BlogPostUsagePanel post={post} />}
+    />
+  );
 }

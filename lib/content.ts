@@ -2,6 +2,7 @@ import { draftMode } from "next/headers";
 
 import {
   getLatestPost,
+  getPostAuthor,
   getPostBySlug as getPostRow,
   getPostsByTag as getPostsByTagRows,
   getPublishedPosts,
@@ -689,6 +690,47 @@ export async function getRelatedBlogPosts(
   const row = await getPostRow(post.slug, options);
   if (!row) return [];
   return (await getRelatedPostRows(row, limit, options)).map(toBlogPost);
+}
+
+/** The author card at the foot of a post (spec §6: "author card"). */
+export interface BlogAuthor {
+  name: string;
+  role: string;
+  /** Markdown, without headings. Rendered through `ArticleBody`. */
+  bio: string;
+  /** Only with both dimensions, so `next/image` can reserve the box. */
+  headshot: { url: string; alt: string; width: number; height: number } | null;
+  /** `/doctors/<slug>`, only when that profile is published. */
+  doctor_slug: string | null;
+}
+
+/**
+ * The full byline for one post, or null when the author row is gone.
+ *
+ * Seed sentinels are normalised like every other field, so an unwritten role
+ * or bio is absent from the card rather than printed as "TODO(seed)".
+ */
+export async function getBlogAuthor(post: BlogPost): Promise<BlogAuthor | null> {
+  const row = await getPostAuthor(post.author_slug);
+  if (!row) return null;
+
+  const headshot =
+    row.headshotUrl !== null && row.headshotWidth !== null && row.headshotHeight !== null
+      ? {
+          url: row.headshotUrl,
+          alt: row.headshotAlt ?? "",
+          width: row.headshotWidth,
+          height: row.headshotHeight,
+        }
+      : null;
+
+  return {
+    name: row.name,
+    role: isSeedGap(row.role) ? "" : row.role,
+    bio: isSeedGap(row.bio) ? "" : row.bio,
+    headshot,
+    doctor_slug: row.doctorSlug,
+  };
 }
 
 /** One tag and how many published posts carry it. */
