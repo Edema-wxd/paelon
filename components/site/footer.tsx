@@ -93,13 +93,15 @@ export async function Footer() {
                   reads as a placeholder. A wrong emergency number on a hospital
                   site is a safety issue — confirm before launch.
                 */}
-                <a
-                  href={toTelHref(location.emergency_line)}
-                  className="mt-3 block rounded-md text-base underline-offset-4 hover:underline"
-                  {...trackOnClick("emergency_line_clicked")}
-                >
-                  {location.emergency_line}
-                </a>
+                {location.emergency_line ? (
+                  <a
+                    href={toTelHref(location.emergency_line)}
+                    className="mt-3 block rounded-md text-base underline-offset-4 hover:underline"
+                    {...trackOnClick("emergency_line_clicked")}
+                  >
+                    {location.emergency_line}
+                  </a>
+                ) : null}
                 <address className="mt-3 text-base not-italic">
                   {location.address_line_1}, {location.city}, {location.state}.
                 </address>

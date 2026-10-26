@@ -63,7 +63,7 @@ export async function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 lg:ml-0">
-          {location ? (
+          {location?.emergency_line ? (
             <Button
               asChild
               variant="accent"

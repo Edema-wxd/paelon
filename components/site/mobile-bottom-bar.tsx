@@ -22,6 +22,10 @@ export async function MobileBottomBar() {
     ? `https://wa.me/${location.whatsapp.replace(/[^\d]/g, "")}`
     : "/contact";
 
+  // The emergency line first, as before; the front desk when only that is
+  // seeded. With neither, the tile is dropped rather than dialling nothing.
+  const callNumber = location.emergency_line ?? location.phone;
+
   const tile =
     "flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium";
 
@@ -32,14 +36,16 @@ export async function MobileBottomBar() {
           and the lg breakpoint — large phones in landscape, foldables, small
           tablets — leaving white gutters either side. */}
       <nav aria-label="Quick actions" className="flex">
-        <a
-          href={toTelHref(location.emergency_line)}
-          className={`${tile} text-accent`}
-          {...trackOnClick("emergency_line_clicked")}
-        >
-          <Phone className="size-5" aria-hidden />
-          Call
-        </a>
+        {callNumber ? (
+          <a
+            href={toTelHref(callNumber)}
+            className={`${tile} text-accent`}
+            {...trackOnClick("emergency_line_clicked")}
+          >
+            <Phone className="size-5" aria-hidden />
+            Call
+          </a>
+        ) : null}
         <Link href={whatsappHref} className={`${tile} text-primary`}>
           <MessageCircle className="size-5" aria-hidden />
           WhatsApp

@@ -2,13 +2,13 @@ import Link from "next/link";
 
 import {
   BranchArrivalRail,
+  phoneCells,
   type ArrivalCell,
 } from "@/components/site/branch-arrival-rail";
 import { PendingNote } from "@/components/site/pending-note";
 import {
   formatAddress,
   toDirectionsHref,
-  toTelHref,
   type Location,
 } from "@/lib/content";
 import {
@@ -26,18 +26,10 @@ import {
  * invented. See seed/README.md.
  */
 export function BranchCard({ location }: { location: Location }) {
+  const phones = phoneCells(location);
   const cells: ArrivalCell[] = [
-    {
-      label: "Call",
-      value: location.phone,
-      href: toTelHref(location.phone),
-    },
-    {
-      label: "Emergency",
-      value: location.emergency_line,
-      href: toTelHref(location.emergency_line),
-      emergency: true,
-    },
+    ...phones.call,
+    ...phones.emergency,
     {
       label: "Directions",
       value: "Open in maps",
@@ -90,8 +82,10 @@ export function BranchCard({ location }: { location: Location }) {
             </p>
           ) : (
             <PendingNote>
-              Opening hours have not been confirmed for this branch. Call ahead
-              before you travel.
+              Opening hours have not been confirmed for this branch.
+              {location.phone
+                ? " Call ahead before you travel."
+                : " Contact us before you travel."}
             </PendingNote>
           )}
         </div>

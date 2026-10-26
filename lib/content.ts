@@ -213,9 +213,11 @@ export interface Location {
   city: string;
   state: string;
   country: string;
-  phone: string;
+  /** Null until seeded — `NOT NULL` on the row, so a gap arrives as the sentinel. */
+  phone: string | null;
   whatsapp: string | null;
-  emergency_line: string;
+  /** Null until seeded, as `phone`. */
+  emergency_line: string | null;
   order: number;
   published: boolean;
 
@@ -426,9 +428,9 @@ function toLocation(row: LocationRow): Location {
     city: row.city,
     state: row.state,
     country: row.country,
-    phone: row.phone,
-    whatsapp: row.whatsapp,
-    emergency_line: row.emergencyLine,
+    phone: realOrNull(row.phone),
+    whatsapp: realOrNull(row.whatsapp),
+    emergency_line: realOrNull(row.emergencyLine),
     order: row.order,
     published: row.published,
     latitude: row.latitude,

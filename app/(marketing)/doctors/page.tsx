@@ -152,7 +152,7 @@ export default async function DoctorsPage() {
              section. */
           <PendingNote
             action={
-              location ? (
+              location?.phone ? (
                 <Button asChild variant="outline" size="sm">
                   <a href={toTelHref(location.phone)}>
                     Call {location.phone}
