@@ -109,7 +109,19 @@ These must be resolved with Francis before the site goes live.
   Paediatrics and Obstetrics are filed under `women_and_children`, Lily
   Fertility under `specialist`, General Practice and Family Health under
   `family_healthcare`. Confirm.
-- `hmos.json` — `branch_ids`, `coverage_notes`, and `copay_applies` are unknown.
+- `hmos.json` — the full list of 29 accepted HMOs, supplied 2026-10-26. Names
+  are exactly as given; `aliases` only split combined names ("Vanbreda/Cigna")
+  and never guess an expansion. `cigna` keeps its slug so its delivered logo
+  still resolves. Logos exist for 26 of the 29; the homepage strip shows only
+  those, the typeahead searches all. The 22 added on 2026-10-26 were taken from
+  each provider's own website and should be swapped for official files from
+  the HMOs where Paelon can get them (HCI, MB&O, Kennedia and Medexia only
+  publish small rasters). Missing: `bastion` and `regenix` (both publish
+  white-only wordmarks that vanish on the white card) and `phillips-hmo` (no
+  Nigerian HMO of that name could be identified; confirm the exact name).
+  `total-health-trust`'s logo reads "A Tangerine Company"; Liberty Blue was its
+  former owner's product, so the "/Liberty Blue" in the name may be out of date.
+  `location_slugs`, `coverage_notes`, and `copay_applies` are unknown.
   `copay_applies` currently defaults to `false`, which is a guess; the HMO
   coverage check template (spec §6) needs the real values.
 - `blog-posts.json` — empty. `RecentBlogCard` renders an empty state until a
