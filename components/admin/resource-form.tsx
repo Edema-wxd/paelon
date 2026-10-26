@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ResourceState } from "@/lib/admin/resource-actions";
 import { RESOURCE_ACTIONS } from "@/lib/admin/resource-action-map";
-import { slugify, type Field } from "@/lib/admin/resource-config";
+import { slugify, type Field, inSentence } from "@/lib/admin/resource-config";
 import { RESOURCES, type ResourceName } from "@/lib/admin/resources";
 
 /**
@@ -85,6 +85,12 @@ export interface ResourceFormProps {
   galleryValues?: Record<string, readonly PickableMedia[]>;
   /** Hides the published toggle for a role that may not publish. */
   canPublish: boolean;
+  /**
+   * Server-rendered context shown under the publishing panel — where this row
+   * appears on the site, say. Rendered by the editor screen, so it may read
+   * the database and use server components.
+   */
+  aside?: React.ReactNode;
 }
 
 export function ResourceForm({
@@ -96,6 +102,7 @@ export function ResourceForm({
   media,
   galleryValues = {},
   canPublish,
+  aside,
 }: ResourceFormProps) {
   const config = RESOURCES[resource];
   const actions = RESOURCE_ACTIONS[resource];
@@ -350,43 +357,46 @@ export function ResourceForm({
       </div>
 
       {/* Sticky on desktop so Save is never a scroll away on a long form. */}
-      <aside
-        aria-labelledby="publishing-heading"
-        className="rounded-lg border border-border bg-surface p-5 lg:sticky lg:top-6"
-      >
-        <h2 id="publishing-heading" className="text-base font-semibold text-primary">
-          Publishing
-        </h2>
+      <div className="space-y-6 lg:sticky lg:top-6">
+        <aside
+          aria-labelledby="publishing-heading"
+          className="rounded-lg border border-border bg-surface p-5"
+        >
+          <h2 id="publishing-heading" className="text-base font-semibold text-primary">
+            Publishing
+          </h2>
 
-        {panelFields.length > 0 ? (
-          <div className="mt-4 space-y-5">{panelFields.map(renderField)}</div>
-        ) : null}
-
-        <div aria-live="polite" className="mt-5 empty:hidden">
-          {state?.ok ? (
-            <p className="rounded-md bg-secondary px-3 py-2 text-sm text-primary">
-              {state.data.message}
-            </p>
+          {panelFields.length > 0 ? (
+            <div className="mt-4 space-y-5">{panelFields.map(renderField)}</div>
           ) : null}
-          {state && !state.ok ? (
-            <p
-              role="alert"
-              className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
-            >
-              {state.error}
-            </p>
-          ) : null}
-        </div>
 
-        <div className="mt-5 flex flex-col gap-2 border-t border-border pt-5">
-          <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Saving…" : id ? "Save changes" : `Create ${config.singular.toLowerCase()}`}
-          </Button>
-          <Button asChild variant="ghost" className="w-full">
-            <Link href={`/admin/${resource}`}>Cancel</Link>
-          </Button>
-        </div>
-      </aside>
+          <div aria-live="polite" className="mt-5 empty:hidden">
+            {state?.ok ? (
+              <p className="rounded-md bg-secondary px-3 py-2 text-sm text-primary">
+                {state.data.message}
+              </p>
+            ) : null}
+            {state && !state.ok ? (
+              <p
+                role="alert"
+                className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
+              >
+                {state.error}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-2 border-t border-border pt-5">
+            <Button type="submit" disabled={isPending} className="w-full">
+              {isPending ? "Saving…" : id ? "Save changes" : `Create ${inSentence(config.singular)}`}
+            </Button>
+            <Button asChild variant="ghost" className="w-full">
+              <Link href={`/admin/${resource}`}>Cancel</Link>
+            </Button>
+          </div>
+        </aside>
+        {aside}
+      </div>
     </form>
   );
 

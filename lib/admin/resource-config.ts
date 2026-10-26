@@ -179,6 +179,16 @@ export interface ResourceConfig<R, S extends z.ZodType = z.ZodType> {
   deleteWarning?: string;
 }
 
+/**
+ * A type name as it reads mid-sentence: "Service" → "service", but "HMO" and
+ * "FAQs" stay as they are. Lowercasing an acronym gives "New hmo" and
+ * "Delete this faq", which reads as a typo on every screen that says it.
+ */
+export function inSentence(noun: string): string {
+  const first = noun.split(" ")[0] ?? noun;
+  return (first.match(/[A-Z]/g)?.length ?? 0) >= 2 ? noun : noun.toLowerCase();
+}
+
 /** `/admin/faqs` and friends. */
 export function resourceHref(name: string, suffix = ""): string {
   return `/admin/${name}${suffix}`;

@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { inSentence } from "@/lib/admin/resource-config";
 import Link from "next/link";
 
 import { AdminPaginationNav } from "@/components/admin/admin-pagination";
@@ -97,7 +98,7 @@ export async function ResourceListScreen<R extends ContentRow>({
           <Button asChild>
             <Link href={`/admin/${config.name}/new`}>
               <Plus aria-hidden />
-              New {config.singular.toLowerCase()}
+              New {inSentence(config.singular)}
             </Link>
           </Button>
         ) : null}
@@ -105,7 +106,7 @@ export async function ResourceListScreen<R extends ContentRow>({
 
       <section aria-labelledby="filters-heading" className="mt-8">
         <h2 id="filters-heading" className="sr-only">
-          Filter {config.plural.toLowerCase()}
+          Filter {inSentence(config.plural)}
         </h2>
         <ResourceFilters config={config} query={query} showMine={ownRowsOnly} />
       </section>
@@ -115,8 +116,8 @@ export async function ResourceListScreen<R extends ContentRow>({
           <h2 id="list-heading" className="text-lg font-medium text-primary">
             {list.total}{" "}
             {list.total === 1
-              ? config.singular.toLowerCase()
-              : config.plural.toLowerCase()}
+              ? inSentence(config.singular)
+              : inSentence(config.plural)}
           </h2>
           {list.total > 0 ? (
             <p className="text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 "use server";
 
+import { inSentence } from "@/lib/admin/resource-config";
 import { z } from "zod";
 
 import {
@@ -405,7 +406,7 @@ function buildUpdateAction<R, S extends z.ZodType>(
         values,
         relationWrites(selected, relations),
       );
-      if (!row) return fail(`That ${config.singular.toLowerCase()} no longer exists.`);
+      if (!row) return fail(`That ${inSentence(config.singular)} no longer exists.`);
 
       return done(
         { id, message: "Saved." },
@@ -439,7 +440,7 @@ function buildDeleteAction<R, S extends z.ZodType>(
     async ({ id }) => {
       // Soft, always (spec §8: "All content deletes are soft deletes").
       const deleted = await softDeleteContent(server.table, id);
-      if (!deleted) return fail(`That ${config.singular.toLowerCase()} no longer exists.`);
+      if (!deleted) return fail(`That ${inSentence(config.singular)} no longer exists.`);
 
       return done(
         { id, message: `${config.singular} deleted.` },

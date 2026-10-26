@@ -1,4 +1,5 @@
 import { ChevronRight, ExternalLink } from "lucide-react";
+import { inSentence } from "@/lib/admin/resource-config";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -60,11 +61,17 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   resource,
   config,
   id,
+  renderAside,
 }: {
   resource: ResourceName;
   config: ResourceConfig<R>;
   /** Absent for `/admin/<resource>/new`. */
   id?: string;
+  /**
+   * Extra server-rendered context under the publishing panel, for the saved
+   * row. Not called for a new row — there is nothing saved to describe.
+   */
+  renderAside?: (row: R) => React.ReactNode | Promise<React.ReactNode>;
 }) {
   const user = await requireAdminUser();
   const server = RESOURCE_SERVER[resource];
@@ -292,9 +299,11 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     defaults[field.name] = value === null || value === undefined ? "" : String(value);
   }
 
+  const aside = row && renderAside ? await renderAside(row) : null;
+
   const heading = row
     ? String(row[config.titleField] ?? config.singular)
-    : `New ${config.singular.toLowerCase()}`;
+    : `New ${inSentence(config.singular)}`;
 
   // Which marketing page this row shows up on, if any. Types whose rows have no
   // page of their own get no button — see `lib/preview/target.ts`.
@@ -321,7 +330,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
             <ChevronRight className="size-3.5" />
           </li>
           <li aria-current="page" className="truncate text-primary">
-            {row ? heading : `New ${config.singular.toLowerCase()}`}
+            {row ? heading : `New ${inSentence(config.singular)}`}
           </li>
         </ol>
       </nav>
@@ -372,13 +381,14 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           {...(media ? { media } : {})}
           galleryValues={galleryValues}
           canPublish={canPublish}
+          aside={aside}
         />
       </div>
 
       {canDelete && id ? (
         <section aria-labelledby="danger-heading" className="mt-12 border-t border-border pt-6">
           <h2 id="danger-heading" className="text-base font-semibold text-primary">
-            Delete this {config.singular.toLowerCase()}
+            Delete this {inSentence(config.singular)}
           </h2>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">
             Removes it from the site. The row is kept and can be restored from

@@ -1,4 +1,5 @@
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
+import { inSentence } from "@/lib/admin/resource-config";
 import { Input } from "@/components/ui/input";
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 import { DEFAULT_SORT, type ResourceQuery } from "@/lib/admin/resource-view";
@@ -45,7 +46,7 @@ export function ResourceFilters<R>({
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
         <div className="space-y-1">
           <label htmlFor="resource-search" className="block text-xs text-muted-foreground">
-            Search {config.plural.toLowerCase()}
+            Search {inSentence(config.plural)}
           </label>
           <Input
             id="resource-search"

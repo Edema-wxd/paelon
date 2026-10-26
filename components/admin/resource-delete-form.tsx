@@ -1,5 +1,6 @@
 "use client";
 
+import { inSentence } from "@/lib/admin/resource-config";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
@@ -30,7 +31,7 @@ function ConfirmButton({
   warning?: string;
 }) {
   const { pending } = useFormStatus();
-  const lower = singular.toLowerCase();
+  const lower = inSentence(singular);
 
   return (
     <ConfirmDialog
