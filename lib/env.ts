@@ -62,6 +62,17 @@ const serverSchema = z
     BRANCH_MOSHOOD_EMAIL: optionalString,
     BRANCH_DELTA_EMAIL: optionalString,
 
+    /*
+     * --- Google reviews (Places API, New) ---
+     *
+     * Both optional. Without both, the homepage shows no Google reviews and
+     * makes no request. The key needs only the Places API (New) enabled and
+     * should be restricted to it; it is read on the server and never sent to
+     * the browser. GOOGLE_PLACE_ID is the hospital's Maps listing.
+     */
+    GOOGLE_PLACES_API_KEY: optionalString,
+    GOOGLE_PLACE_ID: optionalString,
+
     // --- WhatsApp ---
     WHATSAPP_PROVIDER: optionalString,
     WHATSAPP_API_KEY: optionalString,

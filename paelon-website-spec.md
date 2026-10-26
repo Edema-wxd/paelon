@@ -562,6 +562,7 @@ Seventeen templates. Each has an owning group per the timeline in section 1. Do 
 - "For Patricia" block: quiet, prominent, links to About page.
 - HMO confirmation widget: typeahead input.
 - Two real testimonials (real names or initials, real photos where consented).
+- **Reviews on Google** (added 2026-10-26, Francis): below the testimonials, the five-star reviews the Places API (New) returns for the hospital's Maps listing, with the overall rating and count. Shown as Google's — author name linked to their profile, "on Google", a link to the listing — whole and unedited, refreshed every six hours and never stored. They are not testimonials and never enter the `testimonials` table. Configured by `GOOGLE_PLACES_API_KEY` and `GOOGLE_PLACE_ID` (server only); absent either, nothing renders and nothing is requested. No `AggregateRating` JSON-LD is emitted from them: Google does not accept review markup sourced from its own reviews.
 - Recent blog post card.
 - Footer CTA pair: Book / Find a Branch.
 
