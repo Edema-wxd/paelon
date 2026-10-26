@@ -1,14 +1,14 @@
 import Script from "next/script";
 
-import { clientEnv } from "@/lib/env";
+import { umamiConfig } from "@/lib/analytics/umami-config";
 
 /**
  * The Umami tracker (master spec §9), in the root layout.
  *
- * Renders nothing unless both `NEXT_PUBLIC_UMAMI_SCRIPT_URL` and
- * `NEXT_PUBLIC_UMAMI_WEBSITE_ID` are set, so a local machine and an
- * unconfigured preview ship no tracker at all rather than a script tag that
- * 404s. `track()` in `lib/analytics/track.ts` no-ops in that state, which is
+ * Renders nothing unless `umamiConfig()` says this build tracks — both
+ * variables set and a public site URL — so a local machine and an unconfigured
+ * preview ship no tracker at all. `data-domains` keeps configured previews out
+ * of the real figures. `track()` in `lib/analytics/track.ts` no-ops in that state, which is
  * why no call site guards.
  *
  * ## Why `afterInteractive`, and why no nonce
@@ -43,12 +43,15 @@ import { clientEnv } from "@/lib/env";
  * dynamic-rendering cost above comes with it. See `docs/decisions.md`.
  */
 export function UmamiScript() {
-  const src = clientEnv.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
-  const websiteId = clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
-
-  if (!src || !websiteId) return null;
+  const config = umamiConfig();
+  if (!config) return null;
 
   return (
-    <Script src={src} data-website-id={websiteId} strategy="afterInteractive" />
+    <Script
+      src={config.src}
+      data-website-id={config.websiteId}
+      data-domains={config.host}
+      strategy="afterInteractive"
+    />
   );
 }

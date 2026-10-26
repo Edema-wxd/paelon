@@ -42,6 +42,7 @@ const CSP_ENFORCE = false;
 function contentSecurityPolicy(nonce: string, pathname: string): string {
   const umami = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
   const umamiOrigin = umami ? safeOrigin(umami) : null;
+  const umamiCollector = umamiCollectorOrigin(umamiOrigin);
 
   /*
    * frame-src stays 'none' everywhere except /admin (spec §9, §14 Headers).
@@ -67,7 +68,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://utfs.io https://*.ufs.sh`,
     `font-src 'self'`,
-    `connect-src 'self'${umamiOrigin ? ` ${umamiOrigin}` : ""} ${UPLOADTHING_ORIGINS}`,
+    `connect-src 'self'${umamiOrigin ? ` ${umamiOrigin}` : ""}${umamiCollector ? ` ${umamiCollector}` : ""} ${UPLOADTHING_ORIGINS}`,
     `frame-src ${framesUmami ? shareOrigin : "'none'"}`,
     `frame-ancestors 'none'`,
     `object-src 'none'`,
@@ -98,6 +99,24 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
  * correct is a CSP that breaks on the one box where it was forgotten.
  */
 const UPLOADTHING_ORIGINS = "https://*.ingest.uploadthing.com https://*.ufs.sh";
+
+/**
+ * Where the Umami tracker sends its events, when that is not the script's own
+ * origin.
+ *
+ * A self-hosted Umami serves `script.js` and receives `/api/send` on one host,
+ * which `umamiOrigin` already covers. Umami Cloud does not: the script comes
+ * from `cloud.umami.is` and posts to `https://gateway.umami.is/api/send` — read
+ * from the script itself on 2026-10-26, where it is the default when no
+ * `data-host-url` is set. Without this entry every event is refused once the
+ * policy is enforced.
+ */
+const UMAMI_CLOUD_SCRIPT_ORIGIN = "https://cloud.umami.is";
+const UMAMI_CLOUD_COLLECTOR_ORIGIN = "https://gateway.umami.is";
+
+function umamiCollectorOrigin(scriptOrigin: string | null): string | null {
+  return scriptOrigin === UMAMI_CLOUD_SCRIPT_ORIGIN ? UMAMI_CLOUD_COLLECTOR_ORIGIN : null;
+}
 
 /** Origin of a URL, or null if it is unparseable — never throw in middleware. */
 function safeOrigin(url: string): string | null {

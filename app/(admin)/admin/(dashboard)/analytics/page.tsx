@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { NotPermitted } from "@/components/admin/not-permitted";
 import { can } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
+import { umamiConfig } from "@/lib/analytics/umami-config";
 import { clientEnv } from "@/lib/env";
 
 /**
@@ -54,11 +55,8 @@ export default async function AdminAnalyticsPage() {
   }
 
   const shareUrl = clientEnv.NEXT_PUBLIC_UMAMI_SHARE_URL;
-  // The same test `components/site/umami-script.tsx` makes before it renders
-  // the tracker: without both, no page on this deployment records a visit.
-  const tracking = Boolean(
-    clientEnv.NEXT_PUBLIC_UMAMI_SCRIPT_URL && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
-  );
+  // The same answer the tracker in the root layout acts on.
+  const tracking = umamiConfig() !== null;
 
   /*
    * Three states, said plainly. The old note named one variable and told an
@@ -160,7 +158,9 @@ export default async function AdminAnalyticsPage() {
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
             Set per environment, then redeploy: these are read when the site is
-            built. Spec §9 has the Umami deployment.
+            built. Nothing is recorded when <code>NEXT_PUBLIC_SITE_URL</code> is
+            localhost, and only visits on its host are counted, so previews stay
+            out of the figures.
           </p>
         </details>
       ) : null}

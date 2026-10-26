@@ -81,7 +81,7 @@ Every technology below is locked. Do not substitute without asking.
 | File uploads | UploadThing | For the demo. Self-hosted alternative evaluated post-launch. |
 | Auth | Auth.js (v5, previously NextAuth) with Credentials provider | Email + password; JWT sessions with a periodic DB re-check (§8 Access). |
 | Email (transactional) | Resend (optional) | Wire it up so it can be enabled with an env var; do not hard-depend on it. |
-| Analytics | Umami (self-hosted) | Deployed alongside the app on Vercel. Dashboard embedded in admin. |
+| Analytics | Umami Cloud | Hosted by Umami (decision E2, revised 2026-10-26). Dashboard embedded in admin. |
 | Hosting (Phase 1) | Vercel | Preview deploys per PR; production on `main`. |
 | Hosting (post-launch) | Self-hosted (TBD) | Structure the app so it is not Vercel-locked. |
 | WhatsApp | WhatsApp Business API (via Meta) | Provider TBD. Set up abstraction. |
@@ -877,12 +877,13 @@ Interface features:
 
 ## 9. Analytics
 
-Umami, self-hosted alongside the app.
+Umami Cloud.
 
 ### Deployment
 
-- Deploy Umami as a separate Vercel project with its own Neon database. It does not share Paelon's database. This keeps Umami out of the app's migrations (drizzle-kit diffs `public`), gives a clean backup and restore boundary, and moves to the self-hosted box post-launch without untangling schemas.
-- Not a route group (Umami is its own Next.js app), and not Umami Cloud (§2 requires self-hosting).
+- **Umami Cloud** since 2026-10-26 (decision E2, revised). The tracker is `https://cloud.umami.is/script.js`; events go to `https://gateway.umami.is/api/send`, which the CSP allows in `connect-src` (§14 Headers). The analytics data is held by Umami rather than on Paelon's infrastructure — the trade-off E2 option C named.
+- It replaces the earlier plan of a separate self-hosted Vercel project with its own Neon database. That plan still applies if analytics moves to the self-hosted box post-launch; the site needs only `NEXT_PUBLIC_UMAMI_SCRIPT_URL` changed, since a self-hosted instance receives events on the script's own origin.
+- Only visits on the host of `NEXT_PUBLIC_SITE_URL` are recorded (`data-domains`), so Vercel previews do not pollute the figures, and a build whose site URL is localhost ships no tracker.
 
 ### Tracking
 
@@ -1102,8 +1103,9 @@ BRANCH_DELTA_EMAIL=
 WHATSAPP_PROVIDER=
 WHATSAPP_API_KEY=
 
-UMAMI_WEBSITE_ID=
-UMAMI_SCRIPT_URL=
+NEXT_PUBLIC_UMAMI_WEBSITE_ID=
+NEXT_PUBLIC_UMAMI_SCRIPT_URL=
+NEXT_PUBLIC_UMAMI_SHARE_URL=
 
 NEXT_PUBLIC_SITE_URL=
 ```
@@ -1306,7 +1308,7 @@ Items that must be answered before Day 1. Flag any of these to Francis if they a
   - D2: blog bodies are Markdown, not MDX (§5, §6, §8).
   - D3: `media` table holding alt text and uploader, referenced by foreign key (§8 Content editing).
   - E1: 5 MB cap with rejection instead of transcoding; typed route keys enforce jpeg, png and webp on the server (§10 UploadThing).
-  - E2: Umami runs as a separate Vercel project with its own database (§9 Deployment).
+  - E2: Umami Cloud (revised 2026-10-26; previously a separate self-hosted Vercel project with its own database) (§9 Deployment).
   - E3: Umami share-URL iframe, `admin` only (§9 Dashboard integration).
   - E4: separate CSP for `/admin/*` (§14 Headers).
   - E5: retention is anonymise-in-place, 12 months from `preferred_date`, run by a `JOBS_SECRET`-guarded job endpoint; other periods `TODO` with counsel (§14 NDPR, env vars).
