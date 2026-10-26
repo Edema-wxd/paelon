@@ -484,6 +484,7 @@ export function ResourceForm({
             invalid={invalid}
             describedBy={describedBy}
             figures={field.figures === true}
+            headings={field.headings !== false}
             {...(media ? { figureImages: media } : {})}
             value={markdown[field.name] ?? ""}
             onBlur={() => void registration.onBlur({ target: { name: field.name } })}

@@ -70,7 +70,19 @@ export type Field =
    * a template that owns its own layout, so an image dropped into it has
    * nowhere sensible to go.
    */
-  | (FieldBase & { type: "markdown"; rows?: number; figures?: boolean })
+  | (FieldBase & {
+      type: "markdown";
+      rows?: number;
+      figures?: boolean;
+      /**
+       * `false` drops the Heading and Subheading tools, for short text that
+       * renders under a heading of its own — an award description inside the
+       * About timeline, where a `##` would break the page's heading order. Pair
+       * it with `markdownWithoutHeadings` in the schema so the rule holds on
+       * the server too.
+       */
+      headings?: boolean;
+    })
   | (FieldBase & { type: "number"; min?: number; max?: number; step?: number })
   | (FieldBase & { type: "select"; options: readonly FieldOption[] })
   | (FieldBase & { type: "checkbox" })

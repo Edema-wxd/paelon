@@ -109,6 +109,9 @@ const TOOL_GROUPS: readonly (readonly Tool[])[] = [
   ],
 ];
 
+/** Tools dropped when a field renders under a heading of its own. */
+const HEADING_TOOLS = new Set(["Heading", "Subheading"]);
+
 const SHORTCUTS: Record<string, Command> = {
   b: { kind: "inline", command: "bold" },
   i: { kind: "inline", command: "italic" },
@@ -129,6 +132,7 @@ export function MarkdownField({
   invalid,
   describedBy,
   figures = false,
+  headings = true,
   figureImages,
 }: {
   name: string;
@@ -143,6 +147,8 @@ export function MarkdownField({
   describedBy?: string;
   /** Adds the Image button. Off for bodies that cannot hold a figure. */
   figures?: boolean;
+  /** `false` hides Heading and Subheading, for text under a heading of its own. */
+  headings?: boolean;
   /** Assets the stored body already references, for the preview. */
   figureImages?: readonly PickableMedia[];
 }) {
@@ -319,7 +325,9 @@ export function MarkdownField({
             aria-label="Formatting"
             className="flex flex-wrap items-center gap-0.5"
           >
-            {TOOL_GROUPS.map((group, index) => (
+            {TOOL_GROUPS.map((group) =>
+              headings ? group : group.filter((tool) => !HEADING_TOOLS.has(tool.label)),
+            ).map((group, index) => (
               <div key={index} className="flex items-center gap-0.5">
                 {index > 0 ? (
                   <span aria-hidden className="mx-1 h-5 w-px bg-border" />
@@ -407,7 +415,15 @@ export function MarkdownField({
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
           <dt><code>**bold**</code></dt><dd>Bold. <code>*italic*</code> for italic — they cannot be combined.</dd>
           <dt><code>[text](/path)</code></dt><dd>A link. Site pages start with <code>/</code>; they must exist.</dd>
-          <dt><code>## Heading</code></dt><dd><code>###</code> for a subheading. On a line of its own, with a blank line before and after.</dd>
+          {headings ? (
+            <>
+              <dt><code>## Heading</code></dt><dd><code>###</code> for a subheading. On a line of its own, with a blank line before and after.</dd>
+            </>
+          ) : (
+            <>
+              <dt>Headings</dt><dd>Not used here — this text sits under a heading of its own. Use bold for emphasis.</dd>
+            </>
+          )}
           <dt><code>- item</code></dt><dd>Bulleted list; <code>1. item</code> for numbered. One item per line.</dd>
           <dt><code>&gt; text</code></dt><dd>Quote.</dd>
           <dt><code>| a | b |</code></dt><dd>Table: a header row, then <code>| --- | --- |</code>, then rows.</dd>

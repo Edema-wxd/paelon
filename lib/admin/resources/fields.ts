@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { parseMarkdown } from "@/lib/markdown";
 import { DAYS, type Hours } from "@/lib/validation/hours";
 
 /**
@@ -56,6 +57,19 @@ export function requiredText(label: string, max: number) {
     .trim()
     .min(1, `Enter ${label}.`)
     .max(max, `${label[0]?.toUpperCase()}${label.slice(1)} must be ${max} characters or fewer.`);
+}
+
+/**
+ * Required Markdown that may not contain headings — for short text rendered
+ * under a heading of its own, where a `##` would skip a level. Parsed with the
+ * renderer's own parser, so "is a heading" means exactly what the page would
+ * render as one.
+ */
+export function markdownWithoutHeadings(label: string, max: number) {
+  return requiredText(label, max).refine(
+    (value) => parseMarkdown(value).every((block) => block.type !== "heading"),
+    "Headings are not used here — use bold for emphasis instead.",
+  );
 }
 
 /** An optional single-line field. The empty string normalises to `null`. */
