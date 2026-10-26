@@ -113,6 +113,12 @@ main()
         level: "error",
         event: "db.sync_hmos.failed",
         errorMessage: error instanceof Error ? error.message : String(error),
+        // Drizzle wraps driver errors as "Failed query: …"; the reason the
+        // query failed (connection, auth, missing column) is on `cause`.
+        cause:
+          error instanceof Error && error.cause instanceof Error
+            ? error.cause.message
+            : undefined,
       })}\n`,
     );
     await closePool();
