@@ -237,30 +237,11 @@ export async function recordUpload(input: {
       })
       .returning();
 
-  let rows: Media[];
-  try {
-    // Not written yet — distinct from "" (decorative) since migration 0009.
-    rows = await insert(null);
-  } catch (error) {
-    // TODO(0009): remove once `drizzle/0009_media_alt_nullable.sql` is applied
-    // everywhere. Before it, `media.alt` is still NOT NULL and refuses null;
-    // falling back to "" keeps uploads working, exactly as they did before
-    // this change, instead of failing every one of them.
-    if (!isNotNullViolation(error)) throw error;
-    rows = await insert("");
-  }
+  // Not written yet — distinct from "" (decorative) since migration 0009.
+  const rows = await insert(null);
 
   // `returning()` on an upsert always yields the row.
   return rows[0] as Media;
-}
-
-/** Postgres `not_null_violation`, however the driver or Drizzle wraps it. */
-function isNotNullViolation(error: unknown): boolean {
-  for (let current: unknown = error, depth = 0; current && depth < 4; depth++) {
-    if (typeof current === "object" && (current as { code?: unknown }).code === "23502") return true;
-    current = (current as { cause?: unknown }).cause;
-  }
-  return false;
 }
 
 /**
