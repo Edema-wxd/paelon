@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 import { z } from "zod";
 
 import { signIn, signOut } from "@/lib/auth/config";
+import { safeNextPath } from "@/lib/auth/safe-path";
 
 /**
  * Server actions for the login form.
@@ -25,19 +26,6 @@ const loginSchema = z.object({
   next: z.string().optional(),
 });
 
-/**
- * Only same-origin absolute paths are accepted as a post-login destination.
- *
- * `//evil.example` is a protocol-relative URL that browsers treat as absolute,
- * so a leading-slash check alone is not enough — this is the open-redirect that
- * turns an admin login into a credible phishing page on your own domain.
- */
-function safeRedirect(next: string | undefined): string {
-  if (!next) return "/admin";
-  if (!next.startsWith("/") || next.startsWith("//")) return "/admin";
-  return next;
-}
-
 export async function loginAction(
   _prev: LoginState,
   formData: FormData,
@@ -56,7 +44,7 @@ export async function loginAction(
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: safeRedirect(parsed.data.next),
+      redirectTo: safeNextPath(parsed.data.next) ?? "/admin",
     });
   } catch (error) {
     // A successful signIn throws a redirect, which must reach Next untouched.

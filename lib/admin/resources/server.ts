@@ -2,6 +2,7 @@ import type { FieldErrors } from "@/lib/admin/action";
 import { blogPublishErrors } from "@/lib/admin/blog-publish";
 import type { Resource } from "@/lib/auth/policy";
 import type { ContentTable, RelationColumns } from "@/lib/db/queries/content-crud";
+import { listPostsByAuthor } from "@/lib/db/queries/blog";
 import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import {
   authors,
@@ -11,6 +12,7 @@ import {
   doctorLocations,
   doctors,
   faqs,
+  faqServices,
   hmoLocations,
   hmos,
   locationGalleryImages,
@@ -28,6 +30,7 @@ import { AUTHOR_DOCTOR_FIELD, AUTHOR_HEADSHOT } from "./authors";
 import { AWARD_CERTIFICATE, AWARD_LOGO } from "./awards";
 import { BLOG_HERO, BLOG_RELATED_FIELD } from "./blog-posts";
 import { DOCTOR_HEADSHOT, DOCTOR_LOCATIONS_FIELD } from "./doctors";
+import { FAQ_SERVICES_FIELD } from "./faqs";
 import { HMO_LOCATIONS_FIELD, HMO_LOGO } from "./hmos";
 import {
   HOURS_CONFIRMED_FIELD,
@@ -197,6 +200,14 @@ export interface ResourceServerConfig {
    * runs, so it only ever sees real columns.
    */
   toRow?: (values: Record<string, unknown>) => Record<string, unknown>;
+  /**
+   * Refuses a delete, with the reason shown to the editor, or `null` to allow.
+   *
+   * Needed because every delete is soft: a foreign key's `on delete restrict`
+   * only fires on a real `DELETE`, which the admin never issues, so it cannot
+   * protect a row that other rows still point at.
+   */
+  beforeDelete?: (id: string) => Promise<string | null>;
 }
 
 export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
@@ -366,6 +377,22 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
         optionsLabel: doctors.name,
       },
     ],
+    // `blog_posts.author_id` is `on delete restrict`, but a soft delete never
+    // reaches it. Without this, the author vanished from the post form's
+    // Author list while their posts kept the byline on the public site, and
+    // the next save of any of those posts failed on "Choose an author".
+    beforeDelete: async (id) => {
+      const posts = await listPostsByAuthor(id);
+      if (posts.length === 0) return null;
+      const named = posts
+        .slice(0, 3)
+        .map((post) => `“${post.title}”`)
+        .join(", ");
+      const more = posts.length > 3 ? ` and ${posts.length - 3} more` : "";
+      return posts.length === 1
+        ? `This author can’t be deleted yet: they wrote ${named}. Open that post and choose a different author, or delete the post, then try again.`
+        : `This author can’t be deleted yet: they wrote ${posts.length} posts (${named}${more}). Give each of those posts a different author, or delete them, then try again.`;
+    },
   },
 
   blog: {
@@ -419,6 +446,20 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     permission: "faqs",
     tags: [CACHE_TAGS.faqs],
     images: [],
+    relations: [
+      {
+        field: FAQ_SERVICES_FIELD,
+        columns: {
+          table: faqServices,
+          ownColumn: faqServices.faqId,
+          otherColumn: faqServices.serviceId,
+          ownKey: "faqId",
+          otherKey: "serviceId",
+          otherTable: services as unknown as ContentTable,
+        },
+        optionsLabel: services.name,
+      },
+    ],
   },
 
   awards: {

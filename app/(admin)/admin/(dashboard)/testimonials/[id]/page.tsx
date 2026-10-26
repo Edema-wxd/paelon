@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
+import { TestimonialUsagePanel } from "@/components/admin/testimonial-usage-panel";
 import { testimonialResource } from "@/lib/admin/resources";
 
 /**
@@ -24,5 +25,12 @@ export default async function EditTestimonialPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="testimonials" config={testimonialResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="testimonials"
+      config={testimonialResource}
+      id={id}
+      renderAside={(testimonial) => <TestimonialUsagePanel testimonial={testimonial} />}
+    />
+  );
 }

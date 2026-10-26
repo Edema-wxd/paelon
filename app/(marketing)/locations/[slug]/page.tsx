@@ -10,11 +10,13 @@ import {
 } from "@/components/site/branch-arrival-rail";
 import { BranchHours } from "@/components/site/branch-hours";
 import { BranchMap } from "@/components/site/branch-map";
+import { FaqSection } from "@/components/site/faq-section";
 import { ImageGallery } from "@/components/site/image-gallery";
 import { PendingNote } from "@/components/site/pending-note";
 import { Button } from "@/components/ui/button";
 import {
   formatAddress,
+  getFaqs,
   getLocationBySlug,
   getLocationGallery,
   getLocations,
@@ -26,6 +28,7 @@ import { clientEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { toOpeningHoursSpecification } from "@/lib/locations/hours-display";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -89,7 +92,10 @@ export default async function LocationDetailPage({ params }: PageProps) {
 
   if (!location) notFound();
 
-  const gallery = await getLocationGallery(location.id);
+  const [gallery, faqs] = await Promise.all([
+    getLocationGallery(location.id),
+    getFaqs("general"),
+  ]);
   const address = formatAddress(location);
   const url = new URL(`/locations/${location.slug}`, siteUrl).toString();
   const openingHours = toOpeningHoursSpecification(location.hours);
@@ -185,9 +191,9 @@ export default async function LocationDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        // Serialised from literals above, so there is no untrusted input here.
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify([hospitalLd, breadcrumbLd]),
+          __html: serializeJsonLd([hospitalLd, breadcrumbLd]),
         }}
       />
 
@@ -367,6 +373,10 @@ export default async function LocationDetailPage({ params }: PageProps) {
           className="mt-14"
         />
       </div>
+
+      {/* "General" FAQs (CLAUDE.md baseline item 3). FAQs are not assigned to
+          branches — Paelon has one branch today (2026-10-26). */}
+      <FaqSection faqs={faqs} headingId="branch-faq-heading" />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { HmoUsagePanel } from "@/components/admin/hmo-usage-panel";
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
 import { hmoResource } from "@/lib/admin/resources";
 
@@ -24,5 +25,12 @@ export default async function EditHmosPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="hmos" config={hmoResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="hmos"
+      config={hmoResource}
+      id={id}
+      renderAside={(hmo) => <HmoUsagePanel hmo={hmo} />}
+    />
+  );
 }

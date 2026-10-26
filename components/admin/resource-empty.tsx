@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { inSentence } from "@/lib/admin/resource-config";
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 
 /**
@@ -43,7 +44,7 @@ export function ResourceEmpty<R>({
       ) : (
         <>
           <p className="text-base font-medium text-primary">
-            No {config.plural.toLowerCase()} yet
+            No {inSentence(config.plural)} yet
           </p>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
             {config.emptyMessage}
@@ -54,7 +55,7 @@ export function ResourceEmpty<R>({
                 href={`/admin/${config.name}/new`}
                 className="text-accent underline underline-offset-4 hover:no-underline"
               >
-                Add the first {config.singular.toLowerCase()}
+                Add the first {inSentence(config.singular)}
               </Link>
             </p>
           ) : null}

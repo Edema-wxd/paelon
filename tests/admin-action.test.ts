@@ -17,6 +17,15 @@ const mocks = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
   findMediaReferences: vi.fn(),
   deleteMedia: vi.fn(),
+  getMediaById: vi.fn(),
+  setMediaAlt: vi.fn(),
+  softDeleteMedia: vi.fn(),
+}));
+
+vi.mock("@/lib/db/queries/media", () => ({
+  getMediaById: mocks.getMediaById,
+  setMediaAlt: mocks.setMediaAlt,
+  softDeleteMedia: mocks.softDeleteMedia,
 }));
 
 vi.mock("@/lib/db/queries/media-references", () => ({
@@ -48,7 +57,13 @@ const { adminAction, done, fail, DENIED_MESSAGE, INVALID_MESSAGE, MISSING_MESSAG
   await import("@/lib/admin/action");
 const { writeAudit } = await import("@/lib/admin/audit");
 const { hashIdentifier } = await import("@/lib/rate-limit");
-const { deleteMediaAction } = await import("@/lib/uploadthing/actions");
+const { deleteMediaAction, updateMediaAltAction } = await import("@/lib/uploadthing/actions");
+
+const MEDIA_ID = "3b0f6c2e-1d4a-4c8b-9e2f-6a7d8c9b0a12";
+
+function mediaRow(uploadedBy: string | null) {
+  return { id: MEDIA_ID, key: "abc-logo.png", filename: "logo.png", uploadedBy };
+}
 
 const POST_ID = "7f1c1c52-8a1e-4a8e-9d3b-2f6f5f0c9a11";
 
@@ -278,11 +293,11 @@ describe("adminAction — success", () => {
 });
 
 describe("deleteMediaAction", () => {
-  it("refuses a contributor before validating the key count", async () => {
+  it("refuses a contributor deleting a file someone else uploaded", async () => {
     mocks.requireAdminUser.mockResolvedValue(user("contributor"));
+    mocks.getMediaById.mockResolvedValue(mediaRow("someone-else"));
 
-    // Zero keys would be a field error for anyone allowed to delete.
-    const result = await deleteMediaAction(null, form({}));
+    const result = await deleteMediaAction(null, form({ id: MEDIA_ID }));
 
     expect(result).toEqual({ ok: false, error: DENIED_MESSAGE, fields: {} });
     expect(mocks.findMediaReferences).not.toHaveBeenCalled();
@@ -290,15 +305,85 @@ describe("deleteMediaAction", () => {
     expectNoSideEffects();
   });
 
-  it("gives an editor the key-count field error", async () => {
+  it("refuses a file that is still used, before touching the CDN", async () => {
     mocks.requireAdminUser.mockResolvedValue(user("editor"));
+    mocks.getMediaById.mockResolvedValue(mediaRow(null));
+    mocks.findMediaReferences.mockResolvedValue([
+      { kind: "Image in a post", label: "A post", href: "/admin/blog/x", deleted: false },
+    ]);
 
-    const result = await deleteMediaAction(null, form({}));
+    const result = await deleteMediaAction(null, form({ id: MEDIA_ID }));
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.fields.keys?.length).toBeGreaterThan(0);
+    expect(result.details?.references).toHaveLength(1);
     expect(mocks.deleteMedia).not.toHaveBeenCalled();
+    expect(mocks.softDeleteMedia).not.toHaveBeenCalled();
+    expectNoSideEffects();
+  });
+
+  it("deletes an unused file from the CDN, then retires its row", async () => {
+    mocks.requireAdminUser.mockResolvedValue(user("contributor", "me"));
+    mocks.getMediaById.mockResolvedValue(mediaRow("me"));
+    mocks.findMediaReferences.mockResolvedValue([]);
+    mocks.deleteMedia.mockResolvedValue(1);
+
+    const result = await deleteMediaAction(null, form({ id: MEDIA_ID }));
+
+    expect(result.ok).toBe(true);
+    expect(mocks.deleteMedia).toHaveBeenCalledWith(["abc-logo.png"]);
+    expect(mocks.softDeleteMedia).toHaveBeenCalledWith(MEDIA_ID);
+  });
+
+  it("gives a malformed id a field error", async () => {
+    mocks.requireAdminUser.mockResolvedValue(user("editor"));
+
+    const result = await deleteMediaAction(null, form({ id: "nope" }));
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.fields.id?.length).toBeGreaterThan(0);
+    expect(mocks.deleteMedia).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateMediaAltAction", () => {
+  it("refuses blank alt text that is not marked decorative", async () => {
+    mocks.requireAdminUser.mockResolvedValue(user("editor"));
+    mocks.getMediaById.mockResolvedValue(mediaRow(null));
+
+    const result = await updateMediaAltAction(null, form({ id: MEDIA_ID, alt: "  " }));
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.fields.alt?.[0]).toMatch(/decorative/);
+    expect(mocks.setMediaAlt).not.toHaveBeenCalled();
+  });
+
+  it("stores decorative as an empty string, whatever was typed", async () => {
+    mocks.requireAdminUser.mockResolvedValue(user("editor"));
+    mocks.getMediaById.mockResolvedValue(mediaRow(null));
+    mocks.setMediaAlt.mockResolvedValue({ id: MEDIA_ID });
+
+    const result = await updateMediaAltAction(null, form({ id: MEDIA_ID, decorative: "on" }));
+
+    expect(result.ok).toBe(true);
+    expect(mocks.setMediaAlt).toHaveBeenCalledWith(MEDIA_ID, "");
+  });
+
+  it("saves trimmed alt text and revalidates the content that shows it", async () => {
+    mocks.requireAdminUser.mockResolvedValue(user("editor"));
+    mocks.getMediaById.mockResolvedValue(mediaRow(null));
+    mocks.setMediaAlt.mockResolvedValue({ id: MEDIA_ID });
+
+    const result = await updateMediaAltAction(
+      null,
+      form({ id: MEDIA_ID, alt: "  AXA Mansard logo " }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(mocks.setMediaAlt).toHaveBeenCalledWith(MEDIA_ID, "AXA Mansard logo");
+    expect(mocks.revalidateTag).toHaveBeenCalledWith("hmos");
   });
 });
 

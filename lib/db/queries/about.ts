@@ -108,12 +108,18 @@ export interface AboutUpdate {
   published: boolean;
   placeholder: boolean;
   intro: string | null;
-  foundingStory: string | null;
-  mission: string | null;
-  vision: string | null;
-  valueProposition: string | null;
   motto: string | null;
-  esg: string | null;
+  /**
+   * The five legacy prose columns, optional since migration 0008: the admin
+   * form no longer edits them (Page layout does), and an absent key is left
+   * untouched by the upsert rather than written as null — they are the
+   * template's fallback for a page with no sections.
+   */
+  foundingStory?: string | null;
+  mission?: string | null;
+  vision?: string | null;
+  valueProposition?: string | null;
+  esg?: string | null;
 }
 
 /**

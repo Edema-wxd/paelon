@@ -1,4 +1,5 @@
 import { AdminFilterBar } from "@/components/admin/admin-filter-bar";
+import { inSentence } from "@/lib/admin/resource-config";
 import { Input } from "@/components/ui/input";
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 import { DEFAULT_SORT, type ResourceQuery } from "@/lib/admin/resource-view";
@@ -38,8 +39,25 @@ export function ResourceFilters<R>({
       hidden={hidden}
       isFiltered={isFiltered}
       clearHref={action}
+      inline
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Search first and widest: finding a row by name is what this bar is
+          used for; the status filter narrows it. */}
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <div className="space-y-1">
+          <label htmlFor="resource-search" className="block text-xs text-muted-foreground">
+            Search {inSentence(config.plural)}
+          </label>
+          <Input
+            id="resource-search"
+            name="q"
+            type="search"
+            defaultValue={query.search ?? ""}
+            maxLength={100}
+            autoComplete="off"
+          />
+        </div>
+
         <div className="space-y-1">
           <label
             htmlFor="resource-status"
@@ -51,26 +69,12 @@ export function ResourceFilters<R>({
             id="resource-status"
             name="status"
             defaultValue={query.status ?? ""}
-            className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground"
+            className="h-9 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground"
           >
             <option value="">All</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
           </select>
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="resource-search" className="block text-xs text-muted-foreground">
-            Search
-          </label>
-          <Input
-            id="resource-search"
-            name="q"
-            type="search"
-            defaultValue={query.search ?? ""}
-            maxLength={100}
-            autoComplete="off"
-          />
         </div>
       </div>
 

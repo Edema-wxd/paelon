@@ -1,9 +1,13 @@
+import { ChevronRight, ExternalLink } from "lucide-react";
+import { inSentence } from "@/lib/admin/resource-config";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { NotPermitted } from "@/components/admin/not-permitted";
 import { ResourceDeleteForm } from "@/components/admin/resource-delete-form";
+import { PublishedBadge } from "@/components/admin/published-badge";
 import { ResourceForm } from "@/components/admin/resource-form";
+import { Button } from "@/components/ui/button";
 import type { SelectOption } from "@/components/admin/multi-select-field";
 import type { PickableMedia } from "@/components/admin/markdown-media-picker";
 import type { ImageFieldValue } from "@/components/admin/resource-image-field";
@@ -57,11 +61,24 @@ export async function ResourceEditorScreen<R extends ContentRow>({
   resource,
   config,
   id,
+  renderAside,
+  renderBelow,
 }: {
   resource: ResourceName;
   config: ResourceConfig<R>;
   /** Absent for `/admin/<resource>/new`. */
   id?: string;
+  /**
+   * Extra server-rendered context under the publishing panel, for the saved
+   * row. Not called for a new row — there is nothing saved to describe.
+   */
+  renderAside?: (row: R) => React.ReactNode | Promise<React.ReactNode>;
+  /**
+   * Server-rendered content under the form for the saved row — the page-layout
+   * editor, which saves on its own. Not called for a new row: a layout belongs
+   * to a row that exists.
+   */
+  renderBelow?: (row: R) => React.ReactNode | Promise<React.ReactNode>;
 }) {
   const user = await requireAdminUser();
   const server = RESOURCE_SERVER[resource];
@@ -289,9 +306,14 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     defaults[field.name] = value === null || value === undefined ? "" : String(value);
   }
 
+  const [aside, below] = await Promise.all([
+    row && renderAside ? renderAside(row) : null,
+    row && renderBelow ? renderBelow(row) : null,
+  ]);
+
   const heading = row
     ? String(row[config.titleField] ?? config.singular)
-    : `New ${config.singular.toLowerCase()}`;
+    : `New ${inSentence(config.singular)}`;
 
   // Which marketing page this row shows up on, if any. Types whose rows have no
   // page of their own get no button — see `lib/preview/target.ts`.
@@ -300,59 +322,64 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     row && !previewPath ? previewUnavailableReason(resource) : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       {/* Not `components/site/breadcrumbs.tsx`: that one prepends a Home crumb
           pointing at the marketing site and emits `BreadcrumbList` JSON-LD,
           which is meaningless on a `noindex` back-office page. */}
       <nav aria-label="Breadcrumb">
-        <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           <li>
             <Link
               href={`/admin/${config.name}`}
-              className="text-accent underline underline-offset-4 hover:no-underline"
+              className="transition-colors hover:text-primary"
             >
               {config.plural}
             </Link>
           </li>
-          <li aria-hidden>/</li>
-          <li aria-current="page">{row ? heading : `New ${config.singular.toLowerCase()}`}</li>
+          <li aria-hidden>
+            <ChevronRight className="size-3.5" />
+          </li>
+          <li aria-current="page" className="truncate text-primary">
+            {row ? heading : `New ${inSentence(config.singular)}`}
+          </li>
         </ol>
       </nav>
 
-      <h1 className="mt-4 text-2xl font-bold text-primary">{heading}</h1>
+      <header className="mt-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-primary sm:text-3xl">
+            {heading}
+          </h1>
+          {row ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <PublishedBadge published={row.published === true} />
+              {previewUnavailable ? <span>{previewUnavailable}</span> : null}
+            </div>
+          ) : null}
+        </div>
 
-      {/* Preview is only meaningful for a row that exists: it opens the
-          marketing site in draft mode, which reads the saved row, not the form.
-          A new, unsaved row has nothing to show. */}
-      {row ? (
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <p className="text-sm text-muted-foreground">
-            {row.published ? "Published" : "Draft"}
-          </p>
-
-          {previewPath ? (
-            <>
+        {/* Preview is only meaningful for a row that exists: it opens the
+            marketing site in draft mode, which reads the saved row, not the
+            form. A new, unsaved row has nothing to show. */}
+        {previewPath ? (
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <Button asChild variant="outline">
               <a
                 href={previewHref(resource, previewPath)}
                 target="_blank"
                 rel="noopener"
                 aria-describedby="preview-hint"
-                className="rounded-sm text-sm font-medium text-accent underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                Preview on the site
+                <ExternalLink aria-hidden />
+                Preview on site
               </a>
-              <p id="preview-hint" className="text-sm text-muted-foreground">
-                Opens the last saved version on{" "}
-                {previewDestinationFor(resource)}, in a new tab.
-              </p>
-            </>
-          ) : null}
-
-          {previewUnavailable ? (
-            <p className="text-sm text-muted-foreground">{previewUnavailable}</p>
-          ) : null}
-        </div>
-      ) : null}
+            </Button>
+            <p id="preview-hint" className="text-xs text-muted-foreground">
+              Last saved version, on {previewDestinationFor(resource)}
+            </p>
+          </div>
+        ) : null}
+      </header>
 
       <div className="mt-8">
         <ResourceForm
@@ -364,19 +391,22 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           {...(media ? { media } : {})}
           galleryValues={galleryValues}
           canPublish={canPublish}
+          aside={aside}
         />
       </div>
 
+      {below ? <div className="mt-8">{below}</div> : null}
+
       {canDelete && id ? (
         <section aria-labelledby="danger-heading" className="mt-12 border-t border-border pt-6">
-          <h2 id="danger-heading" className="text-lg font-medium text-primary">
-            Delete
+          <h2 id="danger-heading" className="text-base font-semibold text-primary">
+            Delete this {inSentence(config.singular)}
           </h2>
-          <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-            Removes this {config.singular.toLowerCase()} from the site. It is a
-            soft delete — the row is kept and can be restored from the database.
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            Removes it from the site. The row is kept and can be restored from
+            the database.
           </p>
-          <div className="mt-4">
+          <div className="mt-3">
             <ResourceDeleteForm resource={resource} id={id} />
           </div>
         </section>

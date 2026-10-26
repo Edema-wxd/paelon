@@ -59,11 +59,17 @@ export function MarkdownMediaPicker({
   description = "Alt text comes from the media library, so it is written once per image and stays right everywhere it is used. Upload new images under Media.",
   /** Ids already chosen, shown as such so the same asset is not added twice. */
   chosen,
+  triggerClassName,
+  iconOnly = false,
 }: {
   /** Called with the chosen asset. The caller decides what to do with it. */
   onPick: (asset: PickableMedia) => void;
   label?: string;
   title?: string;
+  /** Replaces the trigger's own styling, e.g. to sit in an editor toolbar. */
+  triggerClassName?: string;
+  /** Show only the icon; `label` stays as the accessible name and tooltip. */
+  iconOnly?: boolean;
   description?: string;
   chosen?: readonly string[];
 }) {
@@ -134,10 +140,14 @@ export function MarkdownMediaPicker({
           setOpen(true);
           dialog.current?.showModal();
         }}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-primary hover:border-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        title={iconOnly ? label : undefined}
+        className={
+          triggerClassName ??
+          "inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-primary hover:border-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        }
       >
-        <ImagePlus aria-hidden className="size-3.5" />
-        {label}
+        <ImagePlus aria-hidden className={iconOnly ? "size-4" : "size-3.5"} />
+        {iconOnly ? <span className="sr-only">{label}</span> : label}
       </button>
 
       <dialog

@@ -8,6 +8,7 @@ import { PendingNote } from "@/components/site/pending-note";
 import { getLocations } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -68,8 +69,8 @@ export default async function LocationsPage() {
     <>
       <script
         type="application/ld+json"
-        // Serialised from a literal above, so there is no untrusted input here.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
       {/*

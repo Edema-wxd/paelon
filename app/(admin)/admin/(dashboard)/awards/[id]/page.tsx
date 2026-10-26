@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AwardUsagePanel } from "@/components/admin/award-usage-panel";
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
 import { awardResource } from "@/lib/admin/resources";
 
@@ -24,5 +25,12 @@ export default async function EditAwardsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="awards" config={awardResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="awards"
+      config={awardResource}
+      id={id}
+      renderAside={(award) => <AwardUsagePanel award={award} />}
+    />
+  );
 }

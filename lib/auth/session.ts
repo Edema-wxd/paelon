@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth/config";
+import { safeNextPath } from "@/lib/auth/safe-path";
 import {
   assertCan,
   can,
@@ -59,9 +60,8 @@ export async function requireAdminUser(next?: string): Promise<AdminUser> {
   const user = await getAdminUser();
   if (user) return user;
 
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//")
-    ? `?next=${encodeURIComponent(next)}`
-    : "";
+  const path = safeNextPath(next);
+  const safeNext = path ? `?next=${encodeURIComponent(path)}` : "";
 
   redirect(`/admin/login${safeNext}`);
 }

@@ -1,6 +1,9 @@
 import { ChevronDown } from "lucide-react";
 
 import type { Faq } from "@/lib/content";
+import { serializeJsonLd } from "@/lib/json-ld";
+import { toPlainText } from "@/lib/markdown";
+import { ArticleBody } from "@/components/site/article-body";
 
 /**
  * FAQ accordion and its `FAQPage` JSON-LD (CLAUDE.md baseline item 3, spec §11).
@@ -34,7 +37,9 @@ export function FaqSection({
     mainEntity: faqs.map((faq) => ({
       "@type": "Question",
       name: faq.question,
-      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+      // Plain text: the answer is Markdown, and `**` or `[text](/path)` read
+      // as noise in a search result.
+      acceptedAnswer: { "@type": "Answer", text: toPlainText(faq.answer) },
     })),
   };
 
@@ -45,8 +50,8 @@ export function FaqSection({
     >
       <script
         type="application/ld+json"
-        // Built from the object above; every value is seeded content, not input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 sm:px-6 lg:px-25">
@@ -68,9 +73,12 @@ export function FaqSection({
                     className="size-5 shrink-0 text-accent transition-transform group-open:rotate-180"
                   />
                 </summary>
-                <p className="mt-3 max-w-2xl text-base leading-relaxed text-foreground/80">
-                  {faq.answer}
-                </p>
+                {/* Markdown, through the renderer the admin preview uses (D1),
+                    so links in an answer are links. The schema refuses
+                    headings: an answer sits under its question. */}
+                <div className="mt-3">
+                  <ArticleBody source={faq.answer} />
+                </div>
               </details>
             </li>
           ))}

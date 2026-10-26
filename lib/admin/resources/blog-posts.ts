@@ -157,7 +157,7 @@ function imageRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void
  * Heading levels that skip a step.
  *
  * The title is the page's `h1`, so a body starts at `##`. Jumping `##` to
- * `####` leaves a gap, which is a WCGA 2.1 AA failure on a template CLAUDE.md
+ * `####` leaves a gap, which is a WCAG 2.1 AA failure on a template CLAUDE.md
  * requires to pass — and unlike most of what the renderer handles, it cannot be
  * fixed downstream: only the author knows which level was meant.
  */
@@ -207,6 +207,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "title",
+    section: "Post",
     label: "Title",
     required: true,
     maxLength: 200,
@@ -215,6 +216,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "slug",
     name: "slug",
+    section: "Post",
     label: "Slug",
     from: "title",
     required: true,
@@ -223,6 +225,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "textarea",
     name: "excerpt",
+    section: "Post",
     label: "Excerpt",
     required: true,
     rows: 3,
@@ -232,6 +235,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "markdown",
     name: "body",
+    section: "Body",
     label: "Body",
     required: true,
     rows: 24,
@@ -241,6 +245,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "image",
     name: BLOG_HERO.id,
+    section: "Hero image",
     label: "Hero image",
     altName: BLOG_HERO.alt,
     altLabel: "Hero image alt text",
@@ -249,6 +254,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "reference",
     name: "authorId",
+    section: "Byline and filing",
+    width: "half",
     label: "Author",
     required: true,
     emptyLabel: "Choose an author",
@@ -257,6 +264,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "select",
     name: "category",
+    section: "Byline and filing",
+    width: "half",
     label: "Category",
     required: true,
     options: blogCategoryEnum.enumValues.map((value) => ({
@@ -267,25 +276,38 @@ const FIELDS: readonly Field[] = [
   {
     type: "tags",
     name: "tags",
+    section: "Byline and filing",
     label: "Tags",
     maxItems: 12,
     maxLength: 60,
-    hint: "One per tag. Press Enter after each.",
+    hint: "Press Enter after each. Tags appear as filter chips on /blog, and the /blog search matches them.",
   },
   {
     type: "date",
     name: "publishedAt",
+    section: "Byline and filing",
     label: "Publication date",
     hint: "The date shown on the post and the one /blog sorts by. Required to publish; leave it blank while the post is a draft.",
   },
   {
     type: "multiselect",
     name: BLOG_RELATED_FIELD,
+    section: "Read next",
     label: "Related posts",
-    hint: "Shown at the foot of this post. Publishing needs every one of them to be published too — a draft here would leave a link to a page that 404s. This post is excluded from the list.",
+    hint: "Shown under “Read next” at the foot of this post, up to three. Left empty, the site picks up to three other posts in the same category instead. Publishing needs every one chosen here to be published too — a draft would leave a link to a page that 404s.",
     emptyLabel: "No other posts to relate this one to yet.",
   },
-  { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
+  {
+    type: "number",
+    name: "order",
+    label: "Order",
+    min: 0,
+    max: 9999,
+    // Every public read sorts by `published_at` (`newestFirst` in
+    // lib/db/queries/blog.ts); "Low numbers first" promised a control the site
+    // does not have.
+    hint: "Not used on the site: /blog lists posts newest first by publication date. Change the date to move a post.",
+  },
   {
     type: "checkbox",
     name: "published",

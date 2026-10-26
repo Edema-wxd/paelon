@@ -6,6 +6,10 @@ import { NotPermitted } from "@/components/admin/not-permitted";
 import { can } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 import { getAboutForAdmin } from "@/lib/db/queries/about";
+import { SectionsEditor } from "@/components/admin/sections-editor";
+import { sectionPickableMedia } from "@/lib/admin/section-media";
+import { saveAboutSectionsAction } from "@/lib/admin/sections-actions";
+import { getSectionsForEditor } from "@/lib/db/queries/sections";
 
 /**
  * About page copy (migration 0005).
@@ -41,6 +45,10 @@ export default async function AdminAboutPage() {
   }
 
   const about = await getAboutForAdmin();
+
+  const sections = await getSectionsForEditor({ page: "about" });
+  const sectionMedia = await sectionPickableMedia(sections);
+
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -80,14 +88,19 @@ export default async function AdminAboutPage() {
           published: about?.published ?? false,
           placeholder: about?.placeholder ?? false,
           intro: about?.intro ?? "",
-          founding_story: about?.foundingStory ?? "",
-          mission: about?.mission ?? "",
-          vision: about?.vision ?? "",
-          value_proposition: about?.valueProposition ?? "",
           motto: about?.motto ?? "",
-          esg: about?.esg ?? "",
         }}
       />
+
+      <div className="mt-8">
+        <SectionsEditor
+          initialSections={sections}
+          media={sectionMedia}
+          save={saveAboutSectionsAction}
+          target={{}}
+          pageName="the About page, between the intro and the leadership team"
+        />
+      </div>
 
       {about?.updatedAt && (
         <p className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">

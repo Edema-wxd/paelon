@@ -3,10 +3,12 @@
 import {
   adminAction,
   done,
+  fail,
   type ActionResult,
   type ActionState,
 } from "@/lib/admin/action";
 import { updateAbout } from "@/lib/db/queries/about";
+import { getSectionsForEditor } from "@/lib/db/queries/sections";
 import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import { aboutFormSchema } from "@/lib/validation/about";
 
@@ -45,17 +47,27 @@ export const saveAboutAction = adminAction(
     path: ABOUT_PATH,
   },
   async (input, { user }) => {
+    // Publishing needs something under the intro. The sections live in
+    // `content_sections` (Page layout) since migration 0008, so they are
+    // checked here, where they can be read.
+    if (input.published) {
+      const sections = await getSectionsForEditor({ page: "about" });
+      if (sections.length === 0) {
+        return fail("Add at least one block in Page layout before publishing the About page.", {
+          fields: { published: ["Add at least one block in Page layout first."] },
+        });
+      }
+    }
+
+    // Only the fields this form edits. The five legacy prose columns are left
+    // exactly as they are — they are the fallback the page uses if it ever has
+    // no sections, and writing them here would erase that.
     const row = await updateAbout(
       {
         published: input.published,
         placeholder: input.placeholder,
         intro: input.intro,
-        foundingStory: input.founding_story,
-        mission: input.mission,
-        vision: input.vision,
-        valueProposition: input.value_proposition,
         motto: input.motto,
-        esg: input.esg,
       },
       user.id,
     );
@@ -63,12 +75,7 @@ export const saveAboutAction = adminAction(
     const written = (
       [
         ["intro", row.intro],
-        ["founding_story", row.foundingStory],
-        ["mission", row.mission],
-        ["vision", row.vision],
-        ["value_proposition", row.valueProposition],
         ["motto", row.motto],
-        ["esg", row.esg],
       ] as const
     )
       .filter(([, value]) => value !== null)

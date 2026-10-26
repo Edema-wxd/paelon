@@ -5,6 +5,7 @@ import {
   authors,
   blogPostRelated,
   blogPosts,
+  doctors,
   media,
   type BlogPost,
 } from "@/lib/db/schema";
@@ -12,6 +13,7 @@ import {
 import {
   CACHE_TAGS,
   cachedRead,
+  publicFilter,
   publicFilterWith,
   type ReadOptions,
 } from "./shared";
@@ -153,6 +155,115 @@ export async function getPostBySlug(
     [CACHE_TAGS.blogPosts, CACHE_TAGS.blogPost(slug)],
   );
   return read(slug);
+}
+
+/** The byline's full record, for the author card at the foot of a post. */
+export interface PostAuthorRow {
+  name: string;
+  role: string;
+  bio: string;
+  headshotUrl: string | null;
+  headshotAlt: string | null;
+  headshotWidth: number | null;
+  headshotHeight: number | null;
+  /** Set only when the linked doctor profile is published, so it resolves. */
+  doctorSlug: string | null;
+}
+
+async function selectPostAuthor(slug: string): Promise<PostAuthorRow | null> {
+  const rows = await db()
+    .select({
+      name: authors.name,
+      role: authors.role,
+      bio: authors.bio,
+      headshotUrl: media.url,
+      headshotAlt: media.alt,
+      headshotWidth: media.width,
+      headshotHeight: media.height,
+      doctorSlug: doctors.slug,
+    })
+    .from(authors)
+    .leftJoin(media, and(eq(media.id, authors.headshotId), isNull(media.deletedAt)))
+    .leftJoin(doctors, and(eq(doctors.id, authors.doctorId), publicFilter(doctors)))
+    .where(and(eq(authors.slug, slug), isNull(authors.deletedAt)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * One author's card, by slug.
+ *
+ * Kept out of `selectPosts()` so the bio is read once, on the article, and not
+ * carried by every card on `/blog`. No `published` filter: a byline shows
+ * whenever its post does, which is what the Authors form says. Cached on the
+ * `blog-posts` tag, which is the tag an author save revalidates
+ * (`lib/admin/resources/server.ts`); the `doctors` tag is added so a doctor
+ * being unpublished drops the profile link.
+ */
+export async function getPostAuthor(slug: string): Promise<PostAuthorRow | null> {
+  const read = cachedRead(
+    async (s: string) => selectPostAuthor(s),
+    ["blog-post", "author"],
+    [CACHE_TAGS.blogPosts, CACHE_TAGS.doctors],
+  );
+  return read(slug);
+}
+
+/**
+ * Live posts whose editor chose `postId` under Related posts. Admin-only,
+ * uncached: it feeds the post editor's "Where it appears" panel.
+ */
+export async function listPostsRelatingTo(
+  postId: string,
+): Promise<{ title: string }[]> {
+  return db()
+    .select({ title: blogPosts.title })
+    .from(blogPostRelated)
+    .innerJoin(blogPosts, eq(blogPosts.id, blogPostRelated.postId))
+    .where(and(eq(blogPostRelated.relatedId, postId), livePost({})))
+    .orderBy(blogPosts.title);
+}
+
+/**
+ * How many live posts in `category`, other than `postId`, have no related
+ * posts chosen — the posts whose "Read next" falls back to their category and
+ * so might list `postId`. Admin-only, uncached.
+ */
+export async function countCategoryFallbackHosts(
+  postId: string,
+  category: BlogPost["category"],
+): Promise<number> {
+  const rows = await db()
+    .select({ count: sql<number>`count(*)::int` })
+    .from(blogPosts)
+    .where(
+      and(
+        livePost({}),
+        eq(blogPosts.category, category),
+        sql`${blogPosts.id} <> ${postId}`,
+        sql`not exists (select 1 from ${blogPostRelated} where ${blogPostRelated.postId} = ${blogPosts.id})`,
+      ),
+    );
+  return rows[0]?.count ?? 0;
+}
+
+/**
+ * Every post carrying `authorId`'s byline, drafts included, newest first.
+ * Soft-deleted posts are left out: they hold the foreign key but no byline.
+ * Admin-only, uncached — the author editor's panel and its delete guard.
+ */
+export async function listPostsByAuthor(
+  authorId: string,
+): Promise<{ title: string; published: boolean; publishedAt: Date | null }[]> {
+  return db()
+    .select({
+      title: blogPosts.title,
+      published: blogPosts.published,
+      publishedAt: blogPosts.publishedAt,
+    })
+    .from(blogPosts)
+    .where(and(eq(blogPosts.authorId, authorId), isNull(blogPosts.deletedAt)))
+    .orderBy(desc(sql`coalesce(${blogPosts.publishedAt}, ${blogPosts.createdAt})`));
 }
 
 /** Published posts in one category, newest first. */

@@ -163,13 +163,23 @@ export const aboutFormSchema = z
     published: checkboxField,
     placeholder: checkboxField,
     intro: proseField,
-    founding_story: proseField,
-    mission: proseField,
-    vision: proseField,
-    value_proposition: proseField,
     motto: mottoField,
-    esg: proseField,
   })
-  .superRefine(checkPublishable);
+  .superRefine((about, ctx) => {
+    if (!about.published) return;
+    if (about.placeholder) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["placeholder"],
+        message:
+          "Cannot publish placeholder copy. Replace it with Francis's wording, then set placeholder to false.",
+      });
+    }
+    if (about.intro === null) {
+      ctx.addIssue({ code: "custom", path: ["intro"], message: "Write the intro before publishing." });
+    }
+    // The sections are checked by the save action, which can read them: since
+    // migration 0008 they live in `content_sections`, edited in Page layout.
+  });
 
 export type AboutFormInput = z.output<typeof aboutFormSchema>;

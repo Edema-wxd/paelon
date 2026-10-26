@@ -1,4 +1,5 @@
-import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { cache } from "react";
 
 import { db } from "@/lib/db/client";
 import {
@@ -73,6 +74,7 @@ export async function listRecentContactSubmissions(): Promise<RecentContactSubmi
 export interface BookingQuickStats {
   byStatus: Record<BookingStatus, number>;
   newLast7Days: number;
+  /** Unassigned and still open (`new` or `contacted`) — closed bookings need no owner. */
   unassigned: number;
 }
 
@@ -91,7 +93,10 @@ export async function getBookingQuickStats(): Promise<BookingQuickStats> {
     db()
       .select({
         newLast7Days: sql<number>`count(*) filter (where ${gte(bookings.createdAt, sevenDaysAgo)})::int`,
-        unassigned: sql<number>`count(*) filter (where ${isNull(bookings.assignedToUserId)})::int`,
+        unassigned: sql<number>`count(*) filter (where ${and(
+          isNull(bookings.assignedToUserId),
+          inArray(bookings.status, OPEN_BOOKING_STATUSES),
+        )})::int`,
       })
       .from(bookings),
   ]);
@@ -107,12 +112,58 @@ export async function getBookingQuickStats(): Promise<BookingQuickStats> {
   };
 }
 
-/** Corporate enquiries not yet resolved (`won` or `lost`), for the overview's quick-stats row. */
-export async function getOpenCorporateEnquiryCount(): Promise<number> {
-  const rows = await db()
-    .select({ count: sql<number>`count(*)::int` })
-    .from(corporateEnquiries)
-    .where(and(ne(corporateEnquiries.status, "won"), ne(corporateEnquiries.status, "lost")));
+/** Bookings someone still has to act on. Shared with the overview's links. */
+export const OPEN_BOOKING_STATUSES: BookingStatus[] = ["new", "contacted"];
 
-  return rows[0]?.count ?? 0;
+/** Corporate statuses short of `won` or `lost`. */
+export const OPEN_CORPORATE_STATUSES = ["new", "contacted", "proposal_sent"] as const;
+
+export interface InboxCounts {
+  newBookings: number | null;
+  openContact: number | null;
+  openCorporate: number | null;
 }
+
+/**
+ * What is waiting in each patient-facing queue, for the sidebar badges and the
+ * overview's "Needs attention" row.
+ *
+ * Each flag says whether the caller may read that queue; a queue it may not
+ * read comes back `null` and is never queried, so a role without access to
+ * bookings cannot learn even that the count is zero.
+ *
+ * Wrapped in `cache()` because the admin layout and the overview page both
+ * ask for it in the same request — one round trip, not two.
+ */
+export const getInboxCounts = cache(
+  async (
+    bookingsAllowed: boolean,
+    contactAllowed: boolean,
+    corporateAllowed: boolean,
+  ): Promise<InboxCounts> => {
+    const count = sql<number>`count(*)::int`;
+    const [b, c, k] = await Promise.all([
+      bookingsAllowed
+        ? db().select({ n: count }).from(bookings).where(eq(bookings.status, "new"))
+        : null,
+      contactAllowed
+        ? db()
+            .select({ n: count })
+            .from(contactSubmissions)
+            .where(eq(contactSubmissions.handled, false))
+        : null,
+      corporateAllowed
+        ? db()
+            .select({ n: count })
+            .from(corporateEnquiries)
+            .where(inArray(corporateEnquiries.status, [...OPEN_CORPORATE_STATUSES]))
+        : null,
+    ]);
+
+    return {
+      newBookings: b ? (b[0]?.n ?? 0) : null,
+      openContact: c ? (c[0]?.n ?? 0) : null,
+      openCorporate: k ? (k[0]?.n ?? 0) : null,
+    };
+  },
+);

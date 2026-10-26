@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { clientEnv } from "@/lib/env";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 export interface Crumb {
   label: string;
@@ -40,8 +41,8 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
     <>
       <script
         type="application/ld+json"
-        // Serialised from an object built above; nothing here is user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <nav aria-label="Breadcrumb">

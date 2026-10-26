@@ -93,8 +93,8 @@ export function ResourceImageField({
   const altErrorId = altErrors?.length ? `${altId}-error` : undefined;
 
   return (
-    <fieldset className="rounded-xl border border-border bg-white p-4">
-      <legend className="px-1 text-sm font-medium text-primary">{label}</legend>
+    <fieldset>
+      <legend className="text-sm font-medium text-foreground">{label}</legend>
 
       {hint ? (
         <p id={hintId} className="text-xs text-muted-foreground">

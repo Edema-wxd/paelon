@@ -7,6 +7,7 @@ import {
   checkboxField,
   imageAltRule,
   imageFields,
+  markdownWithoutHeadings,
   optionalReferenceField,
   orderField,
   requiredText,
@@ -26,10 +27,10 @@ import {
  *
  *  1. **An author has no page of its own.** `slug` is there because every
  *     content type carries one (§5), and the §6 template list has no
- *     `/authors/[slug]`. So there is no `deleteWarning`: deleting an author
- *     404s nothing. What it does do is worse, and the hint on the field says
- *     so — `author_id` is `on delete restrict`, so the database refuses to
- *     lose a byline out from under a published post.
+ *     `/authors/[slug]`, so deleting one 404s nothing. Deleting one who still
+ *     has posts is refused by the `beforeDelete` hook in `./server.ts`: the
+ *     `on delete restrict` on `blog_posts.author_id` never fires, because
+ *     every admin delete is soft.
  *  2. **`published` does not gate the byline.** The blog queries filter on the
  *     *post's* `published`, not the author's, so unpublishing an author hides
  *     nothing. It is left in place because the CRUD kit's list filter and the
@@ -41,10 +42,10 @@ import {
  * content image column onto `media` — the mismatch recorded in CLAUDE.md is
  * gone and the kit's image field works here unchanged.
  *
- * Nothing renders an author headshot yet: the article footer names the author
- * in text. The column is set-able so the asset is in place when a template
- * wants it, and so an editor is never told to upload something they cannot
- * attach.
+ * The article's "About the author" card (`components/site/author-card.tsx`)
+ * renders the name, role, bio, headshot and — when the linked doctor profile is
+ * published — a link to it. Before 2026-10-26 it rendered the name alone while
+ * these hints promised the rest.
  */
 
 /** `authors.doctor_id`: the doctor profile this byline belongs to, if any. */
@@ -62,7 +63,7 @@ export const authorSchema = z
     name: requiredText("the author’s name", 200),
     slug: slugField,
     role: requiredText("the author’s role", 200),
-    bio: requiredText("a bio", 4000),
+    bio: markdownWithoutHeadings("a bio", 4000),
     [AUTHOR_DOCTOR_FIELD]: optionalReferenceField("a doctor"),
     order: orderField,
     published: checkboxField,
@@ -76,6 +77,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "name",
+    section: "Byline",
+    width: "half",
     label: "Name",
     required: true,
     maxLength: 200,
@@ -84,6 +87,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "slug",
     name: "slug",
+    section: "Byline",
+    width: "half",
     label: "Slug",
     from: "name",
     required: true,
@@ -92,35 +97,47 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "role",
+    section: "Byline",
     label: "Role",
     required: true,
     maxLength: 200,
-    hint: "The title shown under the byline — what this person does at Paelon. Use the title the hospital gave you; never a credential nobody supplied.",
+    hint: "Shown under the name in “About the author”, and given to search engines as their job title. What this person does at Paelon — use the title the hospital gave you, never a credential nobody supplied.",
   },
   {
     type: "markdown",
     name: "bio",
+    section: "About the author",
     label: "Bio",
     required: true,
     rows: 8,
-    hint: "Markdown. Shown in the “About the author” block at the foot of every post they wrote. Links are written as [text](/path) and must point at pages that exist.",
+    headings: false,
+    hint: "Shown in “About the author” at the foot of every post they wrote. A short paragraph or two; links are written as [text](/path) and must point at pages that exist.",
   },
   {
     type: "image",
     name: AUTHOR_HEADSHOT.id,
+    section: "About the author",
     label: "Headshot",
     altName: AUTHOR_HEADSHOT.alt,
     altLabel: "Headshot alt text",
-    hint: "Optional. No template shows an author headshot yet, so this is stored for when one does.",
+    hint: "Optional. Shown as a small round photo beside the name in “About the author”. Alt text names who is pictured.",
   },
   {
     type: "reference",
     name: AUTHOR_DOCTOR_FIELD,
+    section: "Links",
     label: "Doctor profile",
     emptyLabel: "Not a doctor at Paelon",
-    hint: "Optional. Links the byline to a doctor’s profile. Leave blank for a non-clinical author.",
+    hint: "Optional. Adds a “View profile” link under the bio, while that doctor’s profile is published. Leave blank for a non-clinical author.",
   },
-  { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
+  {
+    type: "number",
+    name: "order",
+    label: "Order",
+    min: 0,
+    max: 9999,
+    hint: "Position in the Author list on the post form, low numbers first. Not shown on the site.",
+  },
   {
     type: "checkbox",
     name: "published",
@@ -148,4 +165,6 @@ export const authorResource: ResourceConfig<Author, typeof authorSchema> = {
   columns: COLUMNS,
   schema: authorSchema,
   titleField: "name",
+  deleteWarning:
+    "Only possible once none of their posts remain — give each post another author, or delete it, first. Authors have no page of their own, so no link breaks.",
 };

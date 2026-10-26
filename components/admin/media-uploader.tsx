@@ -2,10 +2,9 @@
 
 import { Loader2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useUploadThing } from "@/lib/uploadthing/client";
-import { Button } from "@/components/ui/button";
 
 /**
  * Drag-and-drop upload for the media library.
@@ -21,7 +20,6 @@ import { Button } from "@/components/ui/button";
  */
 export function MediaUploader() {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +28,8 @@ export function MediaUploader() {
     onClientUploadComplete: (files) => {
       setStatus(`Uploaded ${files.length} file${files.length === 1 ? "" : "s"}.`);
       setError(null);
-      // The library is a server component; refresh re-reads it from UploadThing.
+      // The library is a server component; refresh re-reads the media table,
+      // which the upload callback has written by the time this fires.
       router.refresh();
     },
     onUploadError: (uploadError) => {
@@ -65,7 +64,9 @@ export function MediaUploader() {
           setDragging(false);
           upload(Array.from(event.dataTransfer.files));
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+        // The input inside is `sr-only`, so keyboard focus lands on something
+        // invisible; `has-[:focus-visible]` puts the ring on the zone instead.
+        className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors has-[:focus-visible]:border-accent has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50 ${
           dragging
             ? "border-accent bg-white"
             : "border-border bg-white/60 hover:border-accent"
@@ -76,11 +77,13 @@ export function MediaUploader() {
           Drop images here, or choose files
         </span>
         <span className="text-xs text-muted-foreground">
+          Then add alt text to each one below.
+        </span>
+        <span className="text-xs text-muted-foreground">
           JPEG, PNG or WebP · up to 4 MB each · 10 at a time
         </span>
 
         <input
-          ref={inputRef}
           id="media-upload"
           type="file"
           multiple
@@ -111,17 +114,6 @@ export function MediaUploader() {
         ) : null}
       </div>
 
-      {/* A visible, focusable alternative for anyone who cannot use the label
-          as a drop target — and the obvious control on a touch screen. */}
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-2"
-        disabled={isUploading}
-        onClick={() => inputRef.current?.click()}
-      >
-        Choose files
-      </Button>
     </div>
   );
 }

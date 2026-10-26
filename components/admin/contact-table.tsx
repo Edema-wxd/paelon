@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ariaSort, CONTACT_SORT_LABELS, sortHref, type ContactQuery } from "@/lib/admin/contact-view";
 import type { ContactListRow, ContactSortColumn } from "@/lib/db/queries/contact-submissions";
+import { ContactHandledBadge } from "@/components/admin/contact-handled-badge";
 import { SortableColumnHeader } from "@/components/admin/sortable-column-header";
 
 /**
@@ -66,11 +67,7 @@ export function ContactTable({
                 </span>
               </td>
               <td className="p-3">
-                {row.handled ? (
-                  <span className="text-sm text-foreground">Handled</span>
-                ) : (
-                  <span className="text-sm font-medium text-primary">Not handled</span>
-                )}
+                <ContactHandledBadge handled={row.handled} />
               </td>
               <td className="p-3">{formatDate(row.createdAt)}</td>
               <td className="p-3 text-muted-foreground">{row.locationName ?? "Not given"}</td>

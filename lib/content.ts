@@ -2,6 +2,7 @@ import { draftMode } from "next/headers";
 
 import {
   getLatestPost,
+  getPostAuthor,
   getPostBySlug as getPostRow,
   getPostsByTag as getPostsByTagRows,
   getPublishedPosts,
@@ -27,7 +28,9 @@ import {
   getLocationBySlug as getLocationRow,
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
-import { getFaqsByCategory as getFaqRows } from "@/lib/db/queries/faqs";
+import { getFaqsByCategory as getFaqRows, getFaqsForService } from "@/lib/db/queries/faqs";
+import { getAboutSectionRows, getServiceSectionRows } from "@/lib/db/queries/sections";
+import { sectionMediaIds, type Section } from "@/lib/validation/sections";
 import {
   getMediaByIds,
   listLocationGallery,
@@ -38,7 +41,10 @@ import {
   getRelatedServices as getRelatedServiceRows,
   getServiceBySlug as getServiceRow,
 } from "@/lib/db/queries/services";
-import { getFeaturedTestimonials as getFeaturedTestimonialRows } from "@/lib/db/queries/testimonials";
+import {
+  getFeaturedTestimonials as getFeaturedTestimonialRows,
+  HOMEPAGE_TESTIMONIAL_LIMIT,
+} from "@/lib/db/queries/testimonials";
 import type {
   Award as AwardRow,
   Doctor as DoctorRow,
@@ -50,6 +56,7 @@ import type {
 } from "@/lib/db/schema";
 import type { ReadOptions } from "@/lib/db/queries/shared";
 import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
+import { displayPatientName } from "@/lib/testimonials/display-name";
 import type { Hours } from "@/lib/validation/hours";
 
 /**
@@ -117,6 +124,12 @@ export interface Service {
   featured_image_id: string | null;
   order: number;
   published: boolean;
+  /**
+   * The detail page's main text, Markdown, under the service name. May hold
+   * headings and figures (`media:` ids, resolved with `getBodyImages`). Null
+   * until written.
+   */
+  long_description: string | null;
   /** Prose for the detail page. Null until the seed supplies it. */
   what_to_expect: string | null;
   /** Bullet list. Empty until the seed supplies one. */
@@ -194,7 +207,12 @@ export interface Hmo {
 export interface Testimonial {
   id: string;
   slug: string;
-  patient_name: string;
+  /**
+   * The name as the patient agreed it may appear — full, first name, or
+   * initials — from `displayPatientName`. The full name is deliberately not on
+   * this type: a template cannot leak what it was never given.
+   */
+  display_name: string;
   name_format: "full" | "first_only" | "initials";
   /** `media.id`, not a URL — see `Service.featured_image_id`. */
   avatar_id: string | null;
@@ -335,6 +353,7 @@ function toService(row: ServiceRow): Service {
     featured_image_id: row.featuredImageId,
     order: row.order,
     published: row.published,
+    long_description: realOrNull(row.longDescription),
     what_to_expect: realOrNull(row.whatToExpect),
     who_its_for: realEntries(row.whoItsFor),
     how_to_access: realEntries(row.howToAccess),
@@ -408,7 +427,7 @@ function toTestimonial(row: TestimonialRow): Testimonial {
   return {
     id: row.id,
     slug: row.slug,
-    patient_name: row.patientName,
+    display_name: displayPatientName(row.patientName, row.nameFormat),
     name_format: row.nameFormat,
     avatar_id: row.avatarId,
     quote: row.quote,
@@ -582,15 +601,20 @@ export async function getAwards(): Promise<Award[]> {
 }
 
 /**
- * Published FAQs in one category.
- *
- * FAQs are categorised, not attached to individual services, so every service
- * page shows the same `services` set. That is what the schema supports; a
- * per-service FAQ is a Phase 2 relation, not something to fake by filtering on
- * question text.
+ * Published FAQs in one category. The homepage and branch pages show
+ * `general`; service pages use `getServiceFaqs` instead.
  */
 export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
   return (await getFaqRows(category, await readOptions())).map(toFaq);
+}
+
+/**
+ * Published FAQs assigned to this service in `/admin/faqs` — only those. A
+ * service with none assigned gets an empty list, and its page renders no FAQ
+ * section rather than borrowing another page's questions.
+ */
+export async function getServiceFaqs(serviceId: string): Promise<Faq[]> {
+  return (await getFaqsForService(serviceId, await readOptions())).map(toFaq);
 }
 
 export type { SiteSettings };
@@ -630,7 +654,7 @@ export async function getLocations(): Promise<Location[]> {
  * invisible in a preview too, because a preview URL is a real URL.
  */
 export async function getFeaturedTestimonials(
-  limit = 2,
+  limit = HOMEPAGE_TESTIMONIAL_LIMIT,
 ): Promise<Testimonial[]> {
   return (await getFeaturedTestimonialRows(limit, await readOptions())).map(
     toTestimonial,
@@ -668,6 +692,47 @@ export async function getRelatedBlogPosts(
   const row = await getPostRow(post.slug, options);
   if (!row) return [];
   return (await getRelatedPostRows(row, limit, options)).map(toBlogPost);
+}
+
+/** The author card at the foot of a post (spec §6: "author card"). */
+export interface BlogAuthor {
+  name: string;
+  role: string;
+  /** Markdown, without headings. Rendered through `ArticleBody`. */
+  bio: string;
+  /** Only with both dimensions, so `next/image` can reserve the box. */
+  headshot: { url: string; alt: string; width: number; height: number } | null;
+  /** `/doctors/<slug>`, only when that profile is published. */
+  doctor_slug: string | null;
+}
+
+/**
+ * The full byline for one post, or null when the author row is gone.
+ *
+ * Seed sentinels are normalised like every other field, so an unwritten role
+ * or bio is absent from the card rather than printed as "TODO(seed)".
+ */
+export async function getBlogAuthor(post: BlogPost): Promise<BlogAuthor | null> {
+  const row = await getPostAuthor(post.author_slug);
+  if (!row) return null;
+
+  const headshot =
+    row.headshotUrl !== null && row.headshotWidth !== null && row.headshotHeight !== null
+      ? {
+          url: row.headshotUrl,
+          alt: row.headshotAlt ?? "",
+          width: row.headshotWidth,
+          height: row.headshotHeight,
+        }
+      : null;
+
+  return {
+    name: row.name,
+    role: isSeedGap(row.role) ? "" : row.role,
+    bio: isSeedGap(row.bio) ? "" : row.bio,
+    headshot,
+    doctor_slug: row.doctorSlug,
+  };
 }
 
 /** One tag and how many published posts carry it. */
@@ -851,6 +916,44 @@ export async function getHmoLogos(
     }
   }
 
+  return resolved;
+}
+
+export type { Section };
+
+/**
+ * A service page's blocks, in the editor's order (`/admin/services`, Page
+ * layout). An empty list means the page has none yet, and the template falls
+ * back to the legacy `long_description` / `what_to_expect` fields.
+ */
+export async function getServiceSections(serviceId: string): Promise<Section[]> {
+  return getServiceSectionRows(serviceId);
+}
+
+/** The About page's blocks, in the editor's order (`/admin/about`). */
+export async function getAboutSections(): Promise<Section[]> {
+  return getAboutSectionRows();
+}
+
+/**
+ * Every image a page's blocks reference — figures inside text blocks, image
+ * blocks and galleries — resolved in one query and keyed by `media.id`.
+ *
+ * Not cached, for the reason `getBodyImages` is not. A block whose image is
+ * missing here renders without it (see `ContentSections`) rather than guessing
+ * a size.
+ */
+export async function getSectionImages(
+  sections: readonly Section[],
+): Promise<ReadonlyMap<string, ContentImage>> {
+  const ids = sectionMediaIds(sections, (body) => collectMediaIds(parseMarkdown(body)));
+  if (ids.length === 0) return new Map();
+
+  const rows = await getMediaByIds(ids);
+  const resolved = new Map<string, ContentImage>();
+  for (const [id, row] of rows) {
+    resolved.set(id, { url: row.url, alt: row.alt, width: row.width, height: row.height });
+  }
   return resolved;
 }
 

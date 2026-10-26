@@ -15,7 +15,7 @@ function SubmitButton({ handled }: { handled: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" variant="outline" size="sm" disabled={pending}>
-      {pending ? "Saving…" : handled ? "Mark unhandled" : "Mark handled"}
+      {pending ? "Saving…" : handled ? "Mark not handled" : "Mark handled"}
     </Button>
   );
 }

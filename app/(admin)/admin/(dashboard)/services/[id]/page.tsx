@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
+import { SectionsEditor } from "@/components/admin/sections-editor";
+import { sectionPickableMedia } from "@/lib/admin/section-media";
+import { saveServiceSectionsAction } from "@/lib/admin/sections-actions";
+import { getSectionsForEditor } from "@/lib/db/queries/sections";
 import { serviceResource } from "@/lib/admin/resources";
 
 /**
@@ -24,5 +28,23 @@ export default async function EditServicesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="services" config={serviceResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="services"
+      config={serviceResource}
+      id={id}
+      renderBelow={async (service) => {
+        const sections = await getSectionsForEditor({ page: "service", serviceId: service.id });
+        return (
+          <SectionsEditor
+            initialSections={sections}
+            media={await sectionPickableMedia(sections)}
+            save={saveServiceSectionsAction}
+            target={{ serviceId: service.id }}
+            pageName="this service’s page, under its name and booking buttons"
+          />
+        );
+      }}
+    />
+  );
 }

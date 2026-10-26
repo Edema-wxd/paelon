@@ -49,7 +49,7 @@ export const markHandledAction = adminAction(
     if (!result.ok) return fail(REFUSAL_MESSAGES[result.reason]);
 
     return done(
-      { message: handled ? "Marked handled." : "Marked unhandled." },
+      { message: handled ? "Marked handled." : "Marked not handled." },
       { entityId: id, metadata: { handled } },
     );
   },

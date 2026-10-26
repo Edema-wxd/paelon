@@ -1,9 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { z } from "zod";
@@ -12,10 +11,8 @@ import { Button } from "@/components/ui/button";
 import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  contactSchema,
-  type ContactSubmissionInput,
-} from "@/lib/validation/contact";
+import { lazyZodResolver, preloadWhenIdle } from "@/lib/forms/lazy-zod-resolver";
+import type { contactSchema, ContactSubmissionInput } from "@/lib/validation/contact";
 
 /**
  * What the inputs hold, which is not what the schema hands back: `phone` is
@@ -26,6 +23,18 @@ import {
 type ContactFormValues = z.input<typeof contactSchema>;
 
 type Status = "idle" | "submitting" | "error";
+
+/**
+ * The shared contact schema, downloaded after the page is interactive rather
+ * than with it, so Zod is not in `/contact`'s first-load JS. Same schema the
+ * route handler parses. See `lazyZodResolver`.
+ */
+const validation = lazyZodResolver(() =>
+  Promise.all([
+    import("@hookform/resolvers/zod"),
+    import("@/lib/validation/contact"),
+  ]).then(([{ zodResolver }, { contactSchema: schema }]) => zodResolver(schema)),
+);
 
 /** Branches offered in the "which branch" select. Kept minimal so the server
     page does not serialise whole location records into the client bundle. */
@@ -69,6 +78,8 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
   const [status, setStatus] = useState<Status>("idle");
   const [serverError, setServerError] = useState<string | null>(null);
 
+  useEffect(() => preloadWhenIdle(validation.preload), []);
+
   const {
     register,
     handleSubmit,
@@ -76,7 +87,7 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
     setError,
     formState: { errors },
   } = useForm<ContactFormValues, unknown, ContactSubmissionInput>({
-    resolver: zodResolver(contactSchema),
+    resolver: validation.resolver,
     defaultValues: {
       name: "",
       email: "",

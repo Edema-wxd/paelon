@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { BlogPostCard } from "@/components/site/blog-post-card";
+import { NewsletterPopup } from "@/components/site/newsletter-popup";
 import { PendingNote } from "@/components/site/pending-note";
 import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
 import { RouteLoader } from "@/components/site/route-loader";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -134,8 +136,8 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        // JSON.stringify output of a literal we construct — no user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 py-16 sm:px-6 lg:px-25 lg:py-24">
@@ -166,6 +168,11 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
 
         <PreferredSourceBadge className="mt-16 max-w-2xl" />
       </div>
+      {/* Opens when the visitor scrolls to the end of the page. */}
+      <NewsletterPopup
+        heading="Get our next health article"
+        body="Wellness tips and new health articles from Paelon Memorial Hospital, sent to your inbox."
+      />
     </>
   );
 }

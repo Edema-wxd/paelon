@@ -216,11 +216,13 @@ export const services = pgTable(
     family: serviceFamilyEnum("family").notNull(),
     /** App-enforced <=200 chars (master spec §5); not a DB constraint. */
     shortDescription: text("short_description").notNull(),
-    longDescription: text("long_description").notNull(),
+    /** Fallback only since migration 0008 — the page renders `content_sections`. */
+    longDescription: text("long_description"),
     whoItsFor: text("who_its_for").array().notNull().default([]),
     howToAccess: text("how_to_access").array().notNull().default([]),
     typicalWaitTime: text("typical_wait_time"),
-    whatToExpect: text("what_to_expect").notNull(),
+    /** Fallback only since migration 0008 — the page renders `content_sections`. */
+    whatToExpect: text("what_to_expect"),
     featuredImageId: mediaRef("featured_image_id"),
   },
   (t) => [
@@ -534,6 +536,60 @@ export const serviceRelated = pgTable(
       .references(() => services.id, { onDelete: "cascade" }),
   },
   (t) => [primaryKey({ columns: [t.serviceId, t.relatedId] })],
+);
+
+/**
+ * FAQs assigned to particular services (migration 0007). A service page shows
+ * only the FAQs assigned to it — an unassigned FAQ appears on no service page.
+ * Indexed on `service_id` for that lookup; the primary key leads with `faq_id`.
+ */
+export const contentSectionPageEnum = pgEnum("content_section_page", ["service", "about"]);
+export const contentSectionKindEnum = pgEnum("content_section_kind", [
+  "text",
+  "image",
+  "gallery",
+  "cta",
+]);
+
+/**
+ * Rearrangeable blocks on service pages and the About page (migration 0008).
+ *
+ * `data` holds the block's content, validated per `kind` by
+ * `lib/validation/sections.ts` on every write. A service's sections cascade
+ * with it; the About page is a singleton, so its sections have no parent — the
+ * `content_sections_page_target` CHECK enforces both cases.
+ */
+export const contentSections = pgTable(
+  "content_sections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    page: contentSectionPageEnum("page").notNull(),
+    serviceId: uuid("service_id").references(() => services.id, { onDelete: "cascade" }),
+    kind: contentSectionKindEnum("kind").notNull(),
+    order: integer("order").notNull().default(0),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [index("content_sections_page_idx").on(t.page, t.serviceId, t.order)],
+);
+
+export type ContentSectionRow = typeof contentSections.$inferSelect;
+
+export const faqServices = pgTable(
+  "faq_services",
+  {
+    faqId: uuid("faq_id")
+      .notNull()
+      .references(() => faqs.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.faqId, t.serviceId] }),
+    index("faq_services_service_id_idx").on(t.serviceId),
+  ],
 );
 
 export const doctorLocations = pgTable(
@@ -1046,8 +1102,18 @@ export const rateLimitHits = pgTable(
 export const servicesRelations = relations(services, ({ many }) => ({
   locations: many(serviceLocations),
   related: many(serviceRelated, { relationName: "service_related_from" }),
+  faqs: many(faqServices),
   testimonials: many(testimonials),
   bookings: many(bookings),
+}));
+
+export const faqsRelations = relations(faqs, ({ many }) => ({
+  services: many(faqServices),
+}));
+
+export const faqServicesRelations = relations(faqServices, ({ one }) => ({
+  faq: one(faqs, { fields: [faqServices.faqId], references: [faqs.id] }),
+  service: one(services, { fields: [faqServices.serviceId], references: [services.id] }),
 }));
 
 export const doctorsRelations = relations(doctors, ({ many }) => ({

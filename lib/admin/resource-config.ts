@@ -44,6 +44,19 @@ interface FieldBase {
   hint?: string;
   /** Marks the control `required` and shows the required hint. */
   required?: boolean;
+  /**
+   * The card this field sits in on the editor. Sections appear in the order
+   * their first field does; a field without one lands in "Details".
+   * `published` and `order` ignore this — they always go to the publishing
+   * panel beside the form.
+   */
+  section?: string;
+  /**
+   * How much of the section's row the field takes from `sm` up. Short values —
+   * a city, a phone number, one of a pair of coordinates — sit side by side
+   * instead of each taking a full-width line. Omitted is full width.
+   */
+  width?: "half" | "third";
 }
 
 export type Field =
@@ -57,7 +70,25 @@ export type Field =
    * a template that owns its own layout, so an image dropped into it has
    * nowhere sensible to go.
    */
-  | (FieldBase & { type: "markdown"; rows?: number; figures?: boolean })
+  | (FieldBase & {
+      type: "markdown";
+      rows?: number;
+      figures?: boolean;
+      /**
+       * `false` drops the Heading and Subheading tools, for short text that
+       * renders under a heading of its own — an award description inside the
+       * About timeline, where a `##` would break the page's heading order. Pair
+       * it with `markdownWithoutHeadings` in the schema so the rule holds on
+       * the server too.
+       */
+      headings?: boolean;
+      /**
+       * Levels deeper than written that this field's headings render on the
+       * public page — `1` for text under a template heading of its own. The
+       * editor preview applies the same offset, so it matches the site.
+       */
+      headingOffset?: 0 | 1;
+    })
   | (FieldBase & { type: "number"; min?: number; max?: number; step?: number })
   | (FieldBase & { type: "select"; options: readonly FieldOption[] })
   | (FieldBase & { type: "checkbox" })
@@ -164,6 +195,16 @@ export interface ResourceConfig<R, S extends z.ZodType = z.ZodType> {
    * clicking needs to know a live page is about to start 404ing.
    */
   deleteWarning?: string;
+}
+
+/**
+ * A type name as it reads mid-sentence: "Service" → "service", but "HMO" and
+ * "FAQs" stay as they are. Lowercasing an acronym gives "New hmo" and
+ * "Delete this faq", which reads as a typo on every screen that says it.
+ */
+export function inSentence(noun: string): string {
+  const first = noun.split(" ")[0] ?? noun;
+  return (first.match(/[A-Z]/g)?.length ?? 0) >= 2 ? noun : noun.toLowerCase();
 }
 
 /** `/admin/faqs` and friends. */

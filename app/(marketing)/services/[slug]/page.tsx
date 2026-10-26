@@ -2,17 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ArticleBody } from "@/components/site/article-body";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
+import { ContentSections } from "@/components/site/content-sections";
 import { FaqSection } from "@/components/site/faq-section";
 import { ImageGallery } from "@/components/site/image-gallery";
 import { PendingNote } from "@/components/site/pending-note";
 import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 import {
-  getFaqs,
+  getServiceFaqs,
   getPrimaryLocation,
   getRelatedServices,
   getServiceBySlug,
+  getBodyImages,
+  getSectionImages,
+  getServiceSections,
   getServiceGallery,
   getServices,
   toTelHref,
@@ -20,6 +25,7 @@ import {
 import { clientEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -106,11 +112,25 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   if (!service) notFound();
 
-  const [related, faqs, location, gallery] = await Promise.all([
+  const [related, faqs, location, gallery, sections] = await Promise.all([
     getRelatedServices(service.id),
-    getFaqs("services"),
+    getServiceFaqs(service.id),
     getPrimaryLocation(),
     getServiceGallery(service.id),
+    getServiceSections(service.id),
+  ]);
+
+  // The page's blocks (Page layout in /admin/services) when it has any;
+  // otherwise the legacy fields, kept as the fallback since migration 0008.
+  const useSections = sections.length > 0;
+  const [sectionImages, bodyImages] = await Promise.all([
+    useSections ? getSectionImages(sections) : Promise.resolve(new Map()),
+    useSections
+      ? Promise.resolve(new Map())
+      : getBodyImages(
+          // Joined with a blank line so the two bodies stay separate blocks.
+          [service.long_description, service.what_to_expect].filter(Boolean).join("\n\n"),
+        ),
   ]);
 
   const url = new URL(`/services/${service.slug}`, siteUrl).toString();
@@ -139,6 +159,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   };
 
   const hasDetail =
+    useSections ||
+    service.long_description !== null ||
     service.what_to_expect !== null ||
     service.who_its_for.length > 0 ||
     service.how_to_access.length > 0;
@@ -147,8 +169,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        // Built above from seeded values; nothing here is user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 pt-8 sm:px-6 lg:px-25">
@@ -203,7 +225,25 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <div>
             {hasDetail ? (
               <>
-                {service.what_to_expect ? (
+                {useSections ? (
+                  <div className="mb-14">
+                    <ContentSections
+                      sections={sections}
+                      images={sectionImages}
+                      idPrefix="service-section"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Legacy fallback, for a service with no blocks: the main
+                    text directly under the h1, then "What to expect". */}
+                {!useSections && service.long_description ? (
+                  <div className="mb-12">
+                    <ArticleBody source={service.long_description} images={bodyImages} />
+                  </div>
+                ) : null}
+
+                {!useSections && service.what_to_expect ? (
                   <section aria-labelledby="what-to-expect">
                     <h2
                       id="what-to-expect"
@@ -211,9 +251,15 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                     >
                       What to expect
                     </h2>
-                    <p className="mt-4 max-w-2xl text-base leading-relaxed text-foreground/80">
-                      {service.what_to_expect}
-                    </p>
+                    {/* Under this h2, so the editor's headings render one
+                        level deeper (headingOffset), as the admin preview does. */}
+                    <div className="mt-4">
+                      <ArticleBody
+                        source={service.what_to_expect}
+                        images={bodyImages}
+                        headingOffset={1}
+                      />
+                    </div>
                   </section>
                 ) : null}
 
@@ -321,7 +367,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
         />
       </article>
 
-      {/* Renders nothing while the `faqs` table is empty, which it is. */}
+      {/* Only the FAQs assigned to this service in /admin/faqs. Renders
+          nothing when none are. */}
       <FaqSection faqs={faqs} headingId="service-faq-heading" />
     </>
   );

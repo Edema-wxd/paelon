@@ -6,16 +6,16 @@ import { serviceFamilyEnum, type Service } from "@/lib/db/schema";
 
 import {
   checkboxField,
-  idListField,
   galleryField,
+  idListField,
   imageAltRule,
+  type ImageFieldNames,
   imageFields,
   optionalText,
   orderField,
   requiredText,
   slugField,
   tagsField,
-  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -53,8 +53,6 @@ export const serviceSchema = z
     slug: slugField,
     family: z.enum(serviceFamilyEnum.enumValues, "Choose a family."),
     shortDescription: requiredText("a short description", 200),
-    longDescription: requiredText("a long description", 8000),
-    whatToExpect: requiredText("what to expect", 8000),
     whoItsFor: tagsField("“who it’s for”"),
     howToAccess: tagsField("“how to access”"),
     typicalWaitTime: optionalText(120),
@@ -73,6 +71,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "name",
+    section: "Basics",
     label: "Service name",
     required: true,
     maxLength: 200,
@@ -80,6 +79,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "slug",
     name: "slug",
+    section: "Basics",
     label: "Slug",
     from: "name",
     required: true,
@@ -88,6 +88,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "select",
     name: "family",
+    section: "Basics",
     label: "Family",
     required: true,
     options: serviceFamilyEnum.enumValues.map((value) => ({
@@ -98,6 +99,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "textarea",
     name: "shortDescription",
+    section: "Summary",
     label: "Short description",
     required: true,
     rows: 3,
@@ -105,36 +107,23 @@ const FIELDS: readonly Field[] = [
     hint: "One or two sentences. Used on the services index and in the page’s meta description, so it is capped at 200 characters.",
   },
   {
-    type: "markdown",
-    name: "longDescription",
-    label: "Long description",
-    required: true,
-    rows: 12,
-    hint: "Markdown. Links are written as [text](/path) and must point at pages that exist.",
-  },
-  {
-    type: "markdown",
-    name: "whatToExpect",
-    label: "What to expect",
-    required: true,
-    rows: 8,
-    hint: "Markdown. What happens on the day, from the patient’s side.",
-  },
-  {
     type: "tags",
     name: "whoItsFor",
+    section: "Patient guidance",
     label: "Who it’s for",
     hint: "One entry per line item. Press Enter after each.",
   },
   {
     type: "tags",
     name: "howToAccess",
+    section: "Patient guidance",
     label: "How to access",
     hint: "One entry per step. Press Enter after each.",
   },
   {
     type: "text",
     name: "typicalWaitTime",
+    section: "Patient guidance",
     label: "Typical wait time",
     maxLength: 120,
     hint: "Optional. Leave empty unless the hospital has given you a figure — never estimate one.",
@@ -142,6 +131,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "multiselect",
     name: SERVICE_LOCATIONS_FIELD,
+    section: "Where it’s offered",
     label: "Offered at",
     hint: "The branches this service is available at. Shown on each branch page.",
     emptyLabel: "No branches yet — create one under Locations first.",
@@ -149,6 +139,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "multiselect",
     name: SERVICE_RELATED_FIELD,
+    section: "Where it’s offered",
     label: "Related services",
     hint: "Shown at the foot of this service’s page. This service is excluded from the list.",
     emptyLabel: "No other services to relate this one to yet.",
@@ -156,6 +147,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "image",
     name: SERVICE_IMAGE.id,
+    section: "Images",
     label: "Featured image",
     altName: SERVICE_IMAGE.alt,
     altLabel: "Featured image alt text",
@@ -164,6 +156,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "gallery",
     name: SERVICE_GALLERY_FIELD,
+    section: "Images",
     label: "Gallery",
     hint: "Optional. Extra photographs for this service. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a service gallery yet.",
   },

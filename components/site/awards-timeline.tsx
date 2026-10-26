@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 
+import { ArticleBody } from "@/components/site/article-body";
 import type { Award } from "@/lib/content";
 
 /**
@@ -46,10 +47,13 @@ export function AwardsTimeline({ awards }: { awards: Award[] }) {
               {award.awarding_body}
             </p>
 
+            {/* Markdown, through the renderer the admin preview uses (D1), so
+                emphasis and links render rather than showing as `**`. The
+                schema refuses headings here: this sits under the award's h3. */}
             {award.description ? (
-              <p className="mt-2 max-w-2xl text-base leading-relaxed text-foreground/80">
-                {award.description}
-              </p>
+              <div className="mt-2">
+                <ArticleBody source={award.description} />
+              </div>
             ) : null}
 
             {award.external_link ? (

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/admin/login-form";
+import { safeNextPath } from "@/lib/auth/safe-path";
 import { getAdminUser } from "@/lib/auth/session";
 
 /**
@@ -12,7 +13,7 @@ import { getAdminUser } from "@/lib/auth/session";
  *
  * Carries no branding beyond the wordmark and says nothing about which hospital
  * systems sit behind it. There is no "forgot password" link because there is no
- * reset flow yet; an admin resets a password with `npm run admin:passwd`.
+ * self-service reset flow; an admin sets a new one from the Staff screen.
  */
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default async function AdminLoginPage({
   const { next } = await searchParams;
 
   if (user) {
-    redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/admin");
+    redirect(safeNextPath(next) ?? "/admin");
   }
 
   return (

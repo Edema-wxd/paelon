@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PublishedBadge } from "@/components/admin/published-badge";
 import { SortableColumnHeader } from "@/components/admin/sortable-column-header";
 import type { ResourceConfig } from "@/lib/admin/resource-config";
 import {
@@ -18,7 +19,9 @@ import {
  * JavaScript.
  *
  * The draft/published state is a word, not only a colour (spec §12: colour is
- * never the sole indicator).
+ * never the sole indicator). A column sorting on `published` renders as the
+ * shared `PublishedBadge`; a config without one gets "Draft" under the title
+ * instead, so the state is never missing from the row.
  */
 export function ResourceTable<R extends { id: string; published: boolean }>({
   config,
@@ -29,12 +32,13 @@ export function ResourceTable<R extends { id: string; published: boolean }>({
   rows: readonly R[];
   query: ResourceQuery;
 }) {
+  const hasStatusColumn = config.columns.some((column) => column.sortKey === "published");
   const sortedColumn = config.columns.find(
     (column) => column.sortKey === query.sort.key,
   );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-white">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full border-collapse text-left text-sm">
         <caption className="sr-only">
           {config.plural}
@@ -64,7 +68,10 @@ export function ResourceTable<R extends { id: string; published: boolean }>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-b border-border last:border-0">
+            <tr
+              key={row.id}
+              className="border-b border-border transition-colors duration-150 last:border-0 hover:bg-secondary/40"
+            >
               {config.columns.map((column) => {
                 const text = column.value(row);
 
@@ -73,13 +80,21 @@ export function ResourceTable<R extends { id: string; published: boolean }>({
                     <td key={column.label} className="p-3">
                       <Link
                         href={`/admin/${config.name}/${row.id}`}
-                        className="font-medium text-accent underline underline-offset-4 hover:no-underline"
+                        className="font-medium text-accent underline-offset-4 hover:underline"
                       >
                         {text}
                       </Link>
-                      {row.published ? null : (
+                      {row.published || hasStatusColumn ? null : (
                         <span className="block text-xs text-muted-foreground">Draft</span>
                       )}
+                    </td>
+                  );
+                }
+
+                if (column.sortKey === "published") {
+                  return (
+                    <td key={column.label} className="p-3">
+                      <PublishedBadge published={row.published} />
                     </td>
                   );
                 }

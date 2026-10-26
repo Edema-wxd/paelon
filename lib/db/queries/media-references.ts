@@ -1,130 +1,213 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 
 /**
- * Find content rows that still point at an UploadThing file.
+ * Where each media row is used — for the library's "Used in" list and for the
+ * check that refuses a delete.
  *
  * A CDN delete is permanent and immediate, so the panel checks before it fires:
- * removing a file that a published blog post still references turns a live
- * hospital page into one with a broken image, and nothing in the system would
- * report it.
+ * removing a file that a published page still references turns a live hospital
+ * page into one with a broken image, and nothing in the system would report it.
  *
- * ## Why every match is exact
+ * ## Four kinds of reference
  *
- * It did not used to be. The image columns held a mix of UploadThing keys and
- * full CDN URLs, so this matched the key as a substring to cover both.
- * Migration 0004 moved every one of them onto `media.id`, so the question is
- * now a join: either a row points at the media row or it does not. A substring
- * match over text columns cannot be wrong in a way that is safe here — a near
- * miss means either a refused delete nobody can explain, or a permitted one
- * that breaks a live page.
+ *  1. **Image columns** — a content row's `*_id` pointing at `media.id`.
+ *  2. **Galleries** — join tables, labelled by the parent row.
+ *  3. **Body figures** — `![alt](media:<id>)` inside a blog post body.
+ *  4. **Page blocks** — `content_sections.data` (migration 0008): an Image
+ *     block's `mediaId`, a Gallery's `mediaIds`, a Text block's figures.
+ *
+ * Kinds 3 and 4 live in text and JSON, so they are matched on the id as a
+ * substring. That is exact rather than fuzzy: the id is a UUID, which cannot
+ * occur by accident inside another one or in prose. Before 2026-10-26 only
+ * kinds 1 and 2 were checked, so an image placed in a post body or a page
+ * block could be deleted out from under a live page.
+ *
+ * Soft-deleted content rows count. A soft delete is reversible, so a file one
+ * still points at is not orphaned yet — they are flagged, not skipped.
  *
  * ## Why it is a raw query
  *
- * Nine tables and eleven references, two of them through join tables. Written
- * out in Drizzle this is forty lines of near-identical `or()` calls that have to
- * be edited every time a column is added. Here the shape is visible at a glance,
- * and the key is still parameterised — never interpolated.
+ * Nine tables, two join tables, a text column and a jsonb column. Written out
+ * in Drizzle this is a page of near-identical joins; here the shape is visible
+ * at a glance, and every id is still a bound parameter — never interpolated.
  */
 
-export interface MediaReference {
-  table: string;
-  column: string;
-  rowId: string;
+export interface MediaUsage {
+  /** What kind of use, in words: "HMO logo", "Image in a post". */
+  kind: string;
+  /** Which row. Never a patient's name — see the testimonial entry. */
   label: string;
+  /** The admin editor for that row. */
+  href: string;
+  /** The content row is soft-deleted, so the use is dormant, not live. */
+  deleted: boolean;
 }
 
 /**
- * Every place an image reference can live. Adding an image column to the schema
- * means adding a line here, or the panel will happily delete files it is using.
+ * Every image column. Adding one to the schema means adding a line here, or
+ * the library will happily delete files it is using.
  *
- * Every one of them is now a `media.id`, reached by join — migration 0004
- * finished the move that 0002 started for `awards`, so the substring match the
- * text columns needed is gone and with it the chance of a near miss.
+ * `label` is a SQL expression over the content row `t`. Testimonials are
+ * labelled without the patient's name: the media library is open to
+ * contributors, who have no access to testimonials (spec §8 Roles).
  */
-const FOREIGN_KEY_COLUMNS: Array<{ table: string; column: string; label: string }> = [
-  { table: "awards", column: "logo_id", label: "name" },
-  { table: "awards", column: "certificate_image_id", label: "name" },
-  { table: "services", column: "featured_image_id", label: "name" },
-  { table: "doctors", column: "headshot_id", label: "name" },
-  { table: "locations", column: "hero_image_id", label: "name" },
-  { table: "hmos", column: "logo_id", label: "name" },
-  { table: "testimonials", column: "avatar_id", label: "patient_name" },
-  { table: "authors", column: "headshot_id", label: "name" },
-  { table: "blog_posts", column: "hero_image_id", label: "title" },
+const IMAGE_COLUMNS: Array<{
+  table: string;
+  column: string;
+  kind: string;
+  label: string;
+  admin: string;
+}> = [
+  { table: "awards", column: "logo_id", kind: "Award logo", label: "t.name", admin: "awards" },
+  { table: "awards", column: "certificate_image_id", kind: "Award certificate", label: "t.name", admin: "awards" },
+  { table: "services", column: "featured_image_id", kind: "Service image", label: "t.name", admin: "services" },
+  { table: "doctors", column: "headshot_id", kind: "Doctor headshot", label: "t.name", admin: "doctors" },
+  { table: "locations", column: "hero_image_id", kind: "Branch image", label: "t.name", admin: "locations" },
+  { table: "hmos", column: "logo_id", kind: "HMO logo", label: "t.name", admin: "hmos" },
+  { table: "testimonials", column: "avatar_id", kind: "Testimonial photo", label: "'A testimonial'", admin: "testimonials" },
+  { table: "authors", column: "headshot_id", kind: "Author headshot", label: "t.name", admin: "authors" },
+  { table: "blog_posts", column: "hero_image_id", kind: "Post hero image", label: "t.title", admin: "blog" },
 ];
 
-/**
- * Galleries, which are join tables rather than columns on the content row.
- *
- * `label` names the column on the *parent* table, reached through `parentKey`,
- * so a blocked delete can still say which branch or service is using the file
- * rather than printing a join-row id at the editor.
- */
-const JOIN_TABLES: Array<{
+/** Galleries: join tables, labelled by the parent row. */
+const GALLERIES: Array<{
   table: string;
   parent: string;
   parentKey: string;
-  label: string;
+  kind: string;
+  admin: string;
 }> = [
-  {
-    table: "service_gallery_images",
-    parent: "services",
-    parentKey: "service_id",
-    label: "name",
-  },
-  {
-    table: "location_gallery_images",
-    parent: "locations",
-    parentKey: "location_id",
-    label: "name",
-  },
+  { table: "service_gallery_images", parent: "services", parentKey: "service_id", kind: "Service gallery", admin: "services" },
+  { table: "location_gallery_images", parent: "locations", parentKey: "location_id", kind: "Branch gallery", admin: "locations" },
 ];
 
+interface UsageRow {
+  media_id: string;
+  row_id: string | null;
+  label: string | null;
+  deleted: boolean;
+  [key: string]: unknown;
+}
+
+function idList(ids: readonly string[]): SQL {
+  return sql.join(
+    ids.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+}
+
 /**
- * Rows referencing `key`. Empty means the file is safe to delete.
+ * Every use of each media id, keyed by id. An id with no uses is absent.
  *
- * Soft-deleted rows are included deliberately: a soft delete is reversible, so
- * a file one still points at is not orphaned yet.
+ * Batched: one query per reference kind for the whole page of the library,
+ * not one per file.
  */
-export async function findMediaReferences(
-  key: string,
-): Promise<MediaReference[]> {
-  const found: MediaReference[] = [];
+export async function findMediaUsage(
+  ids: readonly string[],
+): Promise<Map<string, MediaUsage[]>> {
+  const found = new Map<string, MediaUsage[]>();
+  const wanted = [...new Set(ids)];
+  if (wanted.length === 0) return found;
 
-  // An exact join on the key: every one of these columns holds a `media.id`.
-  for (const { table, column, label } of FOREIGN_KEY_COLUMNS) {
-    const rows = await db().execute<{ id: string; label: string | null }>(sql`
-      select t.id, t.${sql.raw(label)}::text as label
-      from ${sql.raw(table)} t
-      join media m on m.id = t.${sql.raw(column)}
-      where m.key = ${key}
-    `);
+  const list = idList(wanted);
+  const add = (row: UsageRow, usage: Omit<MediaUsage, "deleted">) => {
+    const entry = { ...usage, deleted: row.deleted };
+    const existing = found.get(row.media_id);
+    // Two blocks on one page, or a hero that is also a figure in the same
+    // post body, are listed once per kind of use.
+    if (existing?.some((use) => use.kind === entry.kind && use.href === entry.href)) return;
+    if (existing) existing.push(entry);
+    else found.set(row.media_id, [entry]);
+  };
 
-    for (const row of rows.rows) {
-      found.push({ table, column, rowId: row.id, label: row.label ?? "(untitled)" });
-    }
-  }
+  // Independent reads, so they run together: thirteen round trips one after
+  // another made the library noticeably slow to refresh after an upload.
+  const [images, galleries, figures, blocks] = await Promise.all([
+    Promise.all(
+      IMAGE_COLUMNS.map((image) =>
+        db().execute<UsageRow>(sql`
+          select t.${sql.raw(image.column)} as media_id, t.id as row_id,
+                 (${sql.raw(image.label)})::text as label,
+                 t.deleted_at is not null as deleted
+          from ${sql.raw(image.table)} t
+          where t.${sql.raw(image.column)} in (${list})
+        `),
+      ),
+    ),
+    Promise.all(
+      GALLERIES.map((gallery) =>
+        db().execute<UsageRow>(sql`
+          select g.media_id, p.id as row_id, p.name::text as label,
+                 p.deleted_at is not null as deleted
+          from ${sql.raw(gallery.table)} g
+          join ${sql.raw(gallery.parent)} p on p.id = g.${sql.raw(gallery.parentKey)}
+          where g.media_id in (${list})
+        `),
+      ),
+    ),
+    db().execute<UsageRow>(sql`
+      select m.id as media_id, p.id as row_id, p.title as label,
+             p.deleted_at is not null as deleted
+      from media m
+      join blog_posts p on strpos(p.body, 'media:' || m.id::text) > 0
+      where m.id in (${list})
+    `),
+    // A page block belongs to a service, or to the About page when it has
+    // none. Blocks are hard-deleted with their page's layout, so none is
+    // dormant; a soft-deleted service still marks its blocks as such.
+    db().execute<UsageRow>(sql`
+      select m.id as media_id, s.service_id as row_id,
+             coalesce(sv.name, 'About page') as label,
+             coalesce(sv.deleted_at is not null, false) as deleted
+      from media m
+      join content_sections s on strpos(s.data::text, m.id::text) > 0
+      left join services sv on sv.id = s.service_id
+      where m.id in (${list})
+    `),
+  ]);
 
-  for (const { table, parent, parentKey, label } of JOIN_TABLES) {
-    const rows = await db().execute<{ id: string; label: string | null }>(sql`
-      select p.id, p.${sql.raw(label)}::text as label
-      from ${sql.raw(table)} g
-      join media m on m.id = g.media_id
-      join ${sql.raw(parent)} p on p.id = g.${sql.raw(parentKey)}
-      where m.key = ${key}
-    `);
-
-    for (const row of rows.rows) {
-      found.push({
-        table,
-        column: "media_id",
-        rowId: row.id,
+  IMAGE_COLUMNS.forEach((image, index) => {
+    for (const row of images[index]?.rows ?? []) {
+      add(row, {
+        kind: image.kind,
         label: row.label ?? "(untitled)",
+        href: `/admin/${image.admin}/${row.row_id}`,
       });
     }
+  });
+
+  GALLERIES.forEach((gallery, index) => {
+    for (const row of galleries[index]?.rows ?? []) {
+      add(row, {
+        kind: gallery.kind,
+        label: row.label ?? "(untitled)",
+        href: `/admin/${gallery.admin}/${row.row_id}`,
+      });
+    }
+  });
+
+  for (const row of figures.rows) {
+    add(row, {
+      kind: "Image in a post",
+      label: row.label ?? "(untitled)",
+      href: `/admin/blog/${row.row_id}`,
+    });
+  }
+
+  for (const row of blocks.rows) {
+    add(row, {
+      kind: "Page block",
+      label: row.label ?? "(untitled)",
+      href: row.row_id ? `/admin/services/${row.row_id}` : "/admin/about",
+    });
   }
 
   return found;
+}
+
+/** Uses of one media id. Empty means the file is safe to delete. */
+export async function findMediaReferences(id: string): Promise<MediaUsage[]> {
+  return (await findMediaUsage([id])).get(id) ?? [];
 }

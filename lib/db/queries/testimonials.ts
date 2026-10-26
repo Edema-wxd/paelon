@@ -42,9 +42,12 @@ function selectFeatured(
     .limit(limit);
 }
 
+/** How many featured testimonials the homepage shows (spec §6). */
+export const HOMEPAGE_TESTIMONIAL_LIMIT = 2;
+
 /** Featured, consented testimonials, capped at `limit`. */
 export async function getFeaturedTestimonials(
-  limit = 2,
+  limit = HOMEPAGE_TESTIMONIAL_LIMIT,
   options: ReadOptions = {},
 ): Promise<Testimonial[]> {
   if (options.draft) return selectFeatured(limit, options);
@@ -55,6 +58,18 @@ export async function getFeaturedTestimonials(
     [CACHE_TAGS.testimonials],
   );
   return read(limit);
+}
+
+/**
+ * Ids of the testimonials the homepage would show right now, in order — the
+ * same rule as `getFeaturedTestimonials`, uncached.
+ *
+ * For the admin editor's "Where it appears" panel, which must say what is true
+ * after the last save, not what the public cache held an hour ago.
+ */
+export async function getHomepageTestimonialIds(): Promise<string[]> {
+  const rows = await selectFeatured(HOMEPAGE_TESTIMONIAL_LIMIT, {});
+  return rows.map((row) => row.id);
 }
 
 /** Consented testimonials attached to one service. */

@@ -1,3 +1,5 @@
+import { Plus } from "lucide-react";
+import { inSentence } from "@/lib/admin/resource-config";
 import Link from "next/link";
 
 import { AdminPaginationNav } from "@/components/admin/admin-pagination";
@@ -86,7 +88,7 @@ export async function ResourceListScreen<R extends ContentRow>({
     <div className="mx-auto max-w-6xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">{config.plural}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary sm:text-3xl">{config.plural}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {config.description}
           </p>
@@ -95,7 +97,8 @@ export async function ResourceListScreen<R extends ContentRow>({
         {canCreate ? (
           <Button asChild>
             <Link href={`/admin/${config.name}/new`}>
-              New {config.singular.toLowerCase()}
+              <Plus aria-hidden />
+              New {inSentence(config.singular)}
             </Link>
           </Button>
         ) : null}
@@ -103,7 +106,7 @@ export async function ResourceListScreen<R extends ContentRow>({
 
       <section aria-labelledby="filters-heading" className="mt-8">
         <h2 id="filters-heading" className="sr-only">
-          Filter {config.plural.toLowerCase()}
+          Filter {inSentence(config.plural)}
         </h2>
         <ResourceFilters config={config} query={query} showMine={ownRowsOnly} />
       </section>
@@ -111,10 +114,11 @@ export async function ResourceListScreen<R extends ContentRow>({
       <section aria-labelledby="list-heading" className="mt-8">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="list-heading" className="text-lg font-medium text-primary">
-            {list.total}{" "}
-            {list.total === 1
-              ? config.singular.toLowerCase()
-              : config.plural.toLowerCase()}
+            {/* One text node: as three, the accessibility tree drops the
+                whitespace-only middle one and the heading reads "1post". */}
+            {`${list.total} ${
+              list.total === 1 ? inSentence(config.singular) : inSentence(config.plural)
+            }`}
           </h2>
           {list.total > 0 ? (
             <p className="text-sm text-muted-foreground">

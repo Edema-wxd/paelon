@@ -5,6 +5,7 @@ import { LegalDocumentView } from "@/components/site/legal-document";
 import { getLegalDocument } from "@/lib/legal";
 import { clientEnv } from "@/lib/env";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -68,9 +69,8 @@ export default async function PrivacyPage() {
     <>
       <script
         type="application/ld+json"
-        // Serialised from a literal and validated content, so there is no
-        // untrusted input here.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
       <LegalDocumentView document={document} />
     </>
