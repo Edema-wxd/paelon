@@ -9,6 +9,7 @@ import { closePool, dbTx } from "@/lib/db/client";
 import {
   aboutContent,
   authors,
+  contentSections,
   awards,
   blogPostRelated,
   blogPosts,
@@ -113,6 +114,53 @@ function orTodo(value: string | null): string {
   return value ?? "TODO(seed)";
 }
 
+/** A seed field that holds real prose, rather than nothing or a `TODO(seed)`. */
+function realProse(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim() !== "" && !/^\s*TODO\(seed\)\s*$/i.test(value);
+}
+
+/**
+ * Page prose goes into `content_sections` Text blocks, not the legacy columns.
+ *
+ * Since migration 0008 the blocks are what service pages and the About page
+ * render; the old prose columns were a fallback for a page with no blocks, and
+ * were cleared on 2026-10-26 once Francis accepted the converted pages. The
+ * seed used to keep writing them, so every run would have put the old text
+ * back. It now writes blocks in the shapes 0008 used — and only for a page that
+ * has none, because a page with blocks is one an editor has arranged, which a
+ * re-seed must never overwrite.
+ */
+type TextBlock = { heading?: string; body: string };
+
+async function seedTextBlocksIfEmpty(
+  db: ReturnType<typeof dbTx>,
+  page: "service" | "about",
+  serviceId: string | null,
+  blocks: readonly TextBlock[],
+): Promise<void> {
+  if (blocks.length === 0) return;
+  const existing = await db
+    .select({ id: contentSections.id })
+    .from(contentSections)
+    .where(
+      serviceId === null
+        ? eq(contentSections.page, page)
+        : eq(contentSections.serviceId, serviceId),
+    )
+    .limit(1);
+  if (existing.length > 0) return;
+
+  await db.insert(contentSections).values(
+    blocks.map((block, order) => ({
+      page,
+      serviceId,
+      kind: "text" as const,
+      order,
+      data: block.heading ? { heading: block.heading, body: block.body } : { body: block.body },
+    })),
+  );
+}
+
 type SlugMap = Map<string, string>;
 
 async function main(): Promise<void> {
@@ -185,22 +233,31 @@ async function main(): Promise<void> {
         order: s.order,
         family: s.family,
         shortDescription: orTodo(s.short_description),
-        longDescription: orTodo(s.long_description),
+        // Legacy columns, written nowhere since 2026-10-26: the prose below
+        // becomes Text blocks instead (`seedTextBlocksIfEmpty`).
+        longDescription: null,
         whoItsFor: s.who_its_for,
         howToAccess: s.how_to_access,
         typicalWaitTime: s.typical_wait_time,
-        whatToExpect: orTodo(s.what_to_expect),
+        whatToExpect: null,
       })
       .onConflictDoUpdate({
         target: services.slug,
         set: conflictSet(services, [
           "name", "published", "order", "family", "shortDescription",
-          "longDescription", "whoItsFor", "howToAccess", "typicalWaitTime",
-          "whatToExpect",
+          "whoItsFor", "howToAccess", "typicalWaitTime",
         ]),
       })
       .returning({ id: services.id });
-    if (row) serviceIds.set(s.slug, row.id);
+    if (row) {
+      serviceIds.set(s.slug, row.id);
+      const blocks: TextBlock[] = [];
+      if (realProse(s.long_description)) blocks.push({ body: s.long_description });
+      if (realProse(s.what_to_expect)) {
+        blocks.push({ heading: "What to expect", body: s.what_to_expect });
+      }
+      await seedTextBlocksIfEmpty(db, "service", row.id, blocks);
+    }
   }
 
   const about = readAboutSeed();
@@ -218,20 +275,27 @@ async function main(): Promise<void> {
         published: about.published,
         placeholder: about.placeholder,
         intro: about.intro,
-        foundingStory: about.founding_story,
-        mission: about.mission,
-        vision: about.vision,
-        valueProposition: about.value_proposition,
         motto: about.motto,
-        esg: about.esg,
       })
       .onConflictDoUpdate({
         target: aboutContent.id,
-        set: conflictSet(aboutContent, [
-          "published", "placeholder", "intro", "foundingStory", "mission",
-          "vision", "valueProposition", "motto", "esg",
-        ]),
+        set: conflictSet(aboutContent, ["published", "placeholder", "intro", "motto"]),
       });
+
+    // The five prose sections, under the headings 0008 gave them.
+    const prose: Array<[string, string | null | undefined]> = [
+      ["Our story", about.founding_story],
+      ["Our mission", about.mission],
+      ["Our vision", about.vision],
+      ["What we offer", about.value_proposition],
+      ["Sustainability and certification", about.esg],
+    ];
+    await seedTextBlocksIfEmpty(
+      db,
+      "about",
+      null,
+      prose.flatMap(([heading, body]) => (realProse(body) ? [{ heading, body }] : [])),
+    );
   }
 
   for (const s of doctorSeeds) {

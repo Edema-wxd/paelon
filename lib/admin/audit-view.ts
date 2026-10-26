@@ -179,6 +179,7 @@ const EVENT_VERBS: Record<string, string> = {
   alt_updated: "alt text edited",
   logo_attached: "logo attached",
   unpublished: "unpublished",
+  legacy_prose_cleared: "old page text cleared",
 };
 
 const SIGN_IN: Record<string, string> = {
