@@ -18,6 +18,7 @@ import {
 } from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -135,8 +136,8 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        // JSON.stringify output of a literal we construct — no user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 py-16 sm:px-6 lg:px-25 lg:py-24">

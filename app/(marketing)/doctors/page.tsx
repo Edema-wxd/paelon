@@ -14,6 +14,7 @@ import {
 import { clientEnv } from "@/lib/env";
 import { toPlainText } from "@/lib/markdown";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -108,8 +109,8 @@ export default async function DoctorsPage() {
       {doctors.length > 0 ? (
         <script
           type="application/ld+json"
-          // Built above from seeded values; nothing here is user input.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
         />
       ) : null}
 

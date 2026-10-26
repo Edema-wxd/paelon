@@ -16,6 +16,7 @@ import {
   TWITTER_IMAGES,
 } from "@/lib/seo";
 import type { AboutContent } from "@/lib/validation/about";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -110,8 +111,8 @@ export default async function AboutPage() {
     <>
       <script
         type="application/ld+json"
-        // Serialised from seeded values; no untrusted input here.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 pt-8 sm:px-6 lg:px-25">
