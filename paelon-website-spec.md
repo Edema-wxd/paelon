@@ -333,11 +333,11 @@ name              string
 slug              string, unique
 family            enum: family_healthcare | women_and_children | specialist | diagnostics
 short_description string (up to 200 chars, for cards)
-long_description  text (150 to 250 words)
+long_description  text, nullable — fallback only since migration 0008; the page renders content_sections
 who_its_for       string[]
 how_to_access     string[]
 typical_wait_time string, nullable
-what_to_expect    text
+what_to_expect    text, nullable — fallback only since migration 0008
 featured_image_id uuid, nullable, references media
 gallery_images    → service_gallery_images (join table, ordered; references media)
 related_service_ids uuid[]
@@ -448,10 +448,24 @@ external_link     string, nullable
 #### `faqs`
 ```
 question          string
-answer            text
+answer            text (Markdown, no headings — it sits under its question)
 category          enum: general | booking | services | insurance | emergencies
 order             integer
+service_ids       → faq_services (join table, migration 0007)
 ```
+
+Where an FAQ shows (Francis, 2026-10-26): a service page shows **only** the FAQs assigned to it in `faq_services` — an unassigned FAQ appears on no service page, and a service with none assigned renders no FAQ section. The homepage and every branch page show the `general` category. Other categories have no surface of their own; they appear only where assigned.
+
+#### `content_sections`  (migration 0008)
+```
+page              enum: service | about
+service_id        uuid, nullable, references services (cascade); required iff page = service (CHECK)
+kind              enum: text | image | gallery | cta
+order             integer
+data              jsonb, validated per kind by lib/validation/sections.ts
+```
+
+Rearrangeable blocks on service pages and the About page (Francis, 2026-10-26). `text` is Markdown with figures and headings and an optional section heading; `image` is one `media` row with a caption; `gallery` is a heading plus ordered `media` ids; `cta` is a heading, optional text, a button label and a link limited to site paths, `tel:`, `mailto:` and `https:`. A page's sections are saved together, atomically. Migration 0008 copied every service's `long_description` and `what_to_expect`, and the About story, mission, vision, value proposition and ESG prose, into `text` sections under the headings the pages used; those source columns are kept as the fallback for a page with no sections until Francis confirms the conversion.
 
 #### `bookings`  (Phase 1 write, Phase 2 workflow)
 ```
@@ -557,6 +571,7 @@ Seventeen templates. Each has an owning group per the timeline in section 1. Do 
 - Awards and accreditations as a scrollable timeline, from the `awards` table.
 - Leadership team with photos and bios, from the `doctors` table, each card linking to `/doctors/[slug]`.
 - ESG / IFC EDGE certification block.
+- Since migration 0008 the story, mission, vision, value proposition and ESG are `content_sections` blocks, reordered in Page layout on `/admin/about`; the intro (the lead under the `h1`) and the motto remain fields of `about_content`. Publishing requires an intro and at least one block.
 - The prose on this page is a singleton with no rows in it, held as the `about_content` row and written in `/admin/about` (decision D5, 2026-10-22; migration 0005). It was `content/about.json` until then, on the grounds that a one-row table plus a screen to edit it buys nothing — which stopped holding when Paelon needed to write the founding story without a deploy. Legal pages did not follow; C3 stands. The row ships with every field null, each section renders only once its copy exists, and `published: false` serves the page `noindex` until it does.
 
 #### Services index `/services`
@@ -565,6 +580,7 @@ Seventeen templates. Each has an owning group per the timeline in section 1. Do 
 - Filter by branch also available.
 
 #### Service detail `/services/[slug]`
+- The body is the service's `content_sections` blocks, in the editor's order, under the name and booking buttons (migration 0008); who it's for, how to access, related services and the FAQ section stay fixed after them.
 - Overview in plain language.
 - Who it's for.
 - How to access (private, corporate, HMO).
@@ -845,13 +861,16 @@ Interface features:
 ### Content editing
 
 - Long text (bio, description, blog body) is Markdown. It is edited in a textarea with a toolbar that inserts syntax, and a live preview rendered by `lib/markdown.ts`, the same renderer the marketing site uses. No rich-text editor library. Revisit Tiptap only if editors struggle with Markdown after a trial.
+- Toolbar commands live in `lib/admin/markdown-commands.ts` and write only syntax the parser renders (italic is `*x*`; headings, lists and quotes are separated into their own blocks). Text that renders under a template heading of its own is given a `headingOffset` so an editor's `##` becomes an `h3` there, in the preview and on the page alike. Fields that sit under a heading and must not hold one (FAQ answers, award descriptions) set `headings: false` and refuse headings in the schema.
+- Images between paragraphs (figures) are available in blog bodies, Text blocks and the legacy service/About fields. Publishing refuses an image placed inside a sentence and a skipped heading level (`markdownBodyRules`).
+- Service and About pages are built from blocks in a Page layout editor below the page's form: add, remove, move up / move down, one atomic save. Drag and drop is deliberately absent — buttons work by keyboard and screen reader, and need no dependency.
 - Blog bodies are Markdown, not MDX. No MDX compiler: running code from a CMS field is a risk with no benefit here.
 - Image uploads via UploadThing (§10). Each upload is a row in a `media` table (`key`, `url`, `alt`, `uploaded_by`, `created_at`), and content rows reference it by foreign key. Alt text lives on the media row. Headshots and logos may derive alt text from their row (doctor name, award name) instead. In the media grid, thumbnails use `alt=""` because the filename is shown next to them.
 - Slug auto-generated from title, editable, uniqueness enforced.
 - Draft / published toggle.
 - "Preview" button that opens the marketing site in Next's `draftMode()`, showing the unpublished state. The route that enables draft mode (`/api/preview`) checks the session and `read` on the resource before anything else, and only redirects to a validated same-origin path — it sets a cookie and then sends the browser somewhere, so an unvalidated target would be an open redirect wearing the hospital's domain. In draft mode, `lib/content.ts` passes `{ draft: true }` down to the repositories, which skip `cachedRead` and the published filter (§5: never cache authenticated queries). Soft-deleted rows stay hidden, and so does a testimonial without recorded consent: draft mode lifts `published` and nothing else.
 - Every marketing page in draft mode carries a "Preview: not published" banner above the header, with a link to `/api/preview/exit` that clears the cookie and returns to the same page. Draft responses are `noindex` and `no-store`, set in `middleware.ts` from the presence of the draft cookie rather than per page — a draft renders on the page's real URL, through `generateMetadata` that says `index`.
-- A type with no public page has no Preview button. `services`, `locations` and `doctors` preview on their own detail routes; `hmos` preview on `/` (the homepage HMO list — `/hmo-check` is unbuilt) and `awards` on `/about`, where each renders. `faqs` and `testimonials` appear across several pages rather than on one, so they have no button and the edit screen says which page to preview instead. Targets live in `lib/preview/target.ts`, never inline in a template.
+- A type with no public page has no Preview button. `services`, `locations` and `doctors` preview on their own detail routes; `hmos` preview on `/` (the homepage HMO list — `/hmo-check` is unbuilt) and `awards` on `/about`, where each renders. `faqs` and `testimonials` appear across several pages rather than on one, so they have no button; their edit screens carry a "Where it appears" panel computed from the saved row instead (as do HMOs and awards). Targets live in `lib/preview/target.ts`, never inline in a template.
 - Legal pages are not editable in the panel. They stay as JSON in `content/legal/` and change by PR after counsel review, with `CONSENT_TEXT_VERSION` bumped in the same deploy. Git history is the record of which wording each consent version refers to.
 
 ---
@@ -934,6 +953,8 @@ Implement JSON-LD for:
 - `FAQPage` on any page with FAQ content.
 - `Article` on each blog post.
 - `BreadcrumbList` on all detail pages.
+
+Every JSON-LD block is serialised with `serializeJsonLd` (`lib/json-ld.ts`), never a bare `JSON.stringify`: these blocks carry admin-edited content, and an unescaped `</script>` in a title or FAQ answer would end the element and inject markup. FAQ answers go into `FAQPage` as plain text (`toPlainText`), not Markdown.
 
 ### Sitemaps and robots
 
