@@ -389,7 +389,9 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
         .map((post) => `“${post.title}”`)
         .join(", ");
       const more = posts.length > 3 ? ` and ${posts.length - 3} more` : "";
-      return `This author is on ${posts.length === 1 ? "1 post" : `${posts.length} posts`} (${named}${more}). Give ${posts.length === 1 ? "it" : "each"} another author, or delete ${posts.length === 1 ? "it" : "them"}, first.`;
+      return posts.length === 1
+        ? `This author can’t be deleted yet: they wrote ${named}. Open that post and choose a different author, or delete the post, then try again.`
+        : `This author can’t be deleted yet: they wrote ${posts.length} posts (${named}${more}). Give each of those posts a different author, or delete them, then try again.`;
     },
   },
 
