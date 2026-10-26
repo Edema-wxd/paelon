@@ -214,31 +214,53 @@ export async function recordUpload(input: {
   width?: number | null;
   height?: number | null;
 }): Promise<Media> {
-  const rows = await db()
-    .insert(media)
-    .values({
-      key: input.key,
-      url: input.url,
-      // Not written yet — distinct from "" (decorative) since migration 0009.
-      alt: null,
-      filename: input.filename,
-      uploadedBy: input.uploadedBy,
-      width: input.width ?? null,
-      height: input.height ?? null,
-    })
-    .onConflictDoUpdate({
-      target: media.key,
-      set: {
+  const insert = (alt: string | null) =>
+    db()
+      .insert(media)
+      .values({
+        key: input.key,
         url: input.url,
-        deletedAt: null,
+        alt,
+        filename: input.filename,
+        uploadedBy: input.uploadedBy,
         width: input.width ?? null,
         height: input.height ?? null,
-      },
-    })
-    .returning();
+      })
+      .onConflictDoUpdate({
+        target: media.key,
+        set: {
+          url: input.url,
+          deletedAt: null,
+          width: input.width ?? null,
+          height: input.height ?? null,
+        },
+      })
+      .returning();
+
+  let rows: Media[];
+  try {
+    // Not written yet — distinct from "" (decorative) since migration 0009.
+    rows = await insert(null);
+  } catch (error) {
+    // TODO(0009): remove once `drizzle/0009_media_alt_nullable.sql` is applied
+    // everywhere. Before it, `media.alt` is still NOT NULL and refuses null;
+    // falling back to "" keeps uploads working, exactly as they did before
+    // this change, instead of failing every one of them.
+    if (!isNotNullViolation(error)) throw error;
+    rows = await insert("");
+  }
 
   // `returning()` on an upsert always yields the row.
   return rows[0] as Media;
+}
+
+/** Postgres `not_null_violation`, however the driver or Drizzle wraps it. */
+function isNotNullViolation(error: unknown): boolean {
+  for (let current: unknown = error, depth = 0; current && depth < 4; depth++) {
+    if (typeof current === "object" && (current as { code?: unknown }).code === "23502") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
 /**
