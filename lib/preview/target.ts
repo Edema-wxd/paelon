@@ -47,8 +47,8 @@ function slugPath(base: string, row: PreviewRow): string | null {
  *  - `awards` render as the timeline on `/about`, which is therefore where one
  *    is previewed.
  *  - `faqs` and `testimonials` are sections of other pages too, but of several
- *    of them: an FAQ shows on the homepage and on every service and location
- *    page. A testimonial shows only on the homepage today (no service page
+ *    of them: a General FAQ on the homepage and every branch page, any other on
+ *    the service pages it is assigned to. A testimonial shows only on the homepage today (no service page
  *    lists them), but a preview could not show an unconsented quote anyway —
  *    draft mode keeps the consent check — so it has no button either.
  */
@@ -84,7 +84,7 @@ const PREVIEW_TARGETS: Partial<Record<ResourceName, PreviewTarget>> = {
  * at all, does.
  */
 const PREVIEW_UNAVAILABLE: Partial<Record<ResourceName, string>> = {
-  faqs: "FAQs show on the homepage and on every service and branch page. Preview one of those.",
+  faqs: "General FAQs show on the homepage and branch pages, others on the service pages they are assigned to — “Where it appears” lists them.",
   testimonials:
     "A quote shows only on the homepage, and only once consent is recorded — preview cannot show it before that.",
 };

@@ -536,6 +536,27 @@ export const serviceRelated = pgTable(
   (t) => [primaryKey({ columns: [t.serviceId, t.relatedId] })],
 );
 
+/**
+ * FAQs assigned to particular services (migration 0007). A service page shows
+ * only the FAQs assigned to it — an unassigned FAQ appears on no service page.
+ * Indexed on `service_id` for that lookup; the primary key leads with `faq_id`.
+ */
+export const faqServices = pgTable(
+  "faq_services",
+  {
+    faqId: uuid("faq_id")
+      .notNull()
+      .references(() => faqs.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.faqId, t.serviceId] }),
+    index("faq_services_service_id_idx").on(t.serviceId),
+  ],
+);
+
 export const doctorLocations = pgTable(
   "doctor_locations",
   {
@@ -1046,8 +1067,18 @@ export const rateLimitHits = pgTable(
 export const servicesRelations = relations(services, ({ many }) => ({
   locations: many(serviceLocations),
   related: many(serviceRelated, { relationName: "service_related_from" }),
+  faqs: many(faqServices),
   testimonials: many(testimonials),
   bookings: many(bookings),
+}));
+
+export const faqsRelations = relations(faqs, ({ many }) => ({
+  services: many(faqServices),
+}));
+
+export const faqServicesRelations = relations(faqServices, ({ one }) => ({
+  faq: one(faqs, { fields: [faqServices.faqId], references: [faqs.id] }),
+  service: one(services, { fields: [faqServices.serviceId], references: [services.id] }),
 }));
 
 export const doctorsRelations = relations(doctors, ({ many }) => ({

@@ -9,7 +9,7 @@ import { PendingNote } from "@/components/site/pending-note";
 import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 import {
-  getFaqs,
+  getServiceFaqs,
   getPrimaryLocation,
   getRelatedServices,
   getServiceBySlug,
@@ -20,6 +20,7 @@ import {
 import { clientEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
 
@@ -108,7 +109,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   const [related, faqs, location, gallery] = await Promise.all([
     getRelatedServices(service.id),
-    getFaqs("services"),
+    getServiceFaqs(service.id),
     getPrimaryLocation(),
     getServiceGallery(service.id),
   ]);
@@ -147,8 +148,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        // Built above from seeded values; nothing here is user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="mx-auto max-w-360 px-4 pt-8 sm:px-6 lg:px-25">
@@ -321,7 +322,8 @@ export default async function ServiceDetailPage({ params }: PageProps) {
         />
       </article>
 
-      {/* Renders nothing while the `faqs` table is empty, which it is. */}
+      {/* Only the FAQs assigned to this service in /admin/faqs. Renders
+          nothing when none are. */}
       <FaqSection faqs={faqs} headingId="service-faq-heading" />
     </>
   );

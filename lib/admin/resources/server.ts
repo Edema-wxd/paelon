@@ -11,6 +11,7 @@ import {
   doctorLocations,
   doctors,
   faqs,
+  faqServices,
   hmoLocations,
   hmos,
   locationGalleryImages,
@@ -28,6 +29,7 @@ import { AUTHOR_DOCTOR_FIELD, AUTHOR_HEADSHOT } from "./authors";
 import { AWARD_CERTIFICATE, AWARD_LOGO } from "./awards";
 import { BLOG_HERO, BLOG_RELATED_FIELD } from "./blog-posts";
 import { DOCTOR_HEADSHOT, DOCTOR_LOCATIONS_FIELD } from "./doctors";
+import { FAQ_SERVICES_FIELD } from "./faqs";
 import { HMO_LOCATIONS_FIELD, HMO_LOGO } from "./hmos";
 import {
   HOURS_CONFIRMED_FIELD,
@@ -419,6 +421,20 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     permission: "faqs",
     tags: [CACHE_TAGS.faqs],
     images: [],
+    relations: [
+      {
+        field: FAQ_SERVICES_FIELD,
+        columns: {
+          table: faqServices,
+          ownColumn: faqServices.faqId,
+          otherColumn: faqServices.serviceId,
+          ownKey: "faqId",
+          otherKey: "serviceId",
+          otherTable: services as unknown as ContentTable,
+        },
+        optionsLabel: services.name,
+      },
+    ],
   },
 
   awards: {

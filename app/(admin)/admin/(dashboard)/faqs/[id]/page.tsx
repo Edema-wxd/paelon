@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FaqUsagePanel } from "@/components/admin/faq-usage-panel";
 import { ResourceEditorScreen } from "@/components/admin/resource-editor-screen";
 import { faqResource } from "@/lib/admin/resources";
 
@@ -14,7 +15,7 @@ import { faqResource } from "@/lib/admin/resources";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Edit faq",
+  title: "Edit FAQ",
   robots: { index: false, follow: false, nocache: true },
 };
 
@@ -24,5 +25,12 @@ export default async function EditFaqsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ResourceEditorScreen resource="faqs" config={faqResource} id={id} />;
+  return (
+    <ResourceEditorScreen
+      resource="faqs"
+      config={faqResource}
+      id={id}
+      renderAside={(faq) => <FaqUsagePanel faq={faq} />}
+    />
+  );
 }

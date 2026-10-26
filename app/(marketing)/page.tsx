@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AboutPreview } from "@/components/site/about-preview";
+import { FaqSection } from "@/components/site/faq-section";
 import { ForPatriciaBlock } from "@/components/site/for-patricia-block";
 import { FooterCtaPair } from "@/components/site/footer-cta-pair";
 import { HeroSection } from "@/components/site/hero-section";
@@ -11,12 +12,13 @@ import { RecentBlogCard } from "@/components/site/recent-blog-card";
 import { ServicesGrid } from "@/components/site/services-grid";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { TrustRibbon } from "@/components/site/trust-ribbon";
-import { getPrimaryLocation } from "@/lib/content";
+import { getFaqs, getPrimaryLocation } from "@/lib/content";
 import {
   medicalOrganizationLd,
   OG_IMAGES,
   TWITTER_IMAGES,
 } from "@/lib/seo";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -44,7 +46,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const location = await getPrimaryLocation();
+  const [location, faqs] = await Promise.all([getPrimaryLocation(), getFaqs("general")]);
 
   // `MedicalOrganization` per spec §11, shared with /about so the two cannot
   // drift. See `medicalOrganizationLd` for what is deliberately omitted.
@@ -54,8 +56,8 @@ export default async function HomePage() {
     <>
       <script
         type="application/ld+json"
-        // Serialised from seeded values; no untrusted input here.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
+        // serializeJsonLd escapes `<` and friends: values here include admin-edited content.
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationLd) }}
       />
 
       {/*
@@ -88,6 +90,9 @@ export default async function HomePage() {
       <AboutPreview />
       <HmoAccessSection />
       <TestimonialsSection />
+      {/* "General" FAQs (CLAUDE.md baseline item 3). Renders nothing when
+          none are published. */}
+      <FaqSection faqs={faqs} headingId="home-faq-heading" />
       <RecentBlogCard />
       <NewsletterSignup />
       {/* Opens when the visitor scrolls to here — the end of the page. */}

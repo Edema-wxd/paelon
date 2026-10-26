@@ -27,7 +27,7 @@ import {
   getLocationBySlug as getLocationRow,
   getPublishedLocations,
 } from "@/lib/db/queries/locations";
-import { getFaqsByCategory as getFaqRows } from "@/lib/db/queries/faqs";
+import { getFaqsByCategory as getFaqRows, getFaqsForService } from "@/lib/db/queries/faqs";
 import {
   getMediaByIds,
   listLocationGallery,
@@ -589,15 +589,20 @@ export async function getAwards(): Promise<Award[]> {
 }
 
 /**
- * Published FAQs in one category.
- *
- * FAQs are categorised, not attached to individual services, so every service
- * page shows the same `services` set. That is what the schema supports; a
- * per-service FAQ is a Phase 2 relation, not something to fake by filtering on
- * question text.
+ * Published FAQs in one category. The homepage and branch pages show
+ * `general`; service pages use `getServiceFaqs` instead.
  */
 export async function getFaqs(category: Faq["category"]): Promise<Faq[]> {
   return (await getFaqRows(category, await readOptions())).map(toFaq);
+}
+
+/**
+ * Published FAQs assigned to this service in `/admin/faqs` — only those. A
+ * service with none assigned gets an empty list, and its page renders no FAQ
+ * section rather than borrowing another page's questions.
+ */
+export async function getServiceFaqs(serviceId: string): Promise<Faq[]> {
+  return (await getFaqsForService(serviceId, await readOptions())).map(toFaq);
 }
 
 export type { SiteSettings };

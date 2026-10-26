@@ -8,7 +8,7 @@ import { faqResource } from "@/lib/admin/resources";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "New faq",
+  title: "New FAQ",
   robots: { index: false, follow: false, nocache: true },
 };
 

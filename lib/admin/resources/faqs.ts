@@ -3,7 +3,14 @@ import { z } from "zod";
 import type { Column, Field, ResourceConfig } from "@/lib/admin/resource-config";
 import { faqCategoryEnum, type Faq } from "@/lib/db/schema";
 
-import { checkboxField, orderField, requiredText, slugField } from "./fields";
+import {
+  checkboxField,
+  idListField,
+  markdownWithoutHeadings,
+  orderField,
+  requiredText,
+  slugField,
+} from "./fields";
 
 /**
  * `/admin/faqs` (spec §8, content type `faqs` in §5).
@@ -19,6 +26,9 @@ import { checkboxField, orderField, requiredText, slugField } from "./fields";
  * the FAQ accordion's `<summary>` is plain text.
  */
 
+/** `faq_services` (migration 0007): the service pages this FAQ appears on. */
+export const FAQ_SERVICES_FIELD = "serviceIds";
+
 export const FAQ_CATEGORY_LABELS: Record<Faq["category"], string> = {
   general: "General",
   booking: "Booking",
@@ -29,8 +39,9 @@ export const FAQ_CATEGORY_LABELS: Record<Faq["category"], string> = {
 
 export const faqSchema = z.object({
   question: requiredText("the question", 300),
-  answer: requiredText("the answer", 4000),
+  answer: markdownWithoutHeadings("the answer", 4000),
   category: z.enum(faqCategoryEnum.enumValues, "Choose a category."),
+  [FAQ_SERVICES_FIELD]: idListField("services"),
   slug: slugField,
   order: orderField,
   published: checkboxField,
@@ -45,33 +56,49 @@ const FIELDS: readonly Field[] = [
     label: "Question",
     required: true,
     maxLength: 300,
+    section: "Question and answer",
     hint: "As a patient would ask it.",
-  },
-  {
-    type: "slug",
-    name: "slug",
-    label: "Slug",
-    from: "question",
-    required: true,
-    hint: "Used to link straight to this answer. Generated from the question until you edit it.",
   },
   {
     type: "markdown",
     name: "answer",
     label: "Answer",
     required: true,
-    rows: 10,
-    hint: "Markdown. Links are written as [text](/path) and must point at pages that exist.",
+    rows: 8,
+    headings: false,
+    section: "Question and answer",
+    hint: "Links are written as [text](/path) and must point at pages that exist.",
+  },
+  {
+    type: "multiselect",
+    name: FAQ_SERVICES_FIELD,
+    label: "Service pages",
+    section: "Where it shows",
+    hint: "The service pages this FAQ appears on — only those. A service page shows nothing but the FAQs ticked for it here.",
+    emptyLabel: "No services yet — create one under Services first.",
   },
   {
     type: "select",
     name: "category",
     label: "Category",
     required: true,
+    section: "Where it shows",
+    width: "half",
     options: faqCategoryEnum.enumValues.map((value) => ({
       value,
       label: FAQ_CATEGORY_LABELS[value],
     })),
+    hint: "“General” FAQs show on the homepage and every branch page. Other categories show only on the service pages ticked above.",
+  },
+  {
+    type: "slug",
+    name: "slug",
+    label: "Reference",
+    from: "question",
+    required: true,
+    section: "Where it shows",
+    width: "half",
+    hint: "Generated from the question until you edit it.",
   },
   {
     type: "number",
@@ -79,13 +106,13 @@ const FIELDS: readonly Field[] = [
     label: "Order",
     min: 0,
     max: 9999,
-    hint: "Low numbers first within a category.",
+    hint: "Low numbers first, on every page the FAQ appears on.",
   },
   {
     type: "checkbox",
     name: "published",
     label: "Published",
-    hint: "Unpublished FAQs are invisible on the site, including in the FAQ schema.",
+    hint: "A draft FAQ appears nowhere, including in the pages’ FAQ structured data.",
   },
 ];
 
@@ -101,7 +128,7 @@ export const faqResource: ResourceConfig<Faq, typeof faqSchema> = {
   singular: "FAQ",
   plural: "FAQs",
   description:
-    "Questions and answers shown on the homepage, service pages and location pages. Published answers appear as real text in the page, and in its FAQ structured data.",
+    "Questions and answers. “General” FAQs show on the homepage and branch pages; others show on the service pages they are assigned to. Answers appear as real text in the page and in its FAQ structured data.",
   emptyMessage: "No FAQs yet. The FAQ section does not render on a page with none.",
   fields: FIELDS,
   columns: COLUMNS,
