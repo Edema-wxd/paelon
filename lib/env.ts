@@ -73,6 +73,8 @@ const serverSchema = z
     JOBS_SECRET: optionalString,
     DPO_EMAIL: optionalString,
     CONSENT_TEXT_VERSION: z.string().default("2026-01-v1"),
+    /** Sends `X-Robots-Tag: noindex` on every response; read in middleware.ts. */
+    SITE_NOINDEX: booleanFromString,
   })
   .superRefine((v, ctx) => {
     if (v.RESEND_ENABLED && !v.RESEND_API_KEY) {

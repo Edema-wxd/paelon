@@ -139,7 +139,7 @@ export default async function AboutPage() {
           <PendingNote
             className="mt-8 max-w-2xl"
             action={
-              primary ? (
+              primary?.phone ? (
                 <Button asChild variant="outline" size="sm">
                   <a href={toTelHref(primary.phone)}>Call {primary.phone}</a>
                 </Button>

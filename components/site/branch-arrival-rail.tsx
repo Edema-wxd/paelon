@@ -1,6 +1,33 @@
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
+import { toTelHref } from "@/lib/phone";
+
+/**
+ * The Call and Emergency cells for a branch, omitting either number that is
+ * not seeded yet.
+ */
+export function phoneCells(location: {
+  phone: string | null;
+  emergency_line: string | null;
+}): { call: ArrivalCell[]; emergency: ArrivalCell[] } {
+  return {
+    call: location.phone
+      ? [{ label: "Call", value: location.phone, href: toTelHref(location.phone) }]
+      : [],
+    emergency: location.emergency_line
+      ? [
+          {
+            label: "Emergency",
+            value: location.emergency_line,
+            href: toTelHref(location.emergency_line),
+            emergency: true,
+          },
+        ]
+      : [],
+  };
+}
+
 export interface ArrivalCell {
   /** The signage word. Kept to one or two words so the rail stays scannable. */
   label: string;
@@ -45,12 +72,17 @@ export function BranchArrivalRail({
   // page and inside a half-width card on the index, and a phone number that
   // wraps mid-digits is unreadable. It has to respond to its own width.
   //
-  // Tailwind cannot see interpolated class names, so the two supported shapes
-  // are written out.
+  // Tailwind cannot see interpolated class names, so each supported shape is
+  // written out. Fewer than four cells means a branch whose phone numbers are
+  // not seeded yet: those cells are dropped rather than dialling nothing.
   const columns =
-    cells.length === 4
+    cells.length >= 4
       ? "grid-cols-2 @2xl:grid-cols-4"
-      : "grid-cols-1 @lg:grid-cols-3";
+      : cells.length === 3
+        ? "grid-cols-1 @lg:grid-cols-3"
+        : cells.length === 2
+          ? "grid-cols-2"
+          : "grid-cols-1";
 
   return (
     <nav aria-label={label} className="@container border-t border-border">

@@ -129,15 +129,17 @@ export default async function BookingConfirmedPage({
               Need us sooner?
             </h2>
             <ul className="mt-4 space-y-3">
-              <li className="flex items-start gap-3">
-                <Phone className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden />
-                <a
-                  href={toTelHref(location.phone)}
-                  className="rounded-md text-base underline-offset-4 hover:underline"
-                >
-                  Call {location.name} on {location.phone}
-                </a>
-              </li>
+              {location.phone ? (
+                <li className="flex items-start gap-3">
+                  <Phone className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden />
+                  <a
+                    href={toTelHref(location.phone)}
+                    className="rounded-md text-base underline-offset-4 hover:underline"
+                  >
+                    Call {location.name} on {location.phone}
+                  </a>
+                </li>
+              ) : null}
               {whatsappHref ? (
                 <li className="flex items-start gap-3">
                   <MessageCircle
@@ -159,6 +161,7 @@ export default async function BookingConfirmedPage({
             {/* TODO(seed): the emergency number is still a Figma placeholder
                 (seed/README.md). A wrong emergency number on a hospital site is
                 a safety issue, not a snag. */}
+            {location.emergency_line ? (
             <div className="mt-8 rounded-lg bg-accent p-6 text-accent-foreground">
               <h3 className="text-xl uppercase tracking-[0.08em]">Emergency</h3>
               <p className="mt-2 text-base text-accent-foreground/85">
@@ -173,6 +176,7 @@ export default async function BookingConfirmedPage({
                 Call {location.emergency_line}
               </a>
             </div>
+            ) : null}
           </>
         ) : null}
 

@@ -84,7 +84,7 @@ export function medicalOrganizationLd(
       "Family-centered medical care in Lagos, from paediatrics to fertility and general practice.",
     ...(location
       ? {
-          telephone: location.phone,
+          ...(location.phone ? { telephone: location.phone } : {}),
           address: {
             "@type": "PostalAddress",
             streetAddress: location.address_line_1,
@@ -103,7 +103,8 @@ export function medicalOrganizationLd(
  * value import from the content layer.
  */
 export interface OrganizationLocation {
-  phone: string;
+  /** Null until seeded; the property is then omitted rather than guessed. */
+  phone: string | null;
   address_line_1: string;
   city: string;
   state: string;

@@ -189,19 +189,21 @@ export default async function ContactPage() {
                   </a>
                 </li>
 
-                <li className="flex items-start gap-3">
-                  <Phone
-                    className="mt-0.5 size-6 shrink-0 text-accent"
-                    aria-hidden
-                  />
-                  <a
-                    href={toTelHref(primary.phone)}
-                    className="rounded-md text-base underline-offset-4 hover:underline"
-                  >
-                    <span className="sr-only">Phone: </span>
-                    {primary.phone}
-                  </a>
-                </li>
+                {primary.phone ? (
+                  <li className="flex items-start gap-3">
+                    <Phone
+                      className="mt-0.5 size-6 shrink-0 text-accent"
+                      aria-hidden
+                    />
+                    <a
+                      href={toTelHref(primary.phone)}
+                      className="rounded-md text-base underline-offset-4 hover:underline"
+                    >
+                      <span className="sr-only">Phone: </span>
+                      {primary.phone}
+                    </a>
+                  </li>
+                ) : null}
 
                 {/* Spec §6 asks for a WhatsApp deep link here. No number is
                     seeded and NEXT_PUBLIC_WHATSAPP_NUMBER is empty until the
@@ -241,7 +243,7 @@ export default async function ContactPage() {
               It is deliberately the loudest thing in this column — someone in
               an emergency must not have to read past a form to find a number.
             */}
-            {primary ? (
+            {primary?.emergency_line ? (
               <div className="mt-10 rounded-lg bg-accent p-6 text-accent-foreground">
                 <h3 className="text-xl uppercase tracking-[0.08em]">
                   Emergency
