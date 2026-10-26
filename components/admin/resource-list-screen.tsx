@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AdminPaginationNav } from "@/components/admin/admin-pagination";
@@ -86,7 +87,7 @@ export async function ResourceListScreen<R extends ContentRow>({
     <div className="mx-auto max-w-6xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">{config.plural}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary sm:text-3xl">{config.plural}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {config.description}
           </p>
@@ -95,6 +96,7 @@ export async function ResourceListScreen<R extends ContentRow>({
         {canCreate ? (
           <Button asChild>
             <Link href={`/admin/${config.name}/new`}>
+              <Plus aria-hidden />
               New {config.singular.toLowerCase()}
             </Link>
           </Button>

@@ -44,6 +44,19 @@ interface FieldBase {
   hint?: string;
   /** Marks the control `required` and shows the required hint. */
   required?: boolean;
+  /**
+   * The card this field sits in on the editor. Sections appear in the order
+   * their first field does; a field without one lands in "Details".
+   * `published` and `order` ignore this — they always go to the publishing
+   * panel beside the form.
+   */
+  section?: string;
+  /**
+   * How much of the section's row the field takes from `sm` up. Short values —
+   * a city, a phone number, one of a pair of coordinates — sit side by side
+   * instead of each taking a full-width line. Omitted is full width.
+   */
+  width?: "half" | "third";
 }
 
 export type Field =

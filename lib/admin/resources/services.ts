@@ -73,6 +73,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "name",
+    section: "Basics",
     label: "Service name",
     required: true,
     maxLength: 200,
@@ -80,6 +81,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "slug",
     name: "slug",
+    section: "Basics",
     label: "Slug",
     from: "name",
     required: true,
@@ -88,6 +90,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "select",
     name: "family",
+    section: "Basics",
     label: "Family",
     required: true,
     options: serviceFamilyEnum.enumValues.map((value) => ({
@@ -98,6 +101,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "textarea",
     name: "shortDescription",
+    section: "Page content",
     label: "Short description",
     required: true,
     rows: 3,
@@ -107,6 +111,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "markdown",
     name: "longDescription",
+    section: "Page content",
     label: "Long description",
     required: true,
     rows: 12,
@@ -115,6 +120,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "markdown",
     name: "whatToExpect",
+    section: "Page content",
     label: "What to expect",
     required: true,
     rows: 8,
@@ -123,18 +129,21 @@ const FIELDS: readonly Field[] = [
   {
     type: "tags",
     name: "whoItsFor",
+    section: "Patient guidance",
     label: "Who it’s for",
     hint: "One entry per line item. Press Enter after each.",
   },
   {
     type: "tags",
     name: "howToAccess",
+    section: "Patient guidance",
     label: "How to access",
     hint: "One entry per step. Press Enter after each.",
   },
   {
     type: "text",
     name: "typicalWaitTime",
+    section: "Patient guidance",
     label: "Typical wait time",
     maxLength: 120,
     hint: "Optional. Leave empty unless the hospital has given you a figure — never estimate one.",
@@ -142,6 +151,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "multiselect",
     name: SERVICE_LOCATIONS_FIELD,
+    section: "Where it’s offered",
     label: "Offered at",
     hint: "The branches this service is available at. Shown on each branch page.",
     emptyLabel: "No branches yet — create one under Locations first.",
@@ -149,6 +159,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "multiselect",
     name: SERVICE_RELATED_FIELD,
+    section: "Where it’s offered",
     label: "Related services",
     hint: "Shown at the foot of this service’s page. This service is excluded from the list.",
     emptyLabel: "No other services to relate this one to yet.",
@@ -156,6 +167,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "image",
     name: SERVICE_IMAGE.id,
+    section: "Images",
     label: "Featured image",
     altName: SERVICE_IMAGE.alt,
     altLabel: "Featured image alt text",
@@ -164,6 +176,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "gallery",
     name: SERVICE_GALLERY_FIELD,
+    section: "Images",
     label: "Gallery",
     hint: "Optional. Extra photographs for this service. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a service gallery yet.",
   },

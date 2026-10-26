@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useForm, type FieldValues, type Resolver } from "react-hook-form";
 
-import { HoursField } from "@/components/admin/hours-field";
+import { HoursField, type HoursDayNames } from "@/components/admin/hours-field";
 import { GalleryField } from "@/components/admin/gallery-field";
 import { MarkdownField } from "@/components/admin/markdown-field";
 import type { PickableMedia } from "@/components/admin/markdown-media-picker";
@@ -118,6 +118,38 @@ export function ResourceForm({
     defaultValues: defaults as FieldValues,
     mode: "onBlur",
   });
+
+  /**
+   * `form.register`, plus the saved value as the control's initial DOM value.
+   *
+   * react-hook-form fills uncontrolled inputs from `defaultValues` through
+   * their refs, which only exist once the page hydrates — so the server
+   * rendered every field empty. On a slow load the editor showed a blank row
+   * until the JavaScript arrived, and with JavaScript off it never filled in
+   * and the form could not be used (CLAUDE.md: forms work without JS).
+   * `defaultValue` / `defaultChecked` put the same value into the HTML, and
+   * react-hook-form then takes over the identical value.
+   *
+   * Dotted names (`hours.mon.open`) are read through the nested defaults.
+   */
+  function registerWithDefault(name: string) {
+    const registration = form.register(name);
+    const value = name
+      .split(".")
+      .reduce<unknown>(
+        (node, key) =>
+          node && typeof node === "object" ? (node as Record<string, unknown>)[key] : undefined,
+        defaults,
+      );
+
+    if (typeof value === "boolean") {
+      return { ...registration, defaultChecked: value };
+    }
+    return {
+      ...registration,
+      defaultValue: value === null || value === undefined ? "" : String(value),
+    };
+  }
 
   const [markdown, setMarkdown] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -251,13 +283,35 @@ export function ResourceForm({
     (field) => canPublish || field.name !== "published",
   );
 
+  // `published` and `order` decide where and whether the row appears, not what
+  // it says, so they sit beside the content with the Save button rather than
+  // at the foot of it.
+  // Published first: whether the row is live is the decision; order is detail.
+  const panelFields = visibleFields
+    .filter((field) => PANEL_FIELDS.has(field.name))
+    .sort((a, b) => (a.name === "published" ? -1 : b.name === "published" ? 1 : 0));
+  const sections = groupBySection(
+    visibleFields.filter((field) => !PANEL_FIELDS.has(field.name)),
+  );
+
+  const renderField = (field: Field) => (
+    <FieldRow
+      key={field.name}
+      field={field}
+      errors={errorsFor(field.name)}
+      altErrors={field.type === "image" ? errorsFor(field.altName) : undefined}
+    >
+      {renderControl(field)}
+    </FieldRow>
+  );
+
   return (
     <form
       ref={formRef}
       action={formAction}
       onSubmit={onSubmit}
       noValidate
-      className="max-w-3xl space-y-6"
+      className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start"
     >
       {id ? <input type="hidden" name="id" value={id} /> : null}
 
@@ -271,44 +325,68 @@ export function ResourceForm({
         />
       )}
 
-      <div aria-live="polite" className="empty:hidden">
-        {state?.ok ? (
-          <p className="rounded-md bg-secondary px-3 py-2 text-sm text-primary">
-            {state.data.message}
-          </p>
-        ) : null}
-        {state && !state.ok ? (
-          <p
-            role="alert"
-            className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
-          >
-            {state.error}
-          </p>
-        ) : null}
+      <div className="min-w-0 space-y-6">
+        {sections.map(([title, fields]) => {
+          const headingId = `section-${slugify(title)}`;
+          return (
+            <section
+              key={title}
+              aria-labelledby={headingId}
+              className="rounded-lg border border-border bg-surface p-5 sm:p-6"
+            >
+              <h2 id={headingId} className="text-base font-semibold text-primary">
+                {title}
+              </h2>
+              <div className="mt-5 grid grid-cols-6 gap-x-4 gap-y-6">
+                {fields.map((field) => (
+                  <div key={field.name} className={WIDTH_CLASS[field.width ?? "full"]}>
+                    {renderField(field)}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
-      {visibleFields.map((field) => (
-        <FieldRow
-          key={field.name}
-          field={field}
-          errors={errorsFor(field.name)}
-          altErrors={field.type === "image" ? errorsFor(field.altName) : undefined}
-        >
-          {renderControl(field)}
-        </FieldRow>
-      ))}
+      {/* Sticky on desktop so Save is never a scroll away on a long form. */}
+      <aside
+        aria-labelledby="publishing-heading"
+        className="rounded-lg border border-border bg-surface p-5 lg:sticky lg:top-6"
+      >
+        <h2 id="publishing-heading" className="text-base font-semibold text-primary">
+          Publishing
+        </h2>
 
-      <div className="flex items-center gap-4">
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : id ? "Save changes" : `Create ${config.singular}`}
-        </Button>
-        <Link
-          href={`/admin/${resource}`}
-          className="text-sm text-accent underline underline-offset-4 hover:no-underline"
-        >
-          Cancel
-        </Link>
-      </div>
+        {panelFields.length > 0 ? (
+          <div className="mt-4 space-y-5">{panelFields.map(renderField)}</div>
+        ) : null}
+
+        <div aria-live="polite" className="mt-5 empty:hidden">
+          {state?.ok ? (
+            <p className="rounded-md bg-secondary px-3 py-2 text-sm text-primary">
+              {state.data.message}
+            </p>
+          ) : null}
+          {state && !state.ok ? (
+            <p
+              role="alert"
+              className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
+            >
+              {state.error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-2 border-t border-border pt-5">
+          <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? "Saving…" : id ? "Save changes" : `Create ${config.singular.toLowerCase()}`}
+          </Button>
+          <Button asChild variant="ghost" className="w-full">
+            <Link href={`/admin/${resource}`}>Cancel</Link>
+          </Button>
+        </div>
+      </aside>
     </form>
   );
 
@@ -323,7 +401,7 @@ export function ResourceForm({
     switch (field.type) {
       case "text":
       case "url": {
-        const registration = form.register(field.name);
+        const registration = registerWithDefault(field.name);
         // Does a slug field generate itself from this one?
         const generates = config.fields.some(
           (candidate) => candidate.type === "slug" && candidate.from === field.name,
@@ -353,7 +431,7 @@ export function ResourceForm({
       }
 
       case "slug": {
-        const registration = form.register(field.name);
+        const registration = registerWithDefault(field.name);
         return (
           <Input
             {...registration}
@@ -373,7 +451,7 @@ export function ResourceForm({
       case "textarea":
         return (
           <Textarea
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             rows={field.rows ?? 4}
             maxLength={field.maxLength}
@@ -412,7 +490,7 @@ export function ResourceForm({
       case "number":
         return (
           <Input
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             type="number"
             inputMode="numeric"
@@ -428,7 +506,7 @@ export function ResourceForm({
       case "date":
         return (
           <Input
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             type="date"
             min={field.min}
@@ -442,7 +520,7 @@ export function ResourceForm({
       case "reference":
         return (
           <select
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             required={field.required}
             aria-invalid={invalid || undefined}
@@ -464,13 +542,19 @@ export function ResourceForm({
       case "select":
         return (
           <select
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             required={field.required}
             aria-invalid={invalid || undefined}
             aria-describedby={describedBy}
             className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
           >
+            {/* A new row has no value yet; without this the control opens
+                blank and reads as broken. Disabled, so it cannot be chosen
+                back once a real value is set. */}
+            <option value="" disabled>
+              Choose one
+            </option>
             {field.options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -482,12 +566,18 @@ export function ResourceForm({
       case "checkbox":
         return (
           <input
-            {...form.register(field.name)}
+            {...registerWithDefault(field.name)}
             id={inputId}
             type="checkbox"
             value="on"
+            // Lets `HoursField` dim the schedule while this is unticked.
+            data-confirms-hours={
+              config.fields.some(
+                (candidate) => candidate.type === "hours" && candidate.confirmedName === field.name,
+              ) || undefined
+            }
             aria-describedby={describedBy}
-            className="mt-0.5 size-4 rounded border-input"
+            className="mt-0.5 size-4 rounded border-input accent-brand-navy"
           />
         );
 
@@ -562,8 +652,22 @@ export function ResourceForm({
             name={field.name}
             legend={field.label}
             hint={field.hint}
-            register={(control) => form.register(control)}
+            register={registerWithDefault}
             error={errorsFor(field.name)?.[0]}
+            onCopyFirstDay={(names: HoursDayNames[]) => {
+              // Monday's three values onto every other day, through
+              // react-hook-form so validation sees them as typed.
+              const [first, ...rest] = names;
+              if (!first) return;
+              for (const day of rest) {
+                for (const part of ["open", "close", "closed"] as const) {
+                  form.setValue(day[part], form.getValues(first[part]), {
+                    shouldDirty: true,
+                    shouldValidate: form.formState.isSubmitted,
+                  });
+                }
+              }
+            }}
           />
         );
 
@@ -598,6 +702,33 @@ export function ResourceForm({
       }
     }
   }
+}
+
+const WIDTH_CLASS = {
+  full: "col-span-6",
+  half: "col-span-6 sm:col-span-3",
+  third: "col-span-6 sm:col-span-2",
+} as const;
+
+/** Fields that live in the publishing panel rather than a content section. */
+const PANEL_FIELDS = new Set(["published", "order"]);
+
+const DEFAULT_SECTION = "Details";
+
+/**
+ * Fields grouped by `section`, in the order each section first appears. A
+ * config with no sections at all renders as one "Details" card, so every
+ * content type gets the same shape whether or not it has been grouped yet.
+ */
+function groupBySection(fields: readonly Field[]): [string, Field[]][] {
+  const groups = new Map<string, Field[]>();
+  for (const field of fields) {
+    const key = field.section ?? DEFAULT_SECTION;
+    const list = groups.get(key);
+    if (list) list.push(field);
+    else groups.set(key, [field]);
+  }
+  return [...groups];
 }
 
 /**
@@ -673,11 +804,11 @@ function FieldRow({
   const inputId = `field-${field.name}`;
   const invalid = (errors?.length ?? 0) > 0 || (altErrors?.length ?? 0) > 0;
 
-  // A gallery has no single focusable control for a `<label for>` to point at —
-  // it is a list of rows, each with its own buttons — so it is grouped rather
-  // than labelled. A label pointing at an id that does not exist is worse than
+  // A gallery or a checkbox set has no single control for a `<label for>` to
+  // point at — it is a list of rows, each with its own controls — so it is
+  // grouped rather than labelled. A label pointing at an id that does not exist is worse than
   // no label: a screen reader announces nothing and the click target is dead.
-  if (field.type === "gallery") {
+  if (field.type === "gallery" || field.type === "multiselect") {
     return (
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-foreground">

@@ -16,6 +16,7 @@ export function AdminFilterBar({
   hidden,
   isFiltered,
   clearHref,
+  inline = false,
   children,
 }: {
   /** The list route this filter form submits to, e.g. `/admin/contact`. */
@@ -25,32 +26,39 @@ export function AdminFilterBar({
   isFiltered: boolean;
   /** Where "Clear filters" goes — normally just `action`. */
   clearHref: string;
+  /**
+   * Put the buttons on the same row as the fields, for a bar with one or two
+   * controls where a row of its own for "Apply" is mostly empty space.
+   */
+  inline?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <form
       method="get"
       action={action}
-      className="rounded-xl border border-border bg-white p-4"
+      className="rounded-lg border border-border bg-surface p-4"
     >
       {(hidden ?? []).map((field) => (
         <input key={field.name} type="hidden" name={field.name} value={field.value} />
       ))}
 
-      {children}
+      <div className={inline ? "flex flex-wrap items-end gap-x-4 gap-y-3" : undefined}>
+        <div className={inline ? "min-w-0 flex-1" : undefined}>{children}</div>
 
-      <div className="mt-4 flex items-center gap-3">
-        <Button type="submit" size="sm">
-          Apply filters
-        </Button>
-        {isFiltered ? (
-          <Link
-            href={clearHref}
-            className="text-sm text-accent underline underline-offset-4 hover:no-underline"
-          >
-            Clear filters
-          </Link>
-        ) : null}
+        <div className={inline ? "flex h-9 items-center gap-3" : "mt-4 flex items-center gap-3"}>
+          <Button type="submit" size="sm">
+            Apply filters
+          </Button>
+          {isFiltered ? (
+            <Link
+              href={clearHref}
+              className="text-sm text-accent underline underline-offset-4 hover:no-underline"
+            >
+              Clear filters
+            </Link>
+          ) : null}
+        </div>
       </div>
     </form>
   );
