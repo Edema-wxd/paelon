@@ -1,9 +1,12 @@
 [
   {
-    "id": "5e2c8a41-b073-49df-816c-2a7e94d05b38",
-    "slug": "axa-mansard",
-    "name": "AXA Mansard",
-    "branch_ids": [],
+    "slug": "cigna",
+    "name": "Vanbreda/Cigna",
+    "aliases": [
+      "Vanbreda",
+      "Cigna"
+    ],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -11,10 +14,13 @@
     "published": true
   },
   {
-    "id": "c8140b96-7d3a-4e25-91f8-0b6c5a2e83d4",
-    "slug": "leadway",
-    "name": "Leadway",
-    "branch_ids": [],
+    "slug": "bupa-mso",
+    "name": "BUPA/MSO",
+    "aliases": [
+      "BUPA",
+      "MSO"
+    ],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -22,10 +28,13 @@
     "published": true
   },
   {
-    "id": "e30f5c72-186b-4a9d-b452-9c78e1a06f2b",
-    "slug": "avon",
-    "name": "Avon",
-    "branch_ids": [],
+    "slug": "bupa-intl",
+    "name": "BUPA/INTL",
+    "aliases": [
+      "BUPA International",
+      "BUPA"
+    ],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -33,10 +42,10 @@
     "published": true
   },
   {
-    "id": "7a92d4e5-4c81-4b60-a3f7-58e2b9c14d06",
-    "slug": "cigna",
-    "name": "Cigna",
-    "branch_ids": [],
+    "slug": "allianz",
+    "name": "Allianz",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -44,10 +53,10 @@
     "published": true
   },
   {
-    "id": "e42c7e9c-0226-4fdf-9ecc-b11c9d8f0d80",
-    "slug": "allianz",
-    "name": "Allianz",
-    "branch_ids": [],
+    "slug": "aetna",
+    "name": "Aetna",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -55,10 +64,10 @@
     "published": true
   },
   {
-    "id": "125cdc6d-fda7-48be-b8db-8818a4061d7a",
-    "slug": "bupa",
-    "name": "Bupa",
-    "branch_ids": [],
+    "slug": "msh",
+    "name": "MSH",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -66,10 +75,10 @@
     "published": true
   },
   {
-    "id": "8beeb481-74a3-4ace-8b52-a2c41531d10d",
-    "slug": "hygeia",
-    "name": "Hygeia",
-    "branch_ids": [],
+    "slug": "tiecare",
+    "name": "Tiecare",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -77,10 +86,10 @@
     "published": true
   },
   {
-    "id": "e9e898fc-ad7c-49a2-a280-31b4db6cfaec",
-    "slug": "liberty",
-    "name": "Liberty",
-    "branch_ids": [],
+    "slug": "henner",
+    "name": "Henner",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
@@ -88,14 +97,251 @@
     "published": true
   },
   {
-    "id": "9729e1e6-0c32-4dfb-b42f-296d19dd8f2f",
-    "slug": "reliancehealth",
-    "name": "RelianceHealth",
-    "branch_ids": [],
+    "slug": "april",
+    "name": "April",
+    "aliases": [],
+    "location_slugs": [],
     "coverage_notes": null,
     "copay_applies": false,
     "plan_notes": null,
     "order": 9,
+    "published": true
+  },
+  {
+    "slug": "total-health-trust",
+    "name": "Total Health Trust/Liberty Blue",
+    "aliases": [
+      "Total Health Trust",
+      "Liberty Blue",
+      "THT"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 10,
+    "published": true
+  },
+  {
+    "slug": "hygeia",
+    "name": "Hygeia",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 11,
+    "published": true
+  },
+  {
+    "slug": "leadway",
+    "name": "Leadway",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 12,
+    "published": true
+  },
+  {
+    "slug": "axa-mansard",
+    "name": "AXA Mansard",
+    "aliases": [
+      "AXA"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 13,
+    "published": true
+  },
+  {
+    "slug": "reliance",
+    "name": "Reliance",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 14,
+    "published": true
+  },
+  {
+    "slug": "health-partners",
+    "name": "Health Partners",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 15,
+    "published": true
+  },
+  {
+    "slug": "hci",
+    "name": "HCI",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 16,
+    "published": true
+  },
+  {
+    "slug": "life-action",
+    "name": "Life Action",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 17,
+    "published": true
+  },
+  {
+    "slug": "nnpc-hmo",
+    "name": "NNPC HMO",
+    "aliases": [
+      "NNPC"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 18,
+    "published": true
+  },
+  {
+    "slug": "mbo",
+    "name": "MB&O",
+    "aliases": [
+      "MBO",
+      "MB and O"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 19,
+    "published": true
+  },
+  {
+    "slug": "gni",
+    "name": "GNI",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 20,
+    "published": true
+  },
+  {
+    "slug": "avon",
+    "name": "Avon",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 21,
+    "published": true
+  },
+  {
+    "slug": "metrohealth",
+    "name": "Metrohealth",
+    "aliases": [
+      "Metro Health"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 22,
+    "published": true
+  },
+  {
+    "slug": "nem-health",
+    "name": "NEM Health",
+    "aliases": [
+      "NEM"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 23,
+    "published": true
+  },
+  {
+    "slug": "regenix",
+    "name": "Regenix",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 24,
+    "published": true
+  },
+  {
+    "slug": "hallmark",
+    "name": "Hallmark",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 25,
+    "published": true
+  },
+  {
+    "slug": "kennedia",
+    "name": "Kennedia",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 26,
+    "published": true
+  },
+  {
+    "slug": "bastion",
+    "name": "Bastion",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 27,
+    "published": true
+  },
+  {
+    "slug": "medexia",
+    "name": "Medexia",
+    "aliases": [],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 28,
+    "published": true
+  },
+  {
+    "slug": "phillips-hmo",
+    "name": "Phillips HMO",
+    "aliases": [
+      "Phillips"
+    ],
+    "location_slugs": [],
+    "coverage_notes": null,
+    "copay_applies": false,
+    "plan_notes": null,
+    "order": 29,
     "published": true
   }
 ]

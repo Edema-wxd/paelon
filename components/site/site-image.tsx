@@ -18,6 +18,11 @@ interface ManifestEntry {
 
 const manifest = rawManifest as Record<string, ManifestEntry | undefined>;
 
+/** True when an optimized asset for this slot has been delivered. */
+export function hasSiteImage(kind: ImageKind, name: string): boolean {
+  return manifest[`${kind}/${name}`] !== undefined;
+}
+
 interface SiteImageProps {
   /** Slot kind — picks up dimensions, sizes and priority from IMAGE_SLOTS. */
   kind: ImageKind;

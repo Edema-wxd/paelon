@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { SiteImage } from "@/components/site/site-image";
+import { hasSiteImage, SiteImage } from "@/components/site/site-image";
 import { HmoTypeahead } from "@/components/site/hmo-typeahead";
 import { getHmoLogos, getHmos } from "@/lib/content";
 
@@ -10,13 +10,21 @@ import { getHmoLogos, getHmos } from "@/lib/content";
  * The export shows the three access routes as an ordered list and the HMOs as
  * a static logo strip; the typeahead is additional.
  *
- * Each logo is the one uploaded in `/admin/hmos` when there is one, so a new
- * HMO needs no deploy; otherwise the committed design asset for its slug, and
- * failing that the asset placeholder carrying the provider's name.
+ * Each logo is the committed design asset for the provider's slug — built by
+ * the image pipeline, so it ships as optimised AVIF/WebP. A logo uploaded in
+ * `/admin/hmos` is used only where no design asset exists, so a provider that
+ * has none can be given one without a deploy, while the pipeline's versions
+ * stay the ones the strip shows everywhere else.
  */
 export async function HmoAccessSection() {
   const hmos = await getHmos();
-  const logos = await getHmoLogos(hmos);
+  const uploaded = await getHmoLogos(hmos);
+  // The strip is "some of" the HMOs, so it shows only providers whose logo has
+  // been delivered — as a design asset or an upload; the typeahead below
+  // searches the full list.
+  const withLogos = hmos.filter(
+    (hmo) => hasSiteImage("hmo-logo", hmo.slug) || uploaded.has(hmo.id),
+  );
 
   return (
     <section
@@ -61,43 +69,29 @@ export async function HmoAccessSection() {
 
           {/* A grid, not flex-wrap: fixed 176px logo widths against ~310px of
               usable mobile width fitted one per row, stranding each logo in a
-              left-aligned column and turning the providers into a long
-              scroll. Three fluid columns keep nine logos a tidy 3×3. */}
-          <ul className="mt-6 grid grid-cols-3 items-center gap-4 sm:gap-8">
-            {hmos.map((hmo) => {
-              const logo = logos.get(hmo.id);
-              return (
-                <li
-                  key={hmo.id}
-                  // The design-asset fallback wraps its image in a `<picture>` that
-                  // ignores the cell height; capping every image here keeps a tall
-                  // logo (Cigna) inside its row instead of over the next one.
-                  className="flex h-16 items-center justify-center overflow-hidden sm:h-20 [&_img]:max-h-full [&_img]:w-auto [&_picture]:flex [&_picture]:h-full [&_picture]:items-center"
-                >
-                  {logo ? (
-                    <Image
-                      src={logo.url}
-                      // The provider's name when the upload has none: a logo
-                      // is never decorative here, it is the list item.
-                      alt={logo.alt || hmo.name}
-                      width={logo.width ?? undefined}
-                      height={logo.height ?? undefined}
-                      sizes="(min-width: 640px) 200px, 30vw"
-                      // Fill the cell height like the design assets did; the source
-                      // files are small (66–175px tall) and read as tiny otherwise.
-                      className="h-full w-auto max-w-full object-contain"
-                    />
-                  ) : (
-                    <SiteImage
-                      kind="hmo-logo"
-                      name={hmo.slug}
-                      alt={hmo.name}
-                      className="h-full w-full rounded-md object-contain"
-                    />
-                  )}
-                </li>
-              );
-            })}
+              left-aligned column and turning four providers into ~800px of
+              scroll. Fluid columns keep the strip compact at every width;
+              three to a row on phones keeps 26 logos to nine rows. */}
+          <ul className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-6 lg:grid-cols-6 lg:gap-8">
+            {withLogos.map((hmo) => (
+              <li key={hmo.id}>
+                {/* TODO(asset): 26 of the 29 logos are in assets/hmo-logo/,
+                    most taken from each provider's own website. Bastion and
+                    Regenix publish white-only wordmarks and Phillips HMO could
+                    not be identified; a file named by slug, or an upload in
+                    /admin/hmos, adds each one. */}
+                {hasSiteImage("hmo-logo", hmo.slug) ? (
+                  <SiteImage
+                    kind="hmo-logo"
+                    name={hmo.slug}
+                    alt={hmo.name}
+                    className="h-16 w-full rounded-md object-contain sm:h-20"
+                  />
+                ) : (
+                  <UploadedLogo logo={uploaded.get(hmo.id)!} name={hmo.name} />
+                )}
+              </li>
+            ))}
           </ul>
 
           <div className="mt-12">
@@ -106,5 +100,29 @@ export async function HmoAccessSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+/** An `/admin/hmos` upload, sized to the same cell as the design assets. */
+function UploadedLogo({
+  logo,
+  name,
+}: {
+  logo: { url: string; alt: string; width: number | null; height: number | null };
+  name: string;
+}) {
+  return (
+    <div className="flex h-16 items-center justify-center sm:h-20">
+      <Image
+        src={logo.url}
+        // The provider's name when the upload has none: a logo is never
+        // decorative here, it is the list item.
+        alt={logo.alt || name}
+        width={logo.width ?? undefined}
+        height={logo.height ?? undefined}
+        sizes="(min-width: 1024px) 160px, 30vw"
+        className="h-full w-auto max-w-full object-contain"
+      />
+    </div>
   );
 }

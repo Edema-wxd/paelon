@@ -17,7 +17,7 @@ function hmo(name: string, order: number, aliases: string[] = []): Hmo {
   };
 }
 
-/** The four providers actually seeded for launch. */
+/** Four of the seeded providers, as a small fixture. */
 const SEEDED: Hmo[] = [
   hmo("AXA Mansard", 1),
   hmo("Leadway", 2),

@@ -19,6 +19,33 @@
     "height": 1362,
     "vector": false
   },
+  "hmo-logo/aetna": {
+    "kind": "hmo-logo",
+    "stamp": "2238ce36345e",
+    "src": "/images/hmo-logo/aetna.avif",
+    "fallback": "/images/hmo-logo/aetna.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/allianz": {
+    "kind": "hmo-logo",
+    "stamp": "a4c2ac059ce9",
+    "src": "/images/hmo-logo/allianz.avif",
+    "fallback": "/images/hmo-logo/allianz.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/april": {
+    "kind": "hmo-logo",
+    "stamp": "72f1909a5030",
+    "src": "/images/hmo-logo/april.avif",
+    "fallback": "/images/hmo-logo/april.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
   "hmo-logo/avon": {
     "kind": "hmo-logo",
     "stamp": "3b22a0f8e41b",
@@ -37,6 +64,24 @@
     "height": 240,
     "vector": false
   },
+  "hmo-logo/bupa-intl": {
+    "kind": "hmo-logo",
+    "stamp": "274399c9ffdc",
+    "src": "/images/hmo-logo/bupa-intl.avif",
+    "fallback": "/images/hmo-logo/bupa-intl.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/bupa-mso": {
+    "kind": "hmo-logo",
+    "stamp": "274399c9ffdc",
+    "src": "/images/hmo-logo/bupa-mso.avif",
+    "fallback": "/images/hmo-logo/bupa-mso.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
   "hmo-logo/cigna": {
     "kind": "hmo-logo",
     "stamp": "d225c22d5b6b",
@@ -46,11 +91,164 @@
     "height": 240,
     "vector": false
   },
+  "hmo-logo/gni": {
+    "kind": "hmo-logo",
+    "stamp": "a7c6e0b911c6",
+    "src": "/images/hmo-logo/gni.avif",
+    "fallback": "/images/hmo-logo/gni.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/hallmark": {
+    "kind": "hmo-logo",
+    "stamp": "5c9a62f31d3f",
+    "src": "/images/hmo-logo/hallmark.avif",
+    "fallback": "/images/hmo-logo/hallmark.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/hci": {
+    "kind": "hmo-logo",
+    "stamp": "fb0265941138",
+    "src": "/images/hmo-logo/hci.avif",
+    "fallback": "/images/hmo-logo/hci.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/health-partners": {
+    "kind": "hmo-logo",
+    "stamp": "d1b61d62f120",
+    "src": "/images/hmo-logo/health-partners.avif",
+    "fallback": "/images/hmo-logo/health-partners.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/henner": {
+    "kind": "hmo-logo",
+    "stamp": "4198c4ff7e24",
+    "src": "/images/hmo-logo/henner.avif",
+    "fallback": "/images/hmo-logo/henner.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/hygeia": {
+    "kind": "hmo-logo",
+    "stamp": "86f7ef882c82",
+    "src": "/images/hmo-logo/hygeia.avif",
+    "fallback": "/images/hmo-logo/hygeia.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/kennedia": {
+    "kind": "hmo-logo",
+    "stamp": "5712f1667218",
+    "src": "/images/hmo-logo/kennedia.avif",
+    "fallback": "/images/hmo-logo/kennedia.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
   "hmo-logo/leadway": {
     "kind": "hmo-logo",
     "stamp": "b00a64843f26",
     "src": "/images/hmo-logo/leadway.avif",
     "fallback": "/images/hmo-logo/leadway.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/life-action": {
+    "kind": "hmo-logo",
+    "stamp": "bb4c85aa4842",
+    "src": "/images/hmo-logo/life-action.avif",
+    "fallback": "/images/hmo-logo/life-action.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/mbo": {
+    "kind": "hmo-logo",
+    "stamp": "ef06d9c9debb",
+    "src": "/images/hmo-logo/mbo.avif",
+    "fallback": "/images/hmo-logo/mbo.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/medexia": {
+    "kind": "hmo-logo",
+    "stamp": "775fe0b95da6",
+    "src": "/images/hmo-logo/medexia.avif",
+    "fallback": "/images/hmo-logo/medexia.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/metrohealth": {
+    "kind": "hmo-logo",
+    "stamp": "51ef22d53762",
+    "src": "/images/hmo-logo/metrohealth.avif",
+    "fallback": "/images/hmo-logo/metrohealth.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/msh": {
+    "kind": "hmo-logo",
+    "stamp": "2290ecc39e49",
+    "src": "/images/hmo-logo/msh.avif",
+    "fallback": "/images/hmo-logo/msh.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/nem-health": {
+    "kind": "hmo-logo",
+    "stamp": "3e4e1089c40a",
+    "src": "/images/hmo-logo/nem-health.avif",
+    "fallback": "/images/hmo-logo/nem-health.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/nnpc-hmo": {
+    "kind": "hmo-logo",
+    "stamp": "fefaf868207e",
+    "src": "/images/hmo-logo/nnpc-hmo.avif",
+    "fallback": "/images/hmo-logo/nnpc-hmo.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/reliance": {
+    "kind": "hmo-logo",
+    "stamp": "7dbfd2de5e72",
+    "src": "/images/hmo-logo/reliance.avif",
+    "fallback": "/images/hmo-logo/reliance.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/tiecare": {
+    "kind": "hmo-logo",
+    "stamp": "afda27892036",
+    "src": "/images/hmo-logo/tiecare.avif",
+    "fallback": "/images/hmo-logo/tiecare.webp",
+    "width": 528,
+    "height": 240,
+    "vector": false
+  },
+  "hmo-logo/total-health-trust": {
+    "kind": "hmo-logo",
+    "stamp": "a2cb7b574008",
+    "src": "/images/hmo-logo/total-health-trust.avif",
+    "fallback": "/images/hmo-logo/total-health-trust.webp",
     "width": 528,
     "height": 240,
     "vector": false
