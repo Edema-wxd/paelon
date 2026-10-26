@@ -661,8 +661,12 @@ export const media = pgTable(
     /** The UploadThing file key. The identity of the object in the bucket. */
     key: text("key").notNull(),
     url: text("url").notNull(),
-    /** Alt text. Empty string means deliberately decorative, never "not set yet". */
-    alt: text("alt").notNull(),
+    /**
+     * Alt text. Empty string means deliberately decorative; null means nobody
+     * has written it yet (migration 0009). The two used to share `''`, so a
+     * fresh upload read as decorative until someone described it.
+     */
+    alt: text("alt"),
     /** Original filename, for the media grid's label. */
     filename: text("filename"),
     /**

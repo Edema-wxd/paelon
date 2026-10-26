@@ -1,4 +1,6 @@
 import type { FieldErrors } from "@/lib/admin/action";
+import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
+import { undescribedMedia, undescribedMessage } from "@/lib/admin/undescribed-media";
 import { internalLinks, uniquePaths } from "@/lib/blog/internal-links";
 import {
   postTitles,
@@ -63,13 +65,20 @@ export async function blogPublishErrors(
 ): Promise<FieldErrors | null> {
   if (!input.published) return null;
 
-  const [bodyErrors, relatedErrors] = await Promise.all([
+  const [bodyErrors, relatedErrors, undescribed] = await Promise.all([
     brokenBodyLinks(input.body),
     brokenRelatedPosts(input.relatedIds, input.id),
+    // A figure's alt text comes from its media row, and nothing else checks
+    // that one was written.
+    undescribedMedia(collectMediaIds(parseMarkdown(input.body))),
   ]);
 
   const errors: FieldErrors = {};
-  if (bodyErrors.length > 0) errors[BODY_FIELD] = bodyErrors;
+  const bodyMessages = [
+    ...bodyErrors,
+    ...(undescribed.length > 0 ? [undescribedMessage(undescribed)] : []),
+  ];
+  if (bodyMessages.length > 0) errors[BODY_FIELD] = bodyMessages;
   if (relatedErrors.length > 0) errors[RELATED_FIELD] = relatedErrors;
 
   return Object.keys(errors).length > 0 ? errors : null;

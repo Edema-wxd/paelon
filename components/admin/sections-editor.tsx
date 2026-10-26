@@ -497,7 +497,7 @@ function BlockFields({
           <div className="flex flex-wrap items-center gap-4">
             {asset ? (
               // eslint-disable-next-line @next/next/no-img-element -- an admin thumbnail of a CDN asset; next/image adds nothing here
-              <img src={asset.url} alt={asset.alt} className="size-24 rounded-md border border-border object-cover" />
+              <img src={asset.url} alt={asset.alt ?? ""} className="size-24 rounded-md border border-border object-cover" />
             ) : (
               <div className="flex size-24 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
                 No image
@@ -513,7 +513,12 @@ function BlockFields({
                 title="Choose an image"
               />
               <p className="text-xs text-muted-foreground">
-                Alt text comes from the media library{asset ? `: “${asset.alt || "decorative"}”` : "."}
+                Alt text comes from the media library
+                {asset
+                  ? asset.alt === null
+                    ? ": not written yet — add it there before publishing."
+                    : `: “${asset.alt || "decorative"}”`
+                  : "."}
               </p>
             </div>
           </div>

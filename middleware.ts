@@ -45,13 +45,15 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
   const umamiCollector = umamiCollectorOrigin(umamiOrigin);
 
   /*
-   * frame-src stays 'none' everywhere except /admin (spec §9, §14 Headers).
+   * frame-src stays 'none' everywhere except /admin/analytics (spec §9, §14
+   * Headers).
    *
    * /admin/analytics frames an Umami share page, and that is the only frame the
    * site has. Allowlisting its origin globally would let any injected markup on
    * a public template open a frame there, so the directive is built per request
    * from the pathname instead — the middleware already runs on every request
-   * and `nextUrl.pathname` costs nothing.
+   * and `nextUrl.pathname` costs nothing. It was every /admin path until
+   * 2026-10-26; one page frames Umami, so one page may.
    *
    * Taken from the share URL rather than the script URL: the two can be
    * different hosts, and a share link on a CDN or a separate Umami domain is a
@@ -59,8 +61,7 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
    */
   const share = process.env.NEXT_PUBLIC_UMAMI_SHARE_URL;
   const shareOrigin = share ? safeOrigin(share) : null;
-  const framesUmami =
-    shareOrigin !== null && (pathname === "/admin" || pathname.startsWith("/admin/"));
+  const framesUmami = shareOrigin !== null && pathname === "/admin/analytics";
 
   const directives: string[] = [
     `default-src 'self'`,

@@ -16,7 +16,8 @@ import { searchMediaAction } from "@/lib/admin/media-actions";
 export interface PickableMedia {
   id: string;
   url: string;
-  alt: string;
+  /** Null when nobody has written it yet; "" when chosen as decorative. */
+  alt: string | null;
   filename: string | null;
   width: number | null;
   height: number | null;
@@ -193,7 +194,7 @@ export function MarkdownMediaPicker({
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {rows.map((asset) => {
             const usable = asset.width !== null && asset.height !== null;
-            const described = asset.alt.trim().length > 0;
+            const described = (asset.alt ?? "").trim().length > 0;
             const picked = alreadyChosen.has(asset.id);
 
             return (

@@ -184,7 +184,7 @@ export function MarkdownField({
           asset.id,
           {
             url: asset.url,
-            alt: asset.alt,
+            alt: asset.alt ?? "",
             width: asset.width,
             height: asset.height,
           },
@@ -267,7 +267,7 @@ export function MarkdownField({
     const rest = value.slice(at);
     const to = at + (rest.length - rest.replace(/^\s+/, "").length);
 
-    const reference = `![${asset.alt}](media:${asset.id} "")`;
+    const reference = `![${asset.alt ?? ""}](media:${asset.id} "")`;
     const head = from > 0 ? "\n\n" : "";
     const tail = to < value.length ? "\n\n" : "";
     const caption = from + head.length + reference.length - 2;

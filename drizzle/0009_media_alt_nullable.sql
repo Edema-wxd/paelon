@@ -1,0 +1,21 @@
+-- Alt text that nobody has written yet (2026-10-26).
+--
+-- `media.alt` was NOT NULL, with '' meaning "deliberately decorative". But an
+-- upload had to be inserted with *some* alt text, so every new file arrived as
+-- '' — indistinguishable from a decorative image someone had chosen. Content
+-- forms then opened with "decorative" already ticked, and an image placed in a
+-- post body or a page block went live as alt="" with nobody having decided.
+--
+-- From here: NULL means not written yet, '' still means decorative. Uploads
+-- insert NULL (`recordUpload`); public reads render NULL as '' exactly as
+-- before; the library, the forms and the publish checks tell the two apart.
+--
+-- Non-destructive: one constraint relaxed, no row rewritten. Existing '' rows
+-- keep meaning decorative — on 2026-10-26 no live row had '' at all.
+--
+-- Safe to re-run: dropping NOT NULL from a nullable column is a no-op.
+--
+-- NOT YET REGISTERED IN drizzle/meta/_journal.json, as with 0002–0008: write
+-- the next migration by hand too (CLAUDE.md, "Live gaps").
+
+ALTER TABLE "media" ALTER COLUMN "alt" DROP NOT NULL;

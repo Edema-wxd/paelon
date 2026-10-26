@@ -19,7 +19,7 @@ import { clientEnv } from "@/lib/env";
  * this page can copy the link out of it and keep it. §9 accepts that, because
  * the stats hold no PII.
  *
- * `frame-src` is widened to the share origin for `/admin` paths only, in
+ * `frame-src` is widened to the share origin on this path only, in
  * `middleware.ts`. The remaining precondition is Umami's side of the handshake
  * — a share page that sends `X-Frame-Options: DENY` or its own restrictive
  * `frame-ancestors` renders blank here no matter what our policy says. Umami's
