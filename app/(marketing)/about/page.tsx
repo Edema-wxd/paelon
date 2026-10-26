@@ -7,7 +7,14 @@ import { DoctorCard } from "@/components/site/doctor-card";
 import { PendingNote } from "@/components/site/pending-note";
 import { Button } from "@/components/ui/button";
 import { getAboutContent, isAboutEmpty } from "@/lib/about";
-import { getAwards, getDoctors, getPrimaryLocation, toTelHref } from "@/lib/content";
+import {
+  getAwards,
+  getBodyImages,
+  getDoctors,
+  getPrimaryLocation,
+  toTelHref,
+  type ContentImage,
+} from "@/lib/content";
 import { clientEnv } from "@/lib/env";
 import { toPlainText } from "@/lib/markdown";
 import {
@@ -98,10 +105,17 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AboutPage() {
   const about = await getAboutContent();
 
-  const [doctors, awards, primary] = await Promise.all([
+  const [doctors, awards, primary, images] = await Promise.all([
     getDoctors(),
     getAwards(),
     getPrimaryLocation(),
+    // Figures across the five sections, in one query. Joined with blank lines
+    // so each body stays its own blocks to the parser.
+    getBodyImages(
+      [about.founding_story, about.mission, about.vision, about.value_proposition, about.esg]
+        .filter(Boolean)
+        .join("\n\n"),
+    ),
   ]);
 
   const nothingWritten = isAboutEmpty(about);
@@ -155,14 +169,14 @@ export default async function AboutPage() {
         <Prose
           heading="Our story"
           id="founding-story"
-          source={about.founding_story}
+          source={about.founding_story} images={images}
         />
-        <Prose heading="Our mission" id="mission" source={about.mission} />
-        <Prose heading="Our vision" id="vision" source={about.vision} />
+        <Prose heading="Our mission" id="mission" source={about.mission} images={images} />
+        <Prose heading="Our vision" id="vision" source={about.vision} images={images} />
         <Prose
           heading="What we offer"
           id="value-proposition"
-          source={about.value_proposition}
+          source={about.value_proposition} images={images}
         />
 
         {about.motto ? (
@@ -202,7 +216,7 @@ export default async function AboutPage() {
         <Prose
           heading="Sustainability and certification"
           id="esg"
-          source={about.esg}
+          source={about.esg} images={images}
         />
       </div>
     </>
@@ -220,10 +234,13 @@ function Prose({
   heading,
   id,
   source,
+  images,
 }: {
   heading: string;
   id: string;
   source: AboutContent["founding_story"];
+  /** Figures across every section, resolved once by the page. */
+  images: ReadonlyMap<string, ContentImage>;
 }) {
   if (source === null) return null;
 
@@ -232,8 +249,10 @@ function Prose({
       <h2 id={id} className="text-2xl text-accent lg:text-3xl">
         {heading}
       </h2>
+      {/* The editor's headings render one level under this h2, matching the
+          admin preview (headingOffset). */}
       <div className="mt-4">
-        <ArticleBody source={source} />
+        <ArticleBody source={source} images={images} headingOffset={1} />
       </div>
     </section>
   );

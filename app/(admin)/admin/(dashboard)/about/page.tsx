@@ -6,6 +6,8 @@ import { NotPermitted } from "@/components/admin/not-permitted";
 import { can } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 import { getAboutForAdmin } from "@/lib/db/queries/about";
+import { getMediaByIds } from "@/lib/db/queries/media";
+import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
 
 /**
  * About page copy (migration 0005).
@@ -42,6 +44,24 @@ export default async function AdminAboutPage() {
 
   const about = await getAboutForAdmin();
 
+  // Images the saved sections already place, so the editor preview renders
+  // them. One query for all six sections.
+  const placedIds = [
+    ...new Set(
+      [about?.foundingStory, about?.mission, about?.vision, about?.valueProposition, about?.esg]
+        .filter((body): body is string => typeof body === "string")
+        .flatMap((body) => collectMediaIds(parseMarkdown(body))),
+    ),
+  ];
+  const media = [...(await getMediaByIds(placedIds)).values()].map((asset) => ({
+    id: asset.id,
+    url: asset.url,
+    alt: asset.alt,
+    filename: asset.filename,
+    width: asset.width,
+    height: asset.height,
+  }));
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-primary">About page</h1>
@@ -76,6 +96,7 @@ export default async function AdminAboutPage() {
       )}
 
       <AboutForm
+        media={media}
         values={{
           published: about?.published ?? false,
           placeholder: about?.placeholder ?? false,

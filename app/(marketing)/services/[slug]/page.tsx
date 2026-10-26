@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ArticleBody } from "@/components/site/article-body";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
 import { FaqSection } from "@/components/site/faq-section";
 import { ImageGallery } from "@/components/site/image-gallery";
@@ -13,6 +14,7 @@ import {
   getPrimaryLocation,
   getRelatedServices,
   getServiceBySlug,
+  getBodyImages,
   getServiceGallery,
   getServices,
   toTelHref,
@@ -114,6 +116,12 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     getServiceGallery(service.id),
   ]);
 
+  // Figures in either body, resolved in one query. Joined with a blank line so
+  // the two bodies stay separate blocks to the parser.
+  const bodyImages = await getBodyImages(
+    [service.long_description, service.what_to_expect].filter(Boolean).join("\n\n"),
+  );
+
   const url = new URL(`/services/${service.slug}`, siteUrl).toString();
 
   /**
@@ -140,6 +148,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
   };
 
   const hasDetail =
+    service.long_description !== null ||
     service.what_to_expect !== null ||
     service.who_its_for.length > 0 ||
     service.how_to_access.length > 0;
@@ -204,6 +213,15 @@ export default async function ServiceDetailPage({ params }: PageProps) {
           <div>
             {hasDetail ? (
               <>
+                {/* The service's main text, directly under its h1: an
+                    editor's Heading here is an h2, a section of the page in
+                    its own right. Figures are placed between paragraphs. */}
+                {service.long_description ? (
+                  <div className="mb-12">
+                    <ArticleBody source={service.long_description} images={bodyImages} />
+                  </div>
+                ) : null}
+
                 {service.what_to_expect ? (
                   <section aria-labelledby="what-to-expect">
                     <h2
@@ -212,9 +230,15 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                     >
                       What to expect
                     </h2>
-                    <p className="mt-4 max-w-2xl text-base leading-relaxed text-foreground/80">
-                      {service.what_to_expect}
-                    </p>
+                    {/* Under this h2, so the editor's headings render one
+                        level deeper (headingOffset), as the admin preview does. */}
+                    <div className="mt-4">
+                      <ArticleBody
+                        source={service.what_to_expect}
+                        images={bodyImages}
+                        headingOffset={1}
+                      />
+                    </div>
                   </section>
                 ) : null}
 

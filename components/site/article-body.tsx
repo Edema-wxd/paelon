@@ -32,17 +32,27 @@ import { parseMarkdown } from "@/lib/markdown";
 export function ArticleBody({
   source,
   images,
+  headingOffset = 0,
 }: {
   source: string;
   /** Resolved `media` rows, keyed by id. Omit when a body has no figures. */
   images?: ReadonlyMap<string, ContentImage>;
+  /**
+   * How many levels deeper than written the body's headings render. `0` for
+   * text that sits directly under the page's `h1` (`##` → `h2`); `1` for text
+   * under a section `h2` of the template's own, so an editor's `##` becomes
+   * an `h3` inside it. Editors always write "Heading" and "Subheading"; where
+   * the text lands decides the level, and spec §12's no-skipped-levels rule
+   * holds either way.
+   */
+  headingOffset?: 0 | 1;
 }) {
   const blocks = parseMarkdown(source);
 
   return (
     <div className="max-w-2xl">
       {blocks.map((block, index) => (
-        <BlockNode key={index} block={block} images={images} />
+        <BlockNode key={index} block={block} images={images} headingOffset={headingOffset} />
       ))}
     </div>
   );
@@ -51,13 +61,17 @@ export function ArticleBody({
 function BlockNode({
   block,
   images,
+  headingOffset,
 }: {
   block: Block;
   images?: ReadonlyMap<string, ContentImage>;
+  headingOffset: 0 | 1;
 }) {
   switch (block.type) {
     case "heading": {
-      if (block.level === 2) {
+      const level = block.level + headingOffset;
+
+      if (level === 2) {
         return (
           <h2 className="mt-12 text-2xl text-primary first:mt-0 lg:text-3xl">
             <InlineNodes nodes={block.children} />
@@ -65,7 +79,7 @@ function BlockNode({
         );
       }
 
-      if (block.level === 3) {
+      if (level === 3) {
         return (
           <h3 className="mt-10 text-xl text-primary first:mt-0 lg:text-2xl">
             <InlineNodes nodes={block.children} />
@@ -73,10 +87,19 @@ function BlockNode({
         );
       }
 
+      if (level === 4) {
+        return (
+          <h4 className="mt-8 text-lg font-semibold text-primary first:mt-0 lg:text-xl">
+            <InlineNodes nodes={block.children} />
+          </h4>
+        );
+      }
+
+      // `####` under an offset of 1: the deepest level the editor offers.
       return (
-        <h4 className="mt-8 text-lg font-semibold text-primary first:mt-0 lg:text-xl">
+        <h5 className="mt-6 text-base font-semibold text-primary first:mt-0 lg:text-lg">
           <InlineNodes nodes={block.children} />
-        </h4>
+        </h5>
       );
     }
 
@@ -155,8 +178,11 @@ function FigureNode({
         alt={block.alt || image.alt}
         width={image.width}
         height={image.height}
-        sizes="(min-width: 42rem) 42rem, 100vw"
+        sizes={`(min-width: 42rem) min(42rem, ${image.width}px), min(100vw, ${image.width}px)`}
         className="h-auto w-full rounded-lg"
+        // Never wider than the file itself: a small image stretched to the
+        // column blurs. Large photographs still fill the column.
+        style={{ maxWidth: `${image.width}px` }}
       />
       {block.caption ? (
         <figcaption className="mt-3 text-sm text-muted-foreground">

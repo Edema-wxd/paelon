@@ -6,16 +6,17 @@ import { serviceFamilyEnum, type Service } from "@/lib/db/schema";
 
 import {
   checkboxField,
-  idListField,
   galleryField,
+  idListField,
   imageAltRule,
+  type ImageFieldNames,
   imageFields,
+  markdownBodyRules,
   optionalText,
   orderField,
   requiredText,
   slugField,
   tagsField,
-  type ImageFieldNames,
 } from "./fields";
 
 /**
@@ -65,7 +66,8 @@ export const serviceSchema = z
     [SERVICE_GALLERY_FIELD]: galleryField(),
     ...imageFields(SERVICE_IMAGE),
   })
-  .check(imageAltRule(SERVICE_IMAGE));
+  .check(imageAltRule(SERVICE_IMAGE))
+  .check(markdownBodyRules(["longDescription", "whatToExpect"]));
 
 export type ServiceInput = z.output<typeof serviceSchema>;
 
@@ -114,8 +116,9 @@ const FIELDS: readonly Field[] = [
     section: "Page content",
     label: "Long description",
     required: true,
-    rows: 12,
-    hint: "Markdown. Links are written as [text](/path) and must point at pages that exist.",
+    rows: 14,
+    figures: true,
+    hint: "The main text of the service page, under its name. Headings start new sections of the page; the Image button places a picture between paragraphs. Links are written as [text](/path) and must point at pages that exist.",
   },
   {
     type: "markdown",
@@ -124,7 +127,9 @@ const FIELDS: readonly Field[] = [
     label: "What to expect",
     required: true,
     rows: 8,
-    hint: "Markdown. What happens on the day, from the patient’s side.",
+    figures: true,
+    headingOffset: 1,
+    hint: "What happens on the day, from the patient’s side. Shown under its own “What to expect” heading, so a Heading here becomes a subsection of it.",
   },
   {
     type: "tags",

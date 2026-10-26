@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { checkboxField } from "@/lib/admin/resources/fields";
+import { checkboxField, markdownBodyRules } from "@/lib/admin/resources/fields";
 
 /**
  * About-page contract (master spec §6 About).
@@ -170,6 +170,11 @@ export const aboutFormSchema = z
     motto: mottoField,
     esg: proseField,
   })
-  .superRefine(checkPublishable);
+  .superRefine(checkPublishable)
+  // Images on their own line and no skipped heading levels, as for blog posts
+  // and services — checked when publishing.
+  .check(
+    markdownBodyRules(["intro", "founding_story", "mission", "vision", "value_proposition", "esg"]),
+  );
 
 export type AboutFormInput = z.output<typeof aboutFormSchema>;

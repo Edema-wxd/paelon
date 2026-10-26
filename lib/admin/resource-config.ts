@@ -82,6 +82,12 @@ export type Field =
        * the server too.
        */
       headings?: boolean;
+      /**
+       * Levels deeper than written that this field's headings render on the
+       * public page — `1` for text under a template heading of its own. The
+       * editor preview applies the same offset, so it matches the site.
+       */
+      headingOffset?: 0 | 1;
     })
   | (FieldBase & { type: "number"; min?: number; max?: number; step?: number })
   | (FieldBase & { type: "select"; options: readonly FieldOption[] })

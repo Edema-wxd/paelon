@@ -133,6 +133,7 @@ export function MarkdownField({
   describedBy,
   figures = false,
   headings = true,
+  headingOffset = 0,
   figureImages,
 }: {
   name: string;
@@ -149,6 +150,8 @@ export function MarkdownField({
   figures?: boolean;
   /** `false` hides Heading and Subheading, for text under a heading of its own. */
   headings?: boolean;
+  /** Passed to the preview, so headings render at the level the page uses. */
+  headingOffset?: 0 | 1;
   /** Assets the stored body already references, for the preview. */
   figureImages?: readonly PickableMedia[];
 }) {
@@ -394,7 +397,7 @@ export function MarkdownField({
           className="min-h-40 bg-surface px-4 py-3"
         >
           {value.trim() ? (
-            <ArticleBody source={value} images={previewImages} />
+            <ArticleBody source={value} images={previewImages} headingOffset={headingOffset} />
           ) : (
             <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
           )}

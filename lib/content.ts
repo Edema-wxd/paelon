@@ -121,6 +121,12 @@ export interface Service {
   featured_image_id: string | null;
   order: number;
   published: boolean;
+  /**
+   * The detail page's main text, Markdown, under the service name. May hold
+   * headings and figures (`media:` ids, resolved with `getBodyImages`). Null
+   * until written.
+   */
+  long_description: string | null;
   /** Prose for the detail page. Null until the seed supplies it. */
   what_to_expect: string | null;
   /** Bullet list. Empty until the seed supplies one. */
@@ -342,6 +348,7 @@ function toService(row: ServiceRow): Service {
     featured_image_id: row.featuredImageId,
     order: row.order,
     published: row.published,
+    long_description: realOrNull(row.longDescription),
     what_to_expect: realOrNull(row.whatToExpect),
     who_its_for: realEntries(row.whoItsFor),
     how_to_access: realEntries(row.howToAccess),

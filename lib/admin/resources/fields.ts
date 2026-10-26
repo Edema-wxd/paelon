@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { parseMarkdown } from "@/lib/markdown";
+import { headingSkips, imagePlacementIssues, parseMarkdown } from "@/lib/markdown";
 import { DAYS, type Hours } from "@/lib/validation/hours";
 
 /**
@@ -70,6 +70,52 @@ export function markdownWithoutHeadings(label: string, max: number) {
     (value) => parseMarkdown(value).every((block) => block.type !== "heading"),
     "Headings are not used here — use bold for emphasis instead.",
   );
+}
+
+/**
+ * Publish-time checks for Markdown bodies that may hold figures and headings:
+ * every image on a line of its own, and no heading level skipped. The same
+ * two rules blog posts publish under, for any content type's fields.
+ *
+ * Only when `published` is true — a draft is mid-edit — and only on the named
+ * fields, each reported under its own path so the message lands beside the
+ * right editor. Returns a `.check()` callback.
+ */
+export function markdownBodyRules(fields: readonly string[]) {
+  return (ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }) => {
+    const value = ctx.value as Record<string, unknown>;
+    if (value.published !== true) return;
+
+    for (const field of fields) {
+      const body = typeof value[field] === "string" ? (value[field] as string) : "";
+      if (!body) continue;
+
+      const images = imagePlacementIssues(body);
+      if (images.length > 0) {
+        const inline = images.filter((issue) => issue.reason === "inline").length;
+        ctx.issues.push({
+          code: "custom",
+          input: body,
+          path: [field],
+          message:
+            inline === images.length
+              ? "An image has to sit on a line of its own, with a blank line above and below it. Use the Image button to place it."
+              : "An image reference will not render. Use the Image button — images are referenced from the media library, not by URL.",
+        });
+        continue;
+      }
+
+      const skip = headingSkips(body)[0];
+      if (skip) {
+        ctx.issues.push({
+          code: "custom",
+          input: body,
+          path: [field],
+          message: `Heading levels cannot skip a step: “${skip.text}” is a level-${skip.level} heading under a level-${skip.after}. Use ${"#".repeat(skip.after + 1)} instead.`,
+        });
+      }
+    }
+  };
 }
 
 /** An optional single-line field. The empty string normalises to `null`. */
