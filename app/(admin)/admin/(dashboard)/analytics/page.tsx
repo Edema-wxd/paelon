@@ -33,6 +33,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+/** One line of the setup checklist: a variable and whether it is set. Never its value. */
+function SetupRow({ name, set, purpose }: { name: string; set: boolean; purpose: string }) {
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-2">
+      <code className="text-xs">{name}</code>
+      <span className={set ? "text-xs text-emerald-700" : "text-xs text-amber-800"}>
+        {set ? "· set" : "· not set"}
+      </span>
+      <span className="w-full text-xs text-muted-foreground">{purpose}</span>
+    </li>
+  );
+}
+
 export default async function AdminAnalyticsPage() {
   const user = await requireAdminUser();
 
@@ -41,17 +54,59 @@ export default async function AdminAnalyticsPage() {
   }
 
   const shareUrl = clientEnv.NEXT_PUBLIC_UMAMI_SHARE_URL;
+  // The same test `components/site/umami-script.tsx` makes before it renders
+  // the tracker: without both, no page on this deployment records a visit.
+  const tracking = Boolean(
+    clientEnv.NEXT_PUBLIC_UMAMI_SCRIPT_URL && clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
+  );
+
+  /*
+   * Three states, said plainly. The old note named one variable and told an
+   * admin to "set it in the environment" — an instruction for a developer,
+   * shown to hospital staff — and said nothing about whether visits were being
+   * recorded at all, which is the bigger fact when the tracker is off.
+   */
+  const status = !tracking
+    ? {
+        tone: "warn" as const,
+        title: "Visits to the website are not being recorded yet.",
+        body: "Analytics has not been switched on for this deployment, so there are no figures to show. Ask the developer to finish the Umami setup below.",
+      }
+    : !shareUrl
+      ? {
+          tone: "warn" as const,
+          title: "Visits are being recorded, but the dashboard is not linked here yet.",
+          body: "Ask the developer to add the dashboard’s share link, listed below.",
+        }
+      : null;
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-primary">Analytics</h1>
       <p className="mt-2 max-w-2xl text-base text-foreground/80">
-        Traffic and event figures from Umami, the site&rsquo;s self-hosted
-        analytics. No cookies are set and no personal data is collected.
+        Visits and enquiry figures from Umami, the website&rsquo;s analytics.
+        Umami sets no cookies and records no personal data, which is why the
+        site needs no cookie banner.
       </p>
+
+      {status ? (
+        <div
+          role="status"
+          className="mt-8 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-5 py-4"
+        >
+          <p className="text-base font-medium text-amber-900">{status.title}</p>
+          <p className="mt-1 text-sm text-amber-900/80">{status.body}</p>
+        </div>
+      ) : null}
 
       {shareUrl ? (
         <>
+          {!tracking ? (
+            <p className="mt-4 max-w-2xl text-sm text-foreground/70">
+              The dashboard below is linked, but this deployment is not sending
+              it visits, so its figures will not grow.
+            </p>
+          ) : null}
           <div className="mt-8 overflow-hidden rounded-lg border border-border bg-surface">
             <iframe
               src={shareUrl}
@@ -79,14 +134,36 @@ export default async function AdminAnalyticsPage() {
             .
           </p>
         </>
-      ) : (
-        <p className="mt-8 max-w-2xl rounded-lg border border-border bg-surface px-5 py-4 text-base">
-          Analytics is not configured for this environment.{" "}
-          <code className="text-sm">NEXT_PUBLIC_UMAMI_SHARE_URL</code> is unset,
-          so there is no dashboard to show. Generate a share URL in Umami under
-          Websites &rarr; Edit &rarr; Share URL and set it in the environment.
-        </p>
-      )}
+      ) : null}
+
+      {status ? (
+        <details className="mt-6 max-w-2xl rounded-lg border border-border bg-surface px-5 py-4">
+          <summary className="cursor-pointer text-sm font-medium text-primary">
+            Setup details for the developer
+          </summary>
+          <ul className="mt-3 space-y-3">
+            <SetupRow
+              name="NEXT_PUBLIC_UMAMI_SCRIPT_URL"
+              set={Boolean(clientEnv.NEXT_PUBLIC_UMAMI_SCRIPT_URL)}
+              purpose="The Umami tracker script. With the website id, this is what records visits."
+            />
+            <SetupRow
+              name="NEXT_PUBLIC_UMAMI_WEBSITE_ID"
+              set={Boolean(clientEnv.NEXT_PUBLIC_UMAMI_WEBSITE_ID)}
+              purpose="This website’s id in Umami."
+            />
+            <SetupRow
+              name="NEXT_PUBLIC_UMAMI_SHARE_URL"
+              set={Boolean(shareUrl)}
+              purpose="Umami → Websites → Edit → Share URL. Shown on this page."
+            />
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Set per environment, then redeploy: these are read when the site is
+            built. Spec §9 has the Umami deployment.
+          </p>
+        </details>
+      ) : null}
     </div>
   );
 }
