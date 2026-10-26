@@ -1,4 +1,4 @@
-import { asc, eq, getTableColumns } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
@@ -112,4 +112,19 @@ export async function getLocationsByDoctor(
       visibleFilterWith(locations, options, eq(doctorLocations.doctorId, doctorId)),
     )
     .orderBy(asc(locations.order), asc(locations.name));
+}
+
+/**
+ * A doctor's name and publish state by id, or null when deleted. Admin-only,
+ * uncached: the author editor uses it to say whether its profile link shows.
+ */
+export async function getDoctorLinkState(
+  id: string,
+): Promise<{ name: string; published: boolean } | null> {
+  const rows = await db()
+    .select({ name: doctors.name, published: doctors.published })
+    .from(doctors)
+    .where(and(eq(doctors.id, id), isNull(doctors.deletedAt)))
+    .limit(1);
+  return rows[0] ?? null;
 }

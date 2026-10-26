@@ -27,10 +27,10 @@ import {
  *
  *  1. **An author has no page of its own.** `slug` is there because every
  *     content type carries one (§5), and the §6 template list has no
- *     `/authors/[slug]`. So there is no `deleteWarning`: deleting an author
- *     404s nothing. What it does do is worse, and the hint on the field says
- *     so — `author_id` is `on delete restrict`, so the database refuses to
- *     lose a byline out from under a published post.
+ *     `/authors/[slug]`, so deleting one 404s nothing. Deleting one who still
+ *     has posts is refused by the `beforeDelete` hook in `./server.ts`: the
+ *     `on delete restrict` on `blog_posts.author_id` never fires, because
+ *     every admin delete is soft.
  *  2. **`published` does not gate the byline.** The blog queries filter on the
  *     *post's* `published`, not the author's, so unpublishing an author hides
  *     nothing. It is left in place because the CRUD kit's list filter and the
@@ -77,6 +77,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "name",
+    section: "Byline",
+    width: "half",
     label: "Name",
     required: true,
     maxLength: 200,
@@ -85,6 +87,8 @@ const FIELDS: readonly Field[] = [
   {
     type: "slug",
     name: "slug",
+    section: "Byline",
+    width: "half",
     label: "Slug",
     from: "name",
     required: true,
@@ -93,6 +97,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "text",
     name: "role",
+    section: "Byline",
     label: "Role",
     required: true,
     maxLength: 200,
@@ -101,6 +106,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "markdown",
     name: "bio",
+    section: "About the author",
     label: "Bio",
     required: true,
     rows: 8,
@@ -110,6 +116,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "image",
     name: AUTHOR_HEADSHOT.id,
+    section: "About the author",
     label: "Headshot",
     altName: AUTHOR_HEADSHOT.alt,
     altLabel: "Headshot alt text",
@@ -118,6 +125,7 @@ const FIELDS: readonly Field[] = [
   {
     type: "reference",
     name: AUTHOR_DOCTOR_FIELD,
+    section: "Links",
     label: "Doctor profile",
     emptyLabel: "Not a doctor at Paelon",
     hint: "Optional. Adds a “View profile” link under the bio, while that doctor’s profile is published. Leave blank for a non-clinical author.",
@@ -157,4 +165,6 @@ export const authorResource: ResourceConfig<Author, typeof authorSchema> = {
   columns: COLUMNS,
   schema: authorSchema,
   titleField: "name",
+  deleteWarning:
+    "Only possible once none of their posts remain — give each post another author, or delete it, first. Authors have no page of their own, so no link breaks.",
 };

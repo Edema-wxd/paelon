@@ -438,6 +438,9 @@ function buildDeleteAction<R, S extends z.ZodType>(
       row: (input) => getContentOwner(server.table, input.id),
     },
     async ({ id }) => {
+      const refusal = server.beforeDelete ? await server.beforeDelete(id) : null;
+      if (refusal) return fail(refusal);
+
       // Soft, always (spec §8: "All content deletes are soft deletes").
       const deleted = await softDeleteContent(server.table, id);
       if (!deleted) return fail(`That ${inSentence(config.singular)} no longer exists.`);

@@ -2,6 +2,7 @@ import type { FieldErrors } from "@/lib/admin/action";
 import { blogPublishErrors } from "@/lib/admin/blog-publish";
 import type { Resource } from "@/lib/auth/policy";
 import type { ContentTable, RelationColumns } from "@/lib/db/queries/content-crud";
+import { listPostsByAuthor } from "@/lib/db/queries/blog";
 import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import {
   authors,
@@ -199,6 +200,14 @@ export interface ResourceServerConfig {
    * runs, so it only ever sees real columns.
    */
   toRow?: (values: Record<string, unknown>) => Record<string, unknown>;
+  /**
+   * Refuses a delete, with the reason shown to the editor, or `null` to allow.
+   *
+   * Needed because every delete is soft: a foreign key's `on delete restrict`
+   * only fires on a real `DELETE`, which the admin never issues, so it cannot
+   * protect a row that other rows still point at.
+   */
+  beforeDelete?: (id: string) => Promise<string | null>;
 }
 
 export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
@@ -368,6 +377,20 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
         optionsLabel: doctors.name,
       },
     ],
+    // `blog_posts.author_id` is `on delete restrict`, but a soft delete never
+    // reaches it. Without this, the author vanished from the post form's
+    // Author list while their posts kept the byline on the public site, and
+    // the next save of any of those posts failed on "Choose an author".
+    beforeDelete: async (id) => {
+      const posts = await listPostsByAuthor(id);
+      if (posts.length === 0) return null;
+      const named = posts
+        .slice(0, 3)
+        .map((post) => `“${post.title}”`)
+        .join(", ");
+      const more = posts.length > 3 ? ` and ${posts.length - 3} more` : "";
+      return `This author is on ${posts.length === 1 ? "1 post" : `${posts.length} posts`} (${named}${more}). Give ${posts.length === 1 ? "it" : "each"} another author, or delete ${posts.length === 1 ? "it" : "them"}, first.`;
+    },
   },
 
   blog: {

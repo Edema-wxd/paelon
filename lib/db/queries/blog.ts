@@ -247,6 +247,25 @@ export async function countCategoryFallbackHosts(
   return rows[0]?.count ?? 0;
 }
 
+/**
+ * Every post carrying `authorId`'s byline, drafts included, newest first.
+ * Soft-deleted posts are left out: they hold the foreign key but no byline.
+ * Admin-only, uncached — the author editor's panel and its delete guard.
+ */
+export async function listPostsByAuthor(
+  authorId: string,
+): Promise<{ title: string; published: boolean; publishedAt: Date | null }[]> {
+  return db()
+    .select({
+      title: blogPosts.title,
+      published: blogPosts.published,
+      publishedAt: blogPosts.publishedAt,
+    })
+    .from(blogPosts)
+    .where(and(eq(blogPosts.authorId, authorId), isNull(blogPosts.deletedAt)))
+    .orderBy(desc(sql`coalesce(${blogPosts.publishedAt}, ${blogPosts.createdAt})`));
+}
+
 /** Published posts in one category, newest first. */
 export async function getPostsByCategory(
   category: BlogPost["category"],
