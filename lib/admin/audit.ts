@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 
+import { isPiiKey } from "@/lib/admin/pii-keys";
 import type { Resource } from "@/lib/auth/policy";
 import { writeAuditEntry } from "@/lib/db/queries/users";
 import { logger } from "@/lib/logger";
@@ -42,31 +43,6 @@ export type AuditMetadata = Record<
   string,
   string | number | boolean | null | string[]
 >;
-
-/**
- * Keys that name personal data, matched case-insensitively against the key with
- * `_` and `-` removed. Fragments match anywhere, so `patient_email` and
- * `passwordHash` hit; short words that occur inside innocent keys match only
- * the whole key.
- */
-const PII_KEY_FRAGMENTS = [
-  "email",
-  "phone",
-  "password",
-  "address",
-  "birth",
-  "reasonforvisit",
-  "token",
-];
-const PII_KEYS = new Set(["ip", "name", "fullname", "firstname", "lastname", "dob", "notes", "message"]);
-
-function isPiiKey(key: string): boolean {
-  const normalised = key.toLowerCase().replace(/[_-]/g, "");
-  return (
-    PII_KEYS.has(normalised) ||
-    PII_KEY_FRAGMENTS.some((fragment) => normalised.includes(fragment))
-  );
-}
 
 /**
  * Drop metadata keys that look like personal data.

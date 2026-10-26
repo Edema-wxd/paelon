@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   auditHref,
+  entityHref,
+  entityLabel,
+  eventLabel,
   isFiltered,
   metadataPairs,
   parseAuditQuery,
@@ -100,5 +103,59 @@ describe("metadataPairs", () => {
       { key: "nested", value: '{"a":1}' },
       { key: "missing", value: "—" },
     ]);
+  });
+});
+
+describe("metadataPairs and personal data", () => {
+  it("hides a patient's subject line recorded by older contact.viewed rows", () => {
+    expect(metadataPairs({ subject: "Chest pain since Monday", handled: false })).toEqual([
+      { key: "handled", value: "false" },
+    ]);
+  });
+
+  it("keeps a testimonial quote, which D4 records on purpose", () => {
+    expect(metadataPairs({ quote: "Kind staff." })).toEqual([{ key: "quote", value: "Kind staff." }]);
+  });
+
+  it("writes snake_case keys as words", () => {
+    expect(metadataPairs({ company_size: "51_200" })).toEqual([
+      { key: "company size", value: "51_200" },
+    ]);
+  });
+});
+
+describe("eventLabel", () => {
+  it("names known events", () => {
+    expect(eventLabel("auth.login")).toBe("Signed in");
+    expect(eventLabel("auth.login_failed")).toBe("Sign-in failed");
+    expect(eventLabel("blog.updated")).toBe("Post edited");
+    expect(eventLabel("booking.viewed")).toBe("Booking opened");
+    expect(eventLabel("media.alt_updated")).toBe("Media file alt text edited");
+    expect(eventLabel("services.layout_saved")).toBe("Service page layout saved");
+  });
+
+  it("keeps an unknown event readable", () => {
+    expect(eventLabel("widgets.re_indexed")).toBe("widgets re indexed");
+    expect(eventLabel("standalone")).toBe("standalone");
+  });
+});
+
+describe("entityLabel and entityHref", () => {
+  it("names tables in words", () => {
+    expect(entityLabel("blog_posts")).toBe("Post");
+    expect(entityLabel("contact_submissions")).toBe("Contact message");
+    expect(entityLabel("something_new")).toBe("something new");
+  });
+
+  it("links to the editor for the row", () => {
+    expect(entityHref("blog_posts", ACTOR, "blog.updated")).toBe(`/admin/blog/${ACTOR}`);
+    expect(entityHref("contact_submissions", ACTOR, "contact.viewed")).toBe(`/admin/contact/${ACTOR}`);
+    expect(entityHref("about_content", ACTOR, "about_content.updated")).toBe("/admin/about");
+  });
+
+  it("does not link a deleted row, an unknown table or a missing id", () => {
+    expect(entityHref("faqs", ACTOR, "faqs.deleted")).toBeNull();
+    expect(entityHref("something_new", ACTOR, "x.updated")).toBeNull();
+    expect(entityHref("bookings", null, "booking.viewed")).toBeNull();
   });
 });

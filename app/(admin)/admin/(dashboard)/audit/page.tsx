@@ -4,12 +4,16 @@ import type { Metadata } from "next";
 import { NotPermitted } from "@/components/admin/not-permitted";
 import {
   auditHref,
+  entityHref,
+  entityLabel,
+  eventLabel,
   isFiltered,
   metadataPairs,
   parseAuditQuery,
   type RawSearchParams,
 } from "@/lib/admin/audit-view";
 import { paginate } from "@/lib/admin/booking-view";
+import { inSentence } from "@/lib/admin/resource-config";
 import { can } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
 import {
@@ -29,8 +33,11 @@ import { Input } from "@/components/ui/input";
  * can tidy up is not evidence.
  *
  * Opening this page is not itself audited. Auditing reads of the audit log
- * fills it with entries about looking at it, and §8 lists what is recorded:
- * sign-ins, staff changes, media deletes and detail-page opens.
+ * fills it with entries about looking at it.
+ *
+ * Events and tables are shown in words (`eventLabel`, `entityLabel`); the
+ * stored codes stay the filter values, and each event's code is kept beside its
+ * label so a row can still be matched to the code that wrote it.
  */
 
 export const dynamic = "force-dynamic";
@@ -40,8 +47,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+/**
+ * Lagos time, stated. The server formats this, and on Vercel the server runs in
+ * UTC, so without a fixed zone every time was an hour behind what the staff
+ * reading it would expect.
+ */
 function formatDateTime(value: Date): string {
   return new Date(value).toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -49,13 +62,6 @@ function formatDateTime(value: Date): string {
     minute: "2-digit",
     second: "2-digit",
   });
-}
-
-/** Where an entity id can be opened, for the event types that have a page. */
-function entityHref(entityType: string, entityId: string): string | null {
-  if (entityType === "bookings") return `/admin/bookings/${entityId}`;
-  if (entityType === "users") return "/admin/users";
-  return null;
 }
 
 export default async function AdminAuditPage({
@@ -82,9 +88,12 @@ export default async function AdminAuditPage({
     <div className="mx-auto max-w-6xl">
       <h1 className="text-2xl font-bold text-primary">Audit log</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Sign-ins, staff account changes, media deletes, and each opening of a
-        booking. Read-only — entries cannot be edited or removed from here. IP
-        addresses are stored as a salted hash, never as an address.
+        Every change made in this panel — content, publishing, page layouts,
+        media, staff accounts, and the status of bookings and enquiries — plus
+        sign-ins, scripts run against the database, and each opening of a
+        booking, contact message or corporate enquiry. Read-only: entries cannot
+        be edited or removed from here. IP addresses are stored as a salted
+        hash, never as an address. Times are Lagos time.
       </p>
 
       <section aria-labelledby="audit-filters-heading" className="mt-8">
@@ -109,7 +118,7 @@ export default async function AdminAuditPage({
               <option value="">All events</option>
               {facets.actions.map((action) => (
                 <option key={action} value={action}>
-                  {action}
+                  {eventLabel(action)}
                 </option>
               ))}
             </select>
@@ -128,7 +137,7 @@ export default async function AdminAuditPage({
               <option value="">All entities</option>
               {facets.entityTypes.map((entityType) => (
                 <option key={entityType} value={entityType}>
-                  {entityType}
+                  {entityLabel(entityType)}
                 </option>
               ))}
             </select>
@@ -145,8 +154,9 @@ export default async function AdminAuditPage({
               className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground"
             >
               <option value="">Anyone</option>
-              {/* A failed sign-in has no account behind it yet. */}
-              <option value="system">No account (sign-in attempts)</option>
+              {/* A failed sign-in has no account behind it yet, and a seed
+                  or sync script runs as nobody. */}
+              <option value="system">No account (sign-in attempts and scripts)</option>
               {actors.map((actor) => (
                 <option key={actor.id} value={actor.id}>
                   {actor.name}
@@ -220,7 +230,7 @@ export default async function AdminAuditPage({
               <thead>
                 <tr className="border-b border-border">
                   <th scope="col" className="p-3 font-medium text-primary">
-                    When
+                    When <span className="font-normal text-muted-foreground">(Lagos)</span>
                   </th>
                   <th scope="col" className="p-3 font-medium text-primary">
                     Who
@@ -238,9 +248,9 @@ export default async function AdminAuditPage({
               </thead>
               <tbody>
                 {page.entries.map((entry) => {
-                  const href = entry.entityId
-                    ? entityHref(entry.entityType, entry.entityId)
-                    : null;
+                  const href = entityHref(entry.entityType, entry.entityId, entry.action);
+                  const label = entityLabel(entry.entityType);
+                  const viaScript = entry.metadata.via === "cli";
                   const pairs = metadataPairs(entry.metadata);
 
                   return (
@@ -250,7 +260,9 @@ export default async function AdminAuditPage({
                       </td>
                       <td className="p-3">
                         {entry.actorName ?? (
-                          <span className="text-muted-foreground">No account</span>
+                          <span className="text-muted-foreground">
+                            {viaScript ? "Script" : "No account"}
+                          </span>
                         )}
                         {/* Enough of the hash to match two events from one
                             client, which is all a hash is useful for. */}
@@ -263,15 +275,20 @@ export default async function AdminAuditPage({
                           </span>
                         ) : null}
                       </td>
-                      <td className="p-3 font-medium text-primary">{entry.action}</td>
                       <td className="p-3">
-                        {entry.entityType}
+                        <span className="font-medium text-primary">{eventLabel(entry.action)}</span>
+                        <span className="block font-mono text-xs text-muted-foreground">
+                          {entry.action}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        {label}
                         {href ? (
                           <Link
                             href={href}
                             className="block text-xs text-accent underline underline-offset-4 hover:no-underline"
                           >
-                            Open
+                            Open {inSentence(label)}
                           </Link>
                         ) : null}
                       </td>

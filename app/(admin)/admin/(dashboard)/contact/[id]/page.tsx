@@ -88,15 +88,16 @@ export default async function AdminContactDetailPage({
 
   const { submission, locationName, handledByName } = detail;
 
-  // Ids and enum-shaped fields only. Never name, email, phone or message,
-  // which is the whole reason this row exists — to record that someone read
-  // that content, not to duplicate it.
+  // Ids and enum-shaped fields only. Never name, email, phone, message or
+  // subject — the subject is free text the patient typed, and it was recorded
+  // here until 2026-10-26. The row exists to record that someone read that
+  // content, not to duplicate it.
   await writeAudit({
     userId: user.id,
     action: "contact.viewed",
     entityType: "contact_submissions",
     entityId: submission.id,
-    metadata: { subject: submission.subject, handled: submission.handled },
+    metadata: { handled: submission.handled },
     ip: await requestIp(),
   });
 
