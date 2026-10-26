@@ -5,6 +5,7 @@ import { ForPatriciaBlock } from "@/components/site/for-patricia-block";
 import { FooterCtaPair } from "@/components/site/footer-cta-pair";
 import { HeroSection } from "@/components/site/hero-section";
 import { HmoAccessSection } from "@/components/site/hmo-access-section";
+import { NewsletterPopup } from "@/components/site/newsletter-popup";
 import { NewsletterSignup } from "@/components/site/newsletter-signup";
 import { RecentBlogCard } from "@/components/site/recent-blog-card";
 import { ServicesGrid } from "@/components/site/services-grid";
@@ -89,6 +90,8 @@ export default async function HomePage() {
       <TestimonialsSection />
       <RecentBlogCard />
       <NewsletterSignup />
+      {/* Opens when the visitor scrolls to here — the end of the page. */}
+      <NewsletterPopup />
       <FooterCtaPair />
     </>
   );

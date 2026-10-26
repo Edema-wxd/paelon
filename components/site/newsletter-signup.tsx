@@ -1,127 +1,27 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
 
+import { useNewsletterForm } from "@/components/site/use-newsletter-form";
 import { Button } from "@/components/ui/button";
-import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
-import {
-  newsletterSchema,
-  type NewsletterInput,
-} from "@/lib/validation/newsletter";
-
-type Status = "idle" | "submitting" | "success" | "error";
-
-/** Field names the server may return errors against, so an unexpected key from
-    the API can never be piped into `setError` as an unknown field. */
-const FIELD_NAMES = ["email", "consentNdpr"] as const;
-
-type FieldName = (typeof FIELD_NAMES)[number];
-
-function isFieldName(value: string): value is FieldName {
-  return (FIELD_NAMES as readonly string[]).includes(value);
-}
 
 /**
  * Newsletter signup ("Join the Paelon Community").
  *
- * Client component — it owns form state. Validation is the shared Zod schema,
- * run here for UX and again in the route handler for truth.
- *
- * The NDPR consent checkbox is not in the Figma export. It is not optional:
- * spec §14 requires explicit, never-pre-checked consent on every form that
- * collects personal data, and an email address qualifies.
+ * Client component — it owns form state, via the hook it shares with the
+ * homepage popup. The NDPR consent checkbox is not in the Figma export. It is
+ * not optional: spec §14 requires explicit, never-pre-checked consent on every
+ * form that collects personal data, and an email address qualifies.
  */
 export function NewsletterSignup() {
-  const [status, setStatus] = useState<Status>("idle");
-  const [serverError, setServerError] = useState<string | null>(null);
-
+  const { form, status, serverError, submit: onSubmit } = useNewsletterForm();
   const {
     register,
     handleSubmit,
-    reset,
-    setError,
     formState: { errors },
-  } = useForm<NewsletterInput>({
-    resolver: zodResolver(newsletterSchema),
-    defaultValues: {
-      email: "",
-      // `literal(true)` types the field as `true`, but an unticked box must
-      // start as false so consent is never pre-given. The cast is the narrow
-      // cost of that guarantee.
-      consentNdpr: false as unknown as true,
-      website: "",
-      formRenderedAt: Date.now(),
-    },
-  });
+  } = form;
 
-  async function onSubmit(values: NewsletterInput) {
-    setStatus("submitting");
-    setServerError(null);
-
-    try {
-      const response = await fetch("/api/newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-
-      const body: unknown = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        // The envelope is `{ ok: false, error: { message, fields } }` — see
-        // lib/api/response.ts. Reading `body.message` off the top level never
-        // matches, which silently swallowed every server message the route
-        // sends, including the 429.
-        const error =
-          body && typeof body === "object" && "error" in body
-            ? (body.error as {
-                message?: string;
-                fields?: Record<string, string[]>;
-              })
-            : null;
-
-        // The server is the authority on validation, so anything it rejects is
-        // pinned back onto the offending field rather than shown as one opaque
-        // banner, matching the contact form.
-        if (error?.fields) {
-          for (const [field, messages] of Object.entries(error.fields)) {
-            if (isFieldName(field) && messages[0]) {
-              setError(field, { type: "server", message: messages[0] });
-            }
-          }
-        }
-
-        setServerError(
-          error?.message ??
-            "We could not sign you up just now. Please try again.",
-        );
-        setStatus("error");
-        return;
-      }
-
-      // Re-stamps `formRenderedAt` rather than resetting it to the mount time
-      // a bare `reset()` restores, so a second signup in the same session is
-      // timed from when this form became empty again.
-      reset({
-        email: "",
-        consentNdpr: false as unknown as true,
-        website: "",
-        formRenderedAt: Date.now(),
-      });
-      // `newsletter_signup` (spec §9). The double opt-in confirmation is a
-      // separate, server-side event and is not tracked here.
-      track("newsletter_signup");
-
-      setStatus("success");
-    } catch {
-      setServerError("We could not reach the server. Please try again.");
-      setStatus("error");
-    }
-  }
 
   return (
     <section

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { BlogPostCard } from "@/components/site/blog-post-card";
+import { NewsletterPopup } from "@/components/site/newsletter-popup";
 import { PendingNote } from "@/components/site/pending-note";
 import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
 import { RouteLoader } from "@/components/site/route-loader";
@@ -166,6 +167,11 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
 
         <PreferredSourceBadge className="mt-16 max-w-2xl" />
       </div>
+      {/* Opens when the visitor scrolls to the end of the page. */}
+      <NewsletterPopup
+        heading="Get our next health article"
+        body="Wellness tips and new health articles from Paelon Memorial Hospital, sent to your inbox."
+      />
     </>
   );
 }

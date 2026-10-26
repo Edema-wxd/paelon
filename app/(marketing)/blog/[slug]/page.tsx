@@ -7,6 +7,7 @@ import { ArticleBody } from "@/components/site/article-body";
 import { AssetPlaceholder } from "@/components/site/asset-placeholder";
 import { BlogPostCard } from "@/components/site/blog-post-card";
 import { Breadcrumbs } from "@/components/site/breadcrumbs";
+import { NewsletterPopup } from "@/components/site/newsletter-popup";
 import { PreferredSourceBadge } from "@/components/site/preferred-source-badge";
 import { ShareLinks } from "@/components/site/share-links";
 import {
@@ -243,6 +244,12 @@ export default async function BlogPostPage({ params }: PageProps) {
           </section>
         ) : null}
       </div>
+      {/* Opens when the reader reaches the end of the article and its "Read
+          next" list, not part-way through the text. */}
+      <NewsletterPopup
+        heading="Get our next health article"
+        body="Wellness tips and new health articles from Paelon Memorial Hospital, sent to your inbox."
+      />
     </>
   );
 }
