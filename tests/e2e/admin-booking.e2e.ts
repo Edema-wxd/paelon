@@ -87,14 +87,21 @@ async function signIn(page: Page): Promise<void> {
     timeout: 30_000,
   });
   await expect(
-    page.getByRole("heading", { level: 1, name: `Signed in as ${E2E_ADMIN.name}` }),
+    page.getByRole("heading", {
+      level: 1,
+      name: `Welcome back, ${E2E_ADMIN.name.split(" ")[0]}`,
+    }),
   ).toBeVisible();
 }
 
 test.describe("admin booking workflow", () => {
   test("signing in reaches the dashboard, not the login form", async ({ page }) => {
     await signIn(page);
-    await expect(page.getByRole("link", { name: "Bookings" })).toBeVisible();
+    // Scoped to the nav: the overview also links "All bookings", and the nav
+    // link's name gains its open-count badge ("Bookings 3 new").
+    await expect(
+      page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: /^Bookings\b/ }),
+    ).toBeVisible();
   });
 
   test("moving a booking to contacted records the actor in the timeline", async ({

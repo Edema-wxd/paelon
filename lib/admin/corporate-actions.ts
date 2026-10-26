@@ -7,6 +7,7 @@ import {
   anonymiseCorporateEnquiry,
   changeCorporateStatus,
 } from "@/lib/db/queries/corporate-enquiries";
+import { CORPORATE_STATUS_LABELS } from "@/lib/admin/corporate-view";
 import { corporateStatusEnum } from "@/lib/db/schema";
 
 /**
@@ -51,7 +52,7 @@ export const changeCorporateStatusAction = adminAction(
     if (!result.ok) return fail(REFUSAL_MESSAGES[result.reason]);
 
     return done(
-      { message: "Status updated." },
+      { message: `Moved to ${CORPORATE_STATUS_LABELS[to]}.` },
       { entityId: id, metadata: { from: result.from, to: result.to } },
     );
   },

@@ -14,13 +14,16 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
+    // Icon-only to share the sidebar footer with the account name; the label
+    // stays in the accessible name and the native tooltip.
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-primary transition-colors hover:bg-secondary disabled:opacity-60"
+      title="Sign out"
+      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-surface hover:text-accent active:scale-[0.94] disabled:opacity-60"
     >
       <LogOut aria-hidden className="size-4" />
-      {pending ? "Signing out" : "Sign out"}
+      <span className="sr-only">{pending ? "Signing out" : "Sign out"}</span>
     </button>
   );
 }
