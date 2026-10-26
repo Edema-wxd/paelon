@@ -33,7 +33,8 @@ export interface MediaCardData {
   id: string;
   url: string;
   filename: string | null;
-  alt: string;
+  /** Null: not written yet. "": deliberately decorative. */
+  alt: string | null;
   width: number | null;
   height: number | null;
   usage: MediaUsage[];
@@ -166,7 +167,7 @@ function MediaCard({ item }: { item: MediaCardData }) {
                 name="alt"
                 rows={3}
                 maxLength={MEDIA_ALT_MAX}
-                defaultValue={item.alt}
+                defaultValue={item.alt ?? ""}
                 disabled={decorative}
                 aria-invalid={altError ? true : undefined}
                 aria-describedby={altError ? altErrorId : undefined}
@@ -198,9 +199,13 @@ function MediaCard({ item }: { item: MediaCardData }) {
             <>
               {item.alt ? (
                 <p className="mt-1 text-sm wrap-break-word text-primary">{item.alt}</p>
+              ) : item.alt === "" ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Decorative — screen readers skip it.
+                </p>
               ) : (
                 <p className="mt-1 text-sm text-amber-800">
-                  None — treated as decorative. Describe it if it shows anything a reader needs.
+                  Not written yet. Describe it before it goes on a page.
                 </p>
               )}
               {altState?.ok ? (

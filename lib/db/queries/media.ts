@@ -219,7 +219,8 @@ export async function recordUpload(input: {
     .values({
       key: input.key,
       url: input.url,
-      alt: "",
+      // Not written yet — distinct from "" (decorative) since migration 0009.
+      alt: null,
       filename: input.filename,
       uploadedBy: input.uploadedBy,
       width: input.width ?? null,

@@ -784,7 +784,7 @@ export async function getBodyImages(
   for (const [id, row] of rows) {
     resolved.set(id, {
       url: row.url,
-      alt: row.alt,
+      alt: row.alt ?? "",
       width: row.width,
       height: row.height,
     });
@@ -810,12 +810,12 @@ export async function getBodyImages(
  * Not cached, for the reason `getBodyImages` is not: an editor fixing alt text
  * should not wait out a second cache layer that nothing invalidates.
  */
-function toGallery(rows: readonly { url: string; alt: string; width: number | null; height: number | null }[]): ContentImage[] {
+function toGallery(rows: readonly { url: string; alt: string | null; width: number | null; height: number | null }[]): ContentImage[] {
   return rows
     .filter((row) => row.width !== null && row.height !== null)
     .map((row) => ({
       url: row.url,
-      alt: row.alt,
+      alt: row.alt ?? "",
       width: row.width,
       height: row.height,
     }));
@@ -868,7 +868,7 @@ export async function getDoctorHeadshots(
     for (const doctorId of byMediaId.get(mediaId) ?? []) {
       resolved.set(doctorId, {
         url: row.url,
-        alt: row.alt,
+        alt: row.alt ?? "",
         width: row.width,
         height: row.height,
       });
@@ -909,7 +909,7 @@ export async function getHmoLogos(
     for (const hmoId of byMediaId.get(mediaId) ?? []) {
       resolved.set(hmoId, {
         url: row.url,
-        alt: row.alt,
+        alt: row.alt ?? "",
         width: row.width,
         height: row.height,
       });
@@ -952,7 +952,7 @@ export async function getSectionImages(
   const rows = await getMediaByIds(ids);
   const resolved = new Map<string, ContentImage>();
   for (const [id, row] of rows) {
-    resolved.set(id, { url: row.url, alt: row.alt, width: row.width, height: row.height });
+    resolved.set(id, { url: row.url, alt: row.alt ?? "", width: row.width, height: row.height });
   }
   return resolved;
 }

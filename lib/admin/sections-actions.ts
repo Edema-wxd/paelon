@@ -7,7 +7,9 @@ import { getContentById, type ContentTable } from "@/lib/db/queries/content-crud
 import { replaceSections } from "@/lib/db/queries/sections";
 import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import { services } from "@/lib/db/schema";
-import { sectionsSchema } from "@/lib/validation/sections";
+import { sectionMediaIds, sectionsSchema } from "@/lib/validation/sections";
+import { undescribedMedia, undescribedMessage } from "@/lib/admin/undescribed-media";
+import { collectMediaIds, parseMarkdown } from "@/lib/markdown";
 
 /**
  * Save a page's layout — every block, in order, in one write.
@@ -40,6 +42,16 @@ function summary(sections: z.output<typeof sectionsSchema>) {
   return { count: sections.length, kinds: sections.map((section) => section.kind) };
 }
 
+/**
+ * A refusal when a block places an image nobody has described. A layout has no
+ * draft state — saving it is publishing it — so this runs on every save.
+ */
+async function undescribedIn(sections: z.output<typeof sectionsSchema>): Promise<string | null> {
+  const ids = sectionMediaIds(sections, (body) => collectMediaIds(parseMarkdown(body)));
+  const names = await undescribedMedia(ids);
+  return names.length > 0 ? undescribedMessage(names) : null;
+}
+
 export const saveServiceSectionsAction = adminAction(
   {
     resource: "services",
@@ -51,6 +63,9 @@ export const saveServiceSectionsAction = adminAction(
   async ({ serviceId, sections }) => {
     const service = await getContentById(services as unknown as ContentTable, serviceId);
     if (!service) return fail("That service no longer exists.");
+
+    const undescribed = await undescribedIn(sections);
+    if (undescribed) return fail(undescribed);
 
     await replaceSections({ page: "service", serviceId }, sections);
     return done(
@@ -70,6 +85,9 @@ export const saveAboutSectionsAction = adminAction(
     path: "/admin/about",
   },
   async ({ sections }) => {
+    const undescribed = await undescribedIn(sections);
+    if (undescribed) return fail(undescribed);
+
     await replaceSections({ page: "about" }, sections);
     return done(
       { message: "Page layout saved. The About page shows it now." },

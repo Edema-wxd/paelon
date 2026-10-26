@@ -57,7 +57,7 @@ export function GalleryField({
   const [announcement, setAnnouncement] = useState("");
 
   function describe(asset: PickableMedia): string {
-    return asset.alt.trim() || asset.filename || "Untitled image";
+    return (asset.alt ?? "").trim() || asset.filename || "Untitled image";
   }
 
   function add(asset: PickableMedia) {
@@ -122,9 +122,11 @@ export function GalleryField({
                 <span className="block truncate text-sm text-primary">
                   {describe(asset)}
                 </span>
-                {asset.alt.trim().length === 0 ? (
+                {asset.alt === null || asset.alt.trim() === "" ? (
                   <span className="block text-xs text-destructive">
-                    No alt text — add it under Media.
+                    {asset.alt === null
+                      ? "Alt text not written yet — add it in the media library."
+                      : "Marked decorative — describe it in the media library if it shows something."}
                   </span>
                 ) : null}
               </span>

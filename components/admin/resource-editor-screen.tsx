@@ -271,18 +271,21 @@ export async function ResourceEditorScreen<R extends ContentRow>({
       const mediaId = typeof row?.[field.name] === "string" ? (row[field.name] as string) : null;
       const media = mediaId ? mediaRows.get(mediaId) : undefined;
       const alt = media?.alt ?? "";
+      // `''` is a recorded decision that the image is decorative; `null` means
+      // nobody has described it (migration 0009), which must not arrive with
+      // the box already ticked — that is how an undescribed image got saved as
+      // decorative without anyone choosing it.
+      const decorative = media !== undefined && media.alt === "";
 
       images[field.name] = {
         mediaId: media ? mediaId : null,
         url: media?.url ?? null,
         alt,
-        // Empty alt text on an existing image is a recorded decision that the
-        // image is decorative — the schema does not let it be saved otherwise.
-        decorative: media !== undefined && alt === "",
+        decorative,
       };
       defaults[field.name] = media ? (mediaId as string) : "";
       defaults[field.altName] = alt;
-      defaults[`${field.name}Decorative`] = media !== undefined && alt === "";
+      defaults[`${field.name}Decorative`] = decorative;
       continue;
     }
 
