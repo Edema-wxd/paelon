@@ -113,7 +113,9 @@ These must be resolved with Francis before the site goes live.
   are exactly as given; `aliases` only split combined names ("Vanbreda/Cigna")
   and never guess an expansion. `cigna` keeps its slug so its delivered logo
   still resolves. Logos exist for 26 of the 29; the homepage strip shows only
-  those, the typeahead searches all. The 22 added on 2026-10-26 were taken from
+  providers with a logo, the typeahead searches all. A logo uploaded in
+  `/admin/hmos` takes precedence over the bundled file, so a missing or
+  low-quality one can be fixed there without a deploy. The 22 added on 2026-10-26 were taken from
   each provider's own website and should be swapped for official files from
   the HMOs where Paelon can get them (HCI, MB&O, Kennedia and Medexia only
   publish small rasters). Missing: `bastion` and `regenix` (both publish
