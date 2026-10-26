@@ -89,6 +89,15 @@ export default async function BookPage({
       : null,
   }));
 
+  // One branch means there is nothing to choose, so it is pre-filled like a
+  // `?branch=` deep link and the wizard opens on step 2. Step 1 stays reachable
+  // with Back, and returns as a real choice the moment a second branch is
+  // published (Victoria Island is the only one since 2026-10-26).
+  const [onlyBranch] = branches;
+  if (branches.length === 1 && onlyBranch && !prefill.locationSlug) {
+    prefill.locationSlug = onlyBranch.slug;
+  }
+
   const serviceOptions: ServiceOption[] = services.map((service) => ({
     slug: service.slug,
     name: service.name,

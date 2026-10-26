@@ -20,6 +20,11 @@ These must be resolved with Francis before the site goes live.
   including `(01) 290 0844` for retainer enquiries and `0909 360 8138`. Confirm
   whether each branch has a direct line, and confirm the emergency hotline is
   answered 24/7 as the site states.
+- **`locations.json` — one branch for now.** Francis ruled on 2026-10-26 that
+  Victoria Island is the only branch. Ikeja and Moshood Olugbani stay in the
+  file with `published: false`, so their addresses are not lost, and the Ikeja
+  opening-hours FAQ in `faqs.json` is unpublished with them. Publishing a
+  branch again is one flag here or in `/admin/locations`.
 - **`locations.json` — the fourth branch.** Three are now seeded from the live
   site: Victoria Island (1221 Ahmadu Bello Way), Ikeja (9 Ajao Street,
   outpatient 9am–5pm Mon–Fri) and Paelon Memorial Clinic (175b Moshood Olugbani

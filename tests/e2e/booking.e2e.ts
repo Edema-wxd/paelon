@@ -45,11 +45,15 @@ test.describe("booking flow", () => {
     await expect(progress).toBeVisible();
 
     // Step 1 — branch. Cards, not a dropdown (spec §7), so the choice is a
-    // radio group rather than a select.
-    const branches = page.getByRole("radio");
-    await expect(branches.first()).toBeVisible();
-    await branches.first().check();
-    await continueStep(page);
+    // radio group rather than a select. With a single published branch the
+    // page pre-fills it and the wizard opens on step 2 instead, so step 1 is
+    // answered only when it is actually showing.
+    if (await page.getByText("Step 1 of 6:").count()) {
+      const branches = page.getByRole("radio");
+      await expect(branches.first()).toBeVisible();
+      await branches.first().check();
+      await continueStep(page);
+    }
 
     // Step 2 — the announcement is what tells a screen-reader user the screen
     // moved. Without it, Continue looks like it did nothing.

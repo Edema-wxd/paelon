@@ -54,7 +54,7 @@
     "accessibility_notes": null,
     "booking_email": null,
     "order": 2,
-    "published": true
+    "published": false
   },
   {
     "slug": "moshood-olugbani",
@@ -74,6 +74,6 @@
     "accessibility_notes": null,
     "booking_email": null,
     "order": 3,
-    "published": true
+    "published": false
   }
 ]
