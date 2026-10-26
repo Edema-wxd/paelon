@@ -58,18 +58,20 @@ export async function HmoAccessSection() {
           {/* A grid, not flex-wrap: fixed 176px logo widths against ~310px of
               usable mobile width fitted one per row, stranding each logo in a
               left-aligned column and turning four providers into ~800px of
-              scroll. Fluid columns keep the strip compact at every width. */}
-          <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-8">
+              scroll. Fluid columns keep the strip compact at every width;
+              three to a row on phones keeps 26 logos to nine rows. */}
+          <ul className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-6 lg:grid-cols-6 lg:gap-8">
             {withLogos.map((hmo) => (
               <li key={hmo.id}>
-                {/* TODO(asset): only four of the 29 HMO logos have been
-                    delivered. Each new file in assets/hmo-logo/, named by
-                    slug, adds its provider to this strip. */}
+                {/* TODO(asset): 26 of the 29 logos are in assets/hmo-logo/,
+                    most taken from each provider's own website. Bastion and
+                    Regenix publish white-only wordmarks and Phillips HMO could
+                    not be identified; a file named by slug adds each one. */}
                 <SiteImage
                   kind="hmo-logo"
                   name={hmo.slug}
                   alt={hmo.name}
-                  className="h-20 w-full rounded-md object-contain"
+                  className="h-16 w-full rounded-md object-contain sm:h-20"
                 />
               </li>
             ))}
