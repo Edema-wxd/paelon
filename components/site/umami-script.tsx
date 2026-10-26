@@ -51,6 +51,13 @@ export function UmamiScript() {
       src={config.src}
       data-website-id={config.websiteId}
       data-domains={config.host}
+      // Drops the query string from every URL and referrer the tracker sends.
+      // Three public routes carry something there that must not leave the
+      // site: the double opt-in token on /newsletter/confirm, the booking
+      // reference on /book/confirmed, and a reader's search on /blog?q=. Seen
+      // reaching Umami on production on 2026-10-26 before this was added.
+      // The cost is losing ?service= / ?branch= deep-link detail on /book.
+      data-exclude-search="true"
       strategy="afterInteractive"
     />
   );
