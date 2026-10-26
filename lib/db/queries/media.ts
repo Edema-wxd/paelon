@@ -258,3 +258,18 @@ export async function setMediaAlt(
     .returning();
   return rows[0] ?? null;
 }
+
+/**
+ * Mark a media row deleted, after its file has been destroyed on the CDN.
+ *
+ * Soft, like every content delete, so the audit trail keeps a row to name. But
+ * unlike a content delete it is not restorable: the object behind `url` is
+ * gone. Before 2026-10-26 the row was left live after a CDN delete, so the
+ * picker went on offering an image that 404s.
+ */
+export async function softDeleteMedia(id: string): Promise<void> {
+  await db()
+    .update(media)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(media.id, id));
+}

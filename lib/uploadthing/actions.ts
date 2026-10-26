@@ -11,87 +11,140 @@ import {
   type ActionState,
   type HandlerSuccess,
 } from "@/lib/admin/action";
-import { findMediaReferences } from "@/lib/db/queries/media-references";
+import { getMediaById, setMediaAlt, softDeleteMedia } from "@/lib/db/queries/media";
+import { findMediaReferences, type MediaUsage } from "@/lib/db/queries/media-references";
+import { CACHE_TAGS } from "@/lib/db/queries/shared";
 import { deleteMedia } from "@/lib/uploadthing/api";
-import {
-  MEDIA_DELETE_COUNT_MESSAGE,
-  MEDIA_DELETE_MAX,
-} from "@/lib/uploadthing/limits";
+import { MEDIA_ALT_MAX } from "@/lib/uploadthing/limits";
 
 /**
  * Media library mutations, built on `adminAction` (lib/admin/action.ts), which
- * does the session, `can(..., "media")`, parsing, audit row and revalidation.
+ * does the session, `canOnRow(..., "media")`, parsing, audit row and
+ * revalidation.
+ *
+ * Both load the media row first, so ownership is judged against
+ * `media.uploaded_by`: a contributor may change or delete only what they
+ * uploaded (policy B3), while editors and admins may act on any file.
  */
 
-export interface MediaReferenceSummary {
-  label: string;
-  table: string;
-}
-
 type MediaData = { message: string };
-type MediaDetails = { references: MediaReferenceSummary[] };
+type MediaDetails = { references: MediaUsage[] };
 
 export type MediaResult = ActionResult<MediaData, MediaDetails>;
 export type MediaState = ActionState<MediaData, MediaDetails>;
 
-/** Keys are UUID-prefixed filenames. */
-const deleteSchema = z.object({
-  keys: z
-    .array(z.string().min(1).max(512))
-    .min(1, MEDIA_DELETE_COUNT_MESSAGE)
-    .max(MEDIA_DELETE_MAX, MEDIA_DELETE_COUNT_MESSAGE),
-});
+/**
+ * Every collection a media row's alt text can appear in. Alt text is read
+ * through the content queries' joins, so a change has to reach all of them.
+ */
+const CONTENT_TAGS = [
+  CACHE_TAGS.services,
+  CACHE_TAGS.doctors,
+  CACHE_TAGS.locations,
+  CACHE_TAGS.hmos,
+  CACHE_TAGS.testimonials,
+  CACHE_TAGS.blogPosts,
+  CACHE_TAGS.awards,
+  CACHE_TAGS.about,
+] as const;
+
+const idSchema = z.object({ id: z.uuid("That file no longer exists.") });
+
+/** The row's owner, for `canOnRow`; null when it is gone or deleted. */
+async function mediaOwner(input: { id: string }) {
+  const row = await getMediaById(input.id);
+  return row ? { uploadedBy: row.uploadedBy } : null;
+}
 
 /**
- * Permanently delete files from UploadThing.
+ * Permanently delete one file: from UploadThing, then its `media` row.
  *
- * Refuses any key still referenced by a content row. This is not a soft delete
- * and there is no undo — the CDN destroys the object — so the check runs before
- * the call rather than reporting damage after it.
+ * Refused while anything references it — an image column, a gallery, a body
+ * figure or a page block (`findMediaReferences`). This is not a soft delete of
+ * the file and there is no undo — the CDN destroys the object — so the check
+ * runs before the call rather than reporting damage after it.
  *
- * Deleting media is *not* a sensitive-resource delete: the file is replaceable,
- * unlike a patient record. `media` is therefore open to editors and media
- * personnel, and the reference check is what keeps that safe.
- *
- * Contributors may delete only files they uploaded (policy B3). There is no
- * `media` table yet, so no file has a recorded owner: with no `row` loader,
- * `adminAction` judges the delete against an unowned row and refuses every
- * contributor before parsing, while admins and editors pass. When the table
- * lands (spec §8 Content editing), add a `row` loader that reads `uploaded_by`.
+ * The row is soft-deleted only once the CDN call returns, so a failed call
+ * leaves a live row pointing at a live file rather than a hidden one.
  */
 export const deleteMediaAction = adminAction(
   {
     resource: "media",
     action: "delete",
-    schema: deleteSchema,
+    schema: idSchema,
     event: "media.deleted",
     path: "/admin/media",
-    input: (formData) => ({ keys: formData.getAll("key") }),
+    row: mediaOwner,
   },
-  async ({
-    keys,
-  }): Promise<HandlerSuccess<MediaData> | ActionFailure<MediaDetails>> => {
-    // Check every key before deleting any of them — a partial delete that stops
-    // halfway leaves the library in a state nobody asked for.
-    const references: MediaReferenceSummary[] = [];
-    for (const key of keys) {
-      for (const reference of await findMediaReferences(key)) {
-        references.push({ label: reference.label, table: reference.table });
-      }
-    }
+  async ({ id }): Promise<HandlerSuccess<MediaData> | ActionFailure<MediaDetails>> => {
+    const row = await getMediaById(id);
+    if (!row) return fail("That file no longer exists.");
 
+    const references = await findMediaReferences(id);
     if (references.length > 0) {
-      return fail(
-        "Some of those files are still used on the site. Remove them from the content below first.",
-        { details: { references } },
-      );
+      return fail("This file is still used. Remove it from the content below first.", {
+        details: { references },
+      });
     }
 
-    const deleted = await deleteMedia(keys);
+    await deleteMedia([row.key]);
+    await softDeleteMedia(id);
 
     return done(
-      { message: `Deleted ${deleted} file${deleted === 1 ? "" : "s"}.` },
-      { metadata: { keys, count: deleted } },
+      { message: `Deleted ${row.filename ?? "the file"}.` },
+      { entityId: id, metadata: { key: row.key } },
+    );
+  },
+);
+
+const altSchema = z
+  .object({
+    id: z.uuid("That file no longer exists."),
+    // Absent when "decorative" is ticked: the form disables the textarea.
+    alt: z
+      .string()
+      .trim()
+      .max(MEDIA_ALT_MAX, `Keep alt text to ${MEDIA_ALT_MAX} characters or fewer.`)
+      .default(""),
+    decorative: z
+      .literal("on")
+      .optional()
+      .transform((value) => value === "on"),
+  })
+  .check((ctx) => {
+    if (ctx.value.alt === "" && !ctx.value.decorative) {
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value.alt,
+        path: ["alt"],
+        message: "Describe the image, or tick “decorative” if it carries no information.",
+      });
+    }
+  });
+
+/**
+ * Set one file's alt text, for every page that uses it.
+ *
+ * The same rule as the content forms' image fields: blank is allowed only as
+ * a deliberate "decorative", and decorative stores an empty string — the
+ * schema's meaning for `media.alt = ''`.
+ */
+export const updateMediaAltAction = adminAction(
+  {
+    resource: "media",
+    action: "update",
+    schema: altSchema,
+    event: "media.alt_updated",
+    path: "/admin/media",
+    tag: CONTENT_TAGS,
+    row: mediaOwner,
+  },
+  async ({ id, alt, decorative }): Promise<HandlerSuccess<MediaData> | ActionFailure<MediaDetails>> => {
+    const row = await setMediaAlt(id, decorative ? "" : alt);
+    if (!row) return fail("That file no longer exists.");
+    return done(
+      { message: decorative ? "Marked as decorative." : "Alt text saved." },
+      { entityId: id, metadata: { decorative } },
     );
   },
 );

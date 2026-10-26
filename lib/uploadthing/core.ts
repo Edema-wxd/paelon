@@ -40,14 +40,27 @@ import { logger } from "@/lib/logger";
 
 const f = createUploadthing();
 
-/** Spec §10: jpeg, png, webp only, 5 MB per image. */
+/**
+ * Spec §10: jpeg, png and webp only. 4 MB rather than §10's 5 MB because
+ * UploadThing sizes are powers of two (decision E1, option C).
+ *
+ * One key per MIME type, so the *server* enforces the types. The generic
+ * `image` key it replaced accepted any image type, SVG included, with only the
+ * uploader's `accept` attribute in the way — and an SVG on a public CDN can
+ * carry script. Decision E1 called for this on 2026-09-15; it landed on
+ * 2026-10-26.
+ */
+const ONE_TYPE = {
+  maxFileSize: "4MB",
+  maxFileCount: 10,
+  acl: "public-read",
+  additionalProperties: {},
+} as const;
+
 const IMAGE_LIMITS = {
-  image: {
-    maxFileSize: "4MB",
-    maxFileCount: 10,
-    acl: "public-read",
-    additionalProperties: {},
-  },
+  "image/jpeg": ONE_TYPE,
+  "image/png": ONE_TYPE,
+  "image/webp": ONE_TYPE,
 } as const;
 
 export const uploadRouter = {
