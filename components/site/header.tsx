@@ -18,7 +18,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-background shadow-sm">
-      <div className="mx-auto flex h-20 max-w-360 items-center gap-6 px-4 sm:px-6 lg:h-26 lg:px-25">
+      <div className="mx-auto flex h-20 max-w-360 items-center gap-6 px-4 sm:px-6 lg:h-26 lg:px-25 xl:max-[1440px]:px-8">
         {/*
           Goes through SiteImage like every other asset, so the logo picks up
           the `logo` slot's sizing and the engine's SVG pass-through rather
@@ -47,13 +47,22 @@ export async function Header() {
           />
         </Link>
 
-        <nav aria-label="Primary" className="ml-auto hidden lg:block">
-          <ul className="flex items-center gap-6">
+        {/*
+          The full menu needs ~1,180px beside the logo and the two buttons
+          (measured: five links at text-lg, nowrap, gap-4). That fits the
+          1,240px the header has from 1440px up, and from 1280px only with the
+          side padding taken down to 32px, which is why the padding dips at xl
+          and returns at 1440px. Below 1280px the hamburger takes over: at text-xl
+          the links wrapped onto two lines at every desktop width, and below
+          1280px they overflowed the page sideways.
+        */}
+        <nav aria-label="Primary" className="ml-auto hidden xl:block">
+          <ul className="flex items-center gap-4">
             {NAV_ITEMS.map((item) => (
               <li key={item.label}>
                 <Link
                   href={item.href}
-                  className="rounded-md p-2 text-xl text-primary transition-colors hover:text-accent"
+                  className="rounded-md p-2 text-lg whitespace-nowrap text-primary transition-colors hover:text-accent"
                 >
                   {item.label}
                 </Link>
@@ -62,7 +71,7 @@ export async function Header() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 lg:ml-0">
+        <div className="ml-auto flex items-center gap-3 xl:ml-0">
           {location?.emergency_line ? (
             <Button
               asChild
