@@ -74,7 +74,7 @@ export function MobileNav() {
         type="button"
         variant="ghost"
         size="icon-lg"
-        className="lg:hidden"
+        className="xl:hidden"
         aria-expanded={open}
         // Only advertise aria-controls while the panel is mounted; the id does
         // not exist in the DOM when the menu is closed.
@@ -87,7 +87,7 @@ export function MobileNav() {
 
       {open
         ? createPortal(
-            <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="fixed inset-0 z-50 xl:hidden">
               <button
                 type="button"
                 aria-label="Close menu"
@@ -131,15 +131,6 @@ export function MobileNav() {
                         className="block rounded-md px-3 py-3 text-lg text-primary hover:bg-muted"
                       >
                         Find a Branch
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/for-corporates"
-                        onClick={close}
-                        className="block rounded-md px-3 py-3 text-lg text-primary hover:bg-muted"
-                      >
-                        For Corporates
                       </Link>
                     </li>
                   </ul>

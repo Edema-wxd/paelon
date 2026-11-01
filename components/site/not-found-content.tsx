@@ -68,11 +68,8 @@ async function getDestinations(): Promise<Destination[]> {
     { href: "/contact", label: "Contact us", meta: "Enquiries" },
     { href: "/about", label: "About Paelon", meta: "The hospital" },
     { href: "/blog", label: "Health articles", meta: "Reading" },
-    {
-      href: "/for-corporates",
-      label: "Corporate health plans",
-      meta: "Employers",
-    },
+    // `/for-corporates` returns when its template is built (CLAUDE.md, "Live
+    // gaps"): suggesting it here sent a visitor from one 404 to another.
   ];
 }
 
