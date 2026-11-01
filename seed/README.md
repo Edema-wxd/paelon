@@ -239,6 +239,12 @@ anything about Paelon, and none may survive to production.
 
 Delete all three together — removing the author alone breaks the seed run.
 
+**Unpublished since 2026-11-01**, ahead of the client demo: `published: false`
+here, and in the database via `lib/db/fix-demo-content.ts`, so none of them
+shows on the public site and a re-seed cannot republish them. The rows stay so
+the blog article template can still be reviewed in draft mode; deleting them is
+still the launch step.
+
 ## Testimonial consent — blocking
 
 `sarah-adenuga` carries `consent_given: false` and therefore **does not render**.
