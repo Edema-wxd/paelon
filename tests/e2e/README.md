@@ -24,6 +24,9 @@ be deleted, so any assertion keyed to its wording would break the day real
 editorial content arrives. The one exception is the direct
 `/blog/preview-post-layout-fixture` navigation, which exists to exercise every
 Markdown block type; when the fixture goes, point those specs at a real post.
+Since 2026-11-01 the fixture is unpublished (`lib/db/fix-demo-content.ts`), so
+the blog specs need a published post to run against: until a real one exists
+they fail on a missing article, which is the true state of the blog, not a flake.
 
 ## Booking writes to the database
 
