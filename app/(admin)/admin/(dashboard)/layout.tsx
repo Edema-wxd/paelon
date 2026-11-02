@@ -131,7 +131,11 @@ export default async function AdminDashboardLayout({
   })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-360 flex-col lg:flex-row">
+    // Full-bleed: the sidebar sits flush against the viewport's left edge on
+    // any screen width. Content width is capped per page (`max-w-6xl` and
+    // friends, or the shared resource screens), not here — capping the shell
+    // centred the sidebar too and left a gap beside it on wide monitors.
+    <div className="flex min-h-svh flex-col lg:flex-row">
       {/* Sticky on desktop with its own scroll, so the nav and sign-out stay
           in reach on a long list page. `z-10` keeps it above the page on
           mobile, where it sits on top as a collapsible bar. */}
