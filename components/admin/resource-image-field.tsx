@@ -4,6 +4,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
+import { MarkdownMediaPicker } from "@/components/admin/markdown-media-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUploadThing } from "@/lib/uploadthing/client";
@@ -32,6 +33,13 @@ export interface ImageFieldValue {
  *
  * Alt text is written to the `media` row rather than the content row, so a
  * logo reused on a second award does not need describing twice.
+ *
+ * ## Upload, or choose from the library
+ *
+ * An image already in the media library is chosen with the same picker the
+ * Markdown editor uses, so one upload can serve as a post's hero and a
+ * doctor's headshot without a second copy. The picker skips its own alt-text
+ * step here: this field asks for it directly under the image.
  *
  * Built on `useUploadThing`, not UploadThing's own dropzone, for the reason
  * given in `lib/uploadthing/client.ts`: its components ship a second design
@@ -134,17 +142,38 @@ export function ResourceImageField({
       ) : null}
 
       <div className="mt-3">
-        <label
-          htmlFor={inputId}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-primary hover:border-accent"
-        >
-          {isUploading ? (
-            <Loader2 aria-hidden className="size-4 animate-spin" />
-          ) : (
-            <Upload aria-hidden className="size-4" />
-          )}
-          {url ? "Replace image" : "Choose an image"}
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor={inputId}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-primary hover:border-accent has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50"
+          >
+            {isUploading ? (
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+            ) : (
+              <Upload aria-hidden className="size-4" />
+            )}
+            {url ? "Upload a replacement" : "Upload an image"}
+          </label>
+          <MarkdownMediaPicker
+            label="Choose from media library"
+            title={`Choose: ${label}`}
+            description="Choose an image already in the media library, or upload a new one. You write its alt text in the form, under the image."
+            askForAltText={false}
+            triggerClassName="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-primary hover:border-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            {...(mediaId ? { chosen: [mediaId] } : {})}
+            onPick={(asset) => {
+              setUploadError(null);
+              onChange({
+                mediaId: asset.id,
+                url: asset.url,
+                // An empty string is ambiguous until migration 0009 (decorative,
+                // or never written), so it is offered for writing, not ticked.
+                alt: asset.alt ?? "",
+                decorative: false,
+              });
+            }}
+          />
+        </div>
         <input
           id={inputId}
           type="file"

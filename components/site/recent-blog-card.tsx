@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { format } from "date-fns";
+import Image from "next/image";
 import Link from "next/link";
 
 import { AssetPlaceholder } from "@/components/site/asset-placeholder";
@@ -23,6 +24,10 @@ function formatPublishedAt(value: string): string | null {
 /**
  * Most recent blog post (spec §6). Absent from the Figma export.
  *
+ * Shows the post's hero image, as its `/blog` card does. It used to render the
+ * asset placeholder unconditionally — written before posts had heroes — so a
+ * post with a hero still showed a grey box here.
+ *
  * Renders an empty state rather than nothing when no post is seeded, so the
  * section is visibly pending rather than silently missing during review.
  */
@@ -45,11 +50,26 @@ export async function RecentBlogCard() {
 
         {post ? (
           <article className="mt-10 grid gap-8 overflow-hidden rounded-xl bg-surface shadow-md lg:grid-cols-2">
-            <AssetPlaceholder
-              label={`Illustration for ${post.title}`}
-              className="aspect-video w-full"
-              decorative
-            />
+            {post.hero_image ? (
+              // As on the /blog cards: cropped to 16:9 by CSS, so `fill`, and
+              // decorative because the title beside it already names the post.
+              <div className="relative aspect-video w-full">
+                <Image
+                  src={post.hero_image.url}
+                  alt=""
+                  aria-hidden
+                  fill
+                  sizes="(min-width: 1440px) 620px, (min-width: 1024px) 45vw, 100vw"
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <AssetPlaceholder
+                label={`Illustration for ${post.title}`}
+                className="aspect-video w-full"
+                decorative
+              />
+            )}
             <div className="flex flex-col justify-center gap-4 p-8">
               {publishedLabel ? (
                 <p className="text-sm text-muted-foreground">
