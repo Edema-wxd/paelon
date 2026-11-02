@@ -83,14 +83,16 @@
   /*
    * Typography. Spec §4 locks the family to Neo Tech.
    *
-   * TODO(brand): the .woff2 files have not been delivered (spec §18), so the
-   * fallback stack is doing the work. Swap in next/font/local once they land.
+   * `--font-neo-tech` is set on <html> by next/font/local in app/layout.tsx and
+   * names the self-hosted faces plus their size-adjusted fallback. The literal
+   * "Neo Tech" and the system stack behind it are the spec's fallback, for any
+   * surface rendered without the root layout.
    *
    * TODO(design): the Figma export sets the hero headline in
    * PlusJakartaSans-Bold, which is not in spec §4. Not implemented — a second
    * typeface is Francis's call, not a silent addition.
    */
-  --font-sans: "Neo Tech", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-neo-tech), "Neo Tech", ui-sans-serif, system-ui, sans-serif;
 
   --text-xs: 12px;
   --text-xs--line-height: 1.4;
