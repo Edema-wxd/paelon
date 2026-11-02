@@ -84,7 +84,7 @@ const FIELDS: readonly Field[] = [
     maxItems: 20,
     maxLength: 120,
     section: "Name and search",
-    hint: "Every other name a patient might type into the HMO search on the homepage or in booking — abbreviations, former names, the name on the card. Press Enter after each. Searchable once saved.",
+    hint: "Every other name a patient might type into the HMO search on the homepage or in booking: abbreviations, former names, the name on the card. Press Enter after each. Searchable once saved.",
   },
   {
     type: "textarea",
@@ -93,14 +93,14 @@ const FIELDS: readonly Field[] = [
     rows: 5,
     maxLength: 4000,
     section: "Coverage",
-    hint: "Optional. What this HMO covers at Paelon, from the agreement — never from what the plan usually covers. Not shown to patients yet.",
+    hint: "Optional. What this HMO covers at Paelon, from the agreement, never from what the plan usually covers. Not shown to patients yet.",
   },
   {
     type: "checkbox",
     name: "copayApplies",
     label: "Co-pay applies",
     section: "Coverage",
-    hint: "Tick only when the agreement says so. Not shown to patients yet — it will be on the HMO check page once that is built.",
+    hint: "Tick only when the agreement says so. Not shown to patients yet. It will be on the HMO check page once that is built.",
   },
   {
     type: "textarea",
@@ -117,7 +117,7 @@ const FIELDS: readonly Field[] = [
     label: "Accepted at",
     section: "Branches",
     hint: "The branches that accept this HMO. Leave all unticked until the hospital confirms per-branch acceptance. Not shown to patients yet.",
-    emptyLabel: "No branches yet — create one under Locations first.",
+    emptyLabel: "No branches yet. Create one under Locations first.",
   },
   {
     type: "image",
@@ -126,7 +126,7 @@ const FIELDS: readonly Field[] = [
     altName: HMO_LOGO.alt,
     altLabel: "Logo alt text",
     section: "Logo",
-    hint: "Shown in the homepage logo strip, in place of the built-in logo if there is one — “Where it appears” shows which applies. Alt text should name the provider, not say “logo”.",
+    hint: "Shown in the homepage logo strip, in place of the built-in logo if there is one. “Where it appears” shows which applies. Alt text should name the provider, not say “logo”.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {
@@ -141,7 +141,7 @@ const COLUMNS: readonly Column<Hmo>[] = [
   { label: "HMO", sortKey: "name", value: (row) => row.name, primary: true },
   {
     label: "Also known as",
-    value: (row) => (row.aliases.length > 0 ? row.aliases.join(", ") : "—"),
+    value: (row) => (row.aliases.length > 0 ? row.aliases.join(", ") : "None"),
   },
   { label: "Co-pay", sortKey: "copayApplies", value: (row) => (row.copayApplies ? "Yes" : "No") },
   { label: "Status", sortKey: "published", value: (row) => (row.published ? "Published" : "Draft") },
@@ -152,12 +152,12 @@ export const hmoResource: ResourceConfig<Hmo, typeof hmoSchema> = {
   singular: "HMO",
   plural: "HMOs",
   description:
-    "Insurers Paelon accepts, and the names patients search for them by. Coverage is what the agreement says — never what the plan usually covers.",
+    "Insurers Paelon accepts, and the names patients search for them by. Coverage is what the agreement says, never what the plan usually covers.",
   emptyMessage: "No HMOs yet. The /hmo-check typeahead returns nothing until one is published.",
   fields: FIELDS,
   columns: COLUMNS,
   schema: hmoSchema,
   titleField: "name",
   deleteWarning:
-    "This HMO is live. Deleting it takes it out of the /hmo-check typeahead — including every alias — so a patient searching for it will be told nothing was found.",
+    "This HMO is live. Deleting it takes it out of the /hmo-check typeahead, including every alias, so a patient searching for it will be told nothing was found.",
 };

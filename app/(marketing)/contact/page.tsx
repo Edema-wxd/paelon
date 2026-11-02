@@ -107,7 +107,7 @@ export default async function ContactPage() {
           */}
           <p className="mx-auto mt-6 max-w-4xl text-lg text-accent-foreground/85">
             Questions about an appointment, a bill or a branch? Send us a
-            message and we will reply by email — or reach us directly using the
+            message and we will reply by email, or reach us directly using the
             details below.
           </p>
         </div>

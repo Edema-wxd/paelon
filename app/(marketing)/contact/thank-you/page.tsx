@@ -43,7 +43,7 @@ export default async function ContactThankYouPage() {
         </p>
 
         <h1 className="mt-4 text-4xl font-bold uppercase text-primary lg:text-5xl">
-          Thank you — we have your message
+          Thank you, we have your message
         </h1>
 
         <p className="mt-6 text-base">

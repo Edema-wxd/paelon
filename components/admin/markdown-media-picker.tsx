@@ -457,7 +457,7 @@ export function MarkdownMediaPicker({
                         ) : null}
                         {!usable ? (
                           <span className="mt-0.5 block text-xs text-destructive">
-                            No recorded size — re-upload it to use it in content.
+                            No recorded size. Re-upload it to use it in content.
                           </span>
                         ) : null}
                       </span>

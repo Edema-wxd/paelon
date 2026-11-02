@@ -104,7 +104,7 @@ const FIELDS: readonly Field[] = [
     label: "Role",
     required: true,
     maxLength: 200,
-    hint: "Shown under the name in “About the author”, and given to search engines as their job title. What this person does at Paelon — use the title the hospital gave you, never a credential nobody supplied.",
+    hint: "Shown under the name in “About the author”, and given to search engines as their job title. What this person does at Paelon. Use the title the hospital gave you, never a credential nobody supplied.",
   },
   {
     type: "markdown",
@@ -144,7 +144,7 @@ const FIELDS: readonly Field[] = [
     type: "checkbox",
     name: "published",
     label: "Published",
-    hint: "Housekeeping only. An author’s byline is shown whenever one of their posts is published, whatever this is set to — unpublish the post to take the writing off the site.",
+    hint: "Housekeeping only. An author’s byline is shown whenever one of their posts is published, whatever this is set to. Unpublish the post to take the writing off the site.",
   },
 ];
 
@@ -160,7 +160,7 @@ export const authorResource: ResourceConfig<Author, typeof authorSchema> = {
   singular: "Author",
   plural: "Authors",
   description:
-    "Who writes the blog. Every post needs one, and the name, role and bio here are what readers see on the byline — write them from what the person and the hospital supplied.",
+    "Who writes the blog. Every post needs one, and the name, role and bio here are what readers see on the byline, so write them from what the person and the hospital supplied.",
   emptyMessage:
     "No authors yet. A blog post cannot be created until there is at least one to attribute it to.",
   fields: FIELDS,
@@ -168,5 +168,5 @@ export const authorResource: ResourceConfig<Author, typeof authorSchema> = {
   schema: authorSchema,
   titleField: "name",
   deleteWarning:
-    "Only possible once none of their posts remain — give each post another author, or delete it, first. Authors have no page of their own, so no link breaks.",
+    "Only possible once none of their posts remain. Give each post another author, or delete it, first. Authors have no page of their own, so no link breaks.",
 };

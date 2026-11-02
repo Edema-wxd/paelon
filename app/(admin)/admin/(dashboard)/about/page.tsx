@@ -72,8 +72,8 @@ export default async function AdminAboutPage() {
         >
           Awards
         </Link>
-        , not from this screen. Every section is optional — the page renders
-        only what is written — but publishing needs the first five.
+        , not from this screen. Every section is optional, and the page renders
+        only what is written, but publishing needs the first five.
       </p>
 
       {about === null && (

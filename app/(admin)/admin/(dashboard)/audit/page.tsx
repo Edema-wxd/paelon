@@ -88,8 +88,8 @@ export default async function AdminAuditPage({
     <div className="mx-auto max-w-6xl">
       <h1 className="text-2xl font-bold text-primary">Audit log</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Every change made in this panel — content, publishing, page layouts,
-        media, staff accounts, and the status of bookings and enquiries — plus
+        Every change made in this panel (content, publishing, page layouts,
+        media, staff accounts, and the status of bookings and enquiries), plus
         sign-ins, scripts run against the database, and each opening of a
         booking, contact message or corporate enquiry. Read-only: entries cannot
         be edited or removed from here. IP addresses are stored as a salted
@@ -294,7 +294,7 @@ export default async function AdminAuditPage({
                       </td>
                       <td className="p-3 text-muted-foreground">
                         {pairs.length === 0 ? (
-                          "—"
+                          "None"
                         ) : (
                           <dl className="space-y-0.5">
                             {pairs.map((pair) => (

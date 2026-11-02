@@ -311,7 +311,7 @@ export function SectionsEditor({
                   <Icon aria-hidden className="size-4 text-muted-foreground" />
                   <h3 id={titleId} className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
                     {index + 1}. {label}
-                    {summary ? <span className="font-normal text-muted-foreground"> — {summary}</span> : null}
+                    {summary ? <span className="font-normal text-muted-foreground">: {summary}</span> : null}
                   </h3>
                   <div className="flex items-center gap-0.5">
                     <IconButton
@@ -516,7 +516,7 @@ function BlockFields({
                 Alt text comes from the media library
                 {asset
                   ? asset.alt === null
-                    ? ": not written yet — add it there before publishing."
+                    ? ": not written yet. Add it there before publishing."
                     : `: “${asset.alt || "decorative"}”`
                   : "."}
               </p>
@@ -537,7 +537,7 @@ function BlockFields({
     case "gallery":
       return (
         <>
-          <Field id={id("heading")} label="Gallery heading" hint="Required — it names the gallery for everyone, including screen-reader users.">
+          <Field id={id("heading")} label="Gallery heading" hint="Required, as it names the gallery for everyone, including screen-reader users.">
             <Input
               id={id("heading")}
               value={draft.heading}

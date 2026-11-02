@@ -25,7 +25,7 @@ describe("award description", () => {
 
   it("refuses headings, which would sit under the award's own h3", () => {
     expect(descriptionErrors("## Why we won\n\nFor safety.")).toEqual([
-      "Headings are not used here — use bold for emphasis instead.",
+      "Headings are not used here, so use bold for emphasis instead.",
     ]);
     expect(descriptionErrors("### Detail")).toHaveLength(1);
   });

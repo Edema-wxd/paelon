@@ -84,9 +84,9 @@ const PREVIEW_TARGETS: Partial<Record<ResourceName, PreviewTarget>> = {
  * at all, does.
  */
 const PREVIEW_UNAVAILABLE: Partial<Record<ResourceName, string>> = {
-  faqs: "General FAQs show on the homepage and branch pages, others on the service pages they are assigned to — “Where it appears” lists them.",
+  faqs: "General FAQs show on the homepage and branch pages, others on the service pages they are assigned to. “Where it appears” lists them.",
   testimonials:
-    "A quote shows only on the homepage, and only once consent is recorded — preview cannot show it before that.",
+    "A quote shows only on the homepage, and only once consent is recorded, so preview cannot show it before that.",
 };
 
 /** The page this row is previewed on, or null when the type has no page yet. */

@@ -21,7 +21,7 @@ export default function CorporateEnquiriesError({
         The corporate enquiries queue did not load
       </h1>
       <p className="mt-4 text-base text-foreground/80">
-        Nothing has been lost — this is a problem reading the queue, not a
+        Nothing has been lost. This is a problem reading the queue, not a
         problem with the enquiries themselves. Enquiries are still arriving
         and are still stored.
       </p>

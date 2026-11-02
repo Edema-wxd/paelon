@@ -43,7 +43,7 @@ export function StepReview({
   const hmo = hmos.find((h) => h.slug === draft.hmoSlug);
 
   const rows: { step: number; label: string; value: string }[] = [
-    { step: 0, label: "Branch", value: branch?.name ?? "—" },
+    { step: 0, label: "Branch", value: branch?.name ?? "Not given" },
     {
       step: 1,
       label: "Service",
@@ -51,7 +51,7 @@ export function StepReview({
         ? service.name
         : draft.serviceFamily
           ? SERVICE_FAMILY_LABELS[draft.serviceFamily]
-          : "—",
+          : "Not given",
     },
     {
       step: 2,
@@ -62,17 +62,17 @@ export function StepReview({
               ? `, ${TIME_WINDOW_LABELS[draft.preferredTimeWindow].toLowerCase()}`
               : ""
           }`
-        : "—",
+        : "Not given",
     },
-    { step: 3, label: "Patient", value: draft.patientName || "—" },
-    { step: 3, label: "Phone", value: draft.patientPhone || "—" },
-    { step: 3, label: "Email", value: draft.patientEmail || "—" },
+    { step: 3, label: "Patient", value: draft.patientName || "Not given" },
+    { step: 3, label: "Phone", value: draft.patientPhone || "Not given" },
+    { step: 3, label: "Email", value: draft.patientEmail || "Not given" },
     {
       step: 4,
       label: "HMO",
       value: hmo
         ? draft.hmoPlan
-          ? `${hmo.name} — ${draft.hmoPlan}`
+          ? `${hmo.name}, ${draft.hmoPlan}`
           : hmo.name
         : "Paying privately",
     },

@@ -19,7 +19,7 @@ export default function FaqsError({
       </h1>
       <p className="mt-4 text-base text-foreground/80">
         Nothing has been lost. This is a problem reading the faqs, not a
-        problem with the content itself — the live site is unaffected.
+        problem with the content itself, and the live site is unaffected.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">

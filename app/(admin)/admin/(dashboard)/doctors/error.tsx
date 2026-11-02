@@ -18,7 +18,7 @@ export default function DoctorsError({
         Doctors did not load
       </h1>
       <p className="mt-4 text-base text-foreground/80">
-        Nothing has been lost. This is a problem reading the doctors, not a problem with the profiles themselves — the live site is unaffected.
+        Nothing has been lost. This is a problem reading the doctors, not a problem with the profiles themselves, and the live site is unaffected.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">

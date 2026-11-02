@@ -126,7 +126,7 @@ export default async function BookPage({
         {/* An emergency must never be routed through a six-step form. */}
         <p className="mt-4 rounded-xl border border-accent/40 bg-surface p-4 text-base">
           If this is an emergency, do not use this form. Go to your nearest
-          branch or call the emergency line — it is answered 24 hours a day.
+          branch or call the emergency line, which is answered 24 hours a day.
         </p>
       </div>
 

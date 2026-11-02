@@ -18,7 +18,7 @@ export default function LocationsError({
         Locations did not load
       </h1>
       <p className="mt-4 text-base text-foreground/80">
-        Nothing has been lost. This is a problem reading the branches, not a problem with the branch records themselves — the live site and the booking flow are unaffected.
+        Nothing has been lost. This is a problem reading the branches, not a problem with the branch records themselves, and the live site and the booking flow are unaffected.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">

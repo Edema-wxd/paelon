@@ -497,7 +497,7 @@ export function MarkdownField({
           Formatting help
         </summary>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-          <dt><code>**bold**</code></dt><dd>Bold. <code>*italic*</code> for italic — they cannot be combined.</dd>
+          <dt><code>**bold**</code></dt><dd>Bold. <code>*italic*</code> for italic. They cannot be combined.</dd>
           <dt><code>[text](/path)</code></dt><dd>A link. Site pages start with <code>/</code>; they must exist.</dd>
           {headings ? (
             <>
@@ -505,7 +505,7 @@ export function MarkdownField({
             </>
           ) : (
             <>
-              <dt>Headings</dt><dd>Not used here — this text sits under a heading of its own. Use bold for emphasis.</dd>
+              <dt>Headings</dt><dd>Not used here, as this text sits under a heading of its own. Use bold for emphasis.</dd>
             </>
           )}
           <dt><code>- item</code></dt><dd>Bulleted list; <code>1. item</code> for numbered. One item per line.</dd>

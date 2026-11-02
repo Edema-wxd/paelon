@@ -114,7 +114,7 @@ function internalLinkRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }
     message:
       found === 0
         ? `Add at least ${MIN_INTERNAL_LINKS} links to other pages on this site before publishing, written as [descriptive text](/path) in the sentences they belong to.`
-        : `This post has ${found} internal link. Publishing needs at least ${MIN_INTERNAL_LINKS}, each written into the sentence it belongs to — not a “read more” list at the end.`,
+        : `This post has ${found} internal link. Publishing needs at least ${MIN_INTERNAL_LINKS}, each written into the sentence it belongs to, not a “read more” list at the end.`,
   });
 }
 
@@ -198,7 +198,7 @@ function imageRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void
   const message =
     inline > 0 && other === 0
       ? `An image has to sit on a line of its own, with a blank line above and below it. ${inline === 1 ? "One image is" : `${inline} images are`} inside a sentence and will show as text. Use the Image button to place it.`
-      : "An image reference will not render. Use the Image button to place images — a body references the media library by id, not by URL.";
+      : "An image reference will not render. Use the Image button to place images, as a body references the media library by id, not by URL.";
 
   ctx.issues.push({ code: "custom", input: body, path: ["body"], message });
 }
@@ -294,7 +294,7 @@ const FIELDS: readonly Field[] = [
     required: true,
     rows: 24,
     figures: true,
-    hint: "Markdown — the preview is the same renderer the live article uses. Headings start at ##, and tables and images are supported. Use the Image button to place a picture: it has to sit on a line of its own. Publishing needs at least two links to other pages on this site, written as [descriptive text](/path) inside the sentences they belong to. Every link must point at a page that exists.",
+    hint: "Markdown. The preview is the same renderer the live article uses. Headings start at ##, and tables and images are supported. Use the Image button to place a picture: it has to sit on a line of its own. Publishing needs at least two links to other pages on this site, written as [descriptive text](/path) inside the sentences they belong to. Every link must point at a page that exists.",
   },
   {
     type: "image",
@@ -303,7 +303,7 @@ const FIELDS: readonly Field[] = [
     label: "Hero image",
     altName: BLOG_HERO.alt,
     altLabel: "Hero image alt text",
-    hint: "Optional. Shown at the top of the article and cropped to 16:9 on /blog. Alt text describes the picture for anyone who cannot see it — not the article, which the headline already names.",
+    hint: "Optional. Shown at the top of the article and cropped to 16:9 on /blog. Alt text describes the picture for anyone who cannot see it, not the article, which the headline already names.",
   },
   {
     type: "reference",
@@ -348,7 +348,7 @@ const FIELDS: readonly Field[] = [
     name: BLOG_RELATED_FIELD,
     section: "Read next",
     label: "Related posts",
-    hint: "Shown under “Read next” at the foot of this post, up to three. Left empty, the site picks up to three other posts in the same category instead. Publishing needs every one chosen here to be published too — a draft would leave a link to a page that 404s.",
+    hint: "Shown under “Read next” at the foot of this post, up to three. Left empty, the site picks up to three other posts in the same category instead. Publishing needs every one chosen here to be published too, as a draft would leave a link to a page that 404s.",
     emptyLabel: "No other posts to relate this one to yet.",
   },
   {
@@ -409,7 +409,7 @@ export const blogPostResource: ResourceConfig<BlogPost, typeof blogPostSchema> =
   singular: "Post",
   plural: "Blog posts",
   description:
-    "Long-form writing under /blog. Every post is published in Paelon’s name — write it from what the hospital and the author supplied, and never invent a medical claim to fill a paragraph.",
+    "Long-form writing under /blog. Every post is published in Paelon’s name, so write it from what the hospital and the author supplied, and never invent a medical claim to fill a paragraph.",
   emptyMessage: "No posts yet. /blog renders an empty index until one is published.",
   fields: FIELDS,
   columns: COLUMNS,

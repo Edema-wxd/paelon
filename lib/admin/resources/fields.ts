@@ -47,7 +47,7 @@ export const slugField = z
   .max(80, "Slug must be 80 characters or fewer.")
   .regex(
     SLUG_PATTERN,
-    "Use lowercase letters, numbers and single hyphens — no spaces.",
+    "Use lowercase letters, numbers and single hyphens, no spaces.",
   );
 
 /** A required single-line field with a shared "enter something" message. */
@@ -68,7 +68,7 @@ export function requiredText(label: string, max: number) {
 export function markdownWithoutHeadings(label: string, max: number) {
   return requiredText(label, max).refine(
     (value) => parseMarkdown(value).every((block) => block.type !== "heading"),
-    "Headings are not used here — use bold for emphasis instead.",
+    "Headings are not used here, so use bold for emphasis instead.",
   );
 }
 
@@ -100,7 +100,7 @@ export function markdownBodyRules(fields: readonly string[]) {
           message:
             inline === images.length
               ? "An image has to sit on a line of its own, with a blank line above and below it. Use the Image button to place it."
-              : "An image reference will not render. Use the Image button — images are referenced from the media library, not by URL.",
+              : "An image reference will not render. Use the Image button, as images are referenced from the media library, not by URL.",
         });
         continue;
       }
@@ -130,7 +130,7 @@ export function optionalMarkdownWithoutHeadings(max: number) {
     .max(max, `Must be ${max} characters or fewer.`)
     .refine(
       (value) => parseMarkdown(value).every((block) => block.type !== "heading"),
-      "Headings are not used here — use bold for emphasis instead.",
+      "Headings are not used here, so use bold for emphasis instead.",
     );
 }
 
@@ -404,7 +404,7 @@ export function coordinatePairRule(latName: string, lngName: string) {
       input: value[missing],
       path: [missing],
       message:
-        "Enter both latitude and longitude, or neither — the map and the branch’s structured data need the pair.",
+        "Enter both latitude and longitude, or neither, as the map and the branch’s structured data need the pair.",
     });
   };
 }

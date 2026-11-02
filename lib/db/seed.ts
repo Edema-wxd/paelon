@@ -79,7 +79,7 @@ function readSeed<S extends z.ZodType>(
       const detail = parsed.error.issues
         .map((i) => `${i.path.join(".")}: ${i.message}`)
         .join("; ");
-      throw new Error(`${file}[${index}] failed validation — ${detail}`);
+      throw new Error(`${file}[${index}] failed validation: ${detail}`);
     }
     return parsed.data;
   });
@@ -103,7 +103,7 @@ function readAboutSeed(): z.infer<typeof aboutSeedSchema> | null {
     const detail = parsed.error.issues
       .map((i) => `${i.path.join(".")}: ${i.message}`)
       .join("; ");
-    throw new Error(`about.json failed validation — ${detail}`);
+    throw new Error(`about.json failed validation: ${detail}`);
   }
 
   return parsed.data;

@@ -110,7 +110,7 @@ export function metadataPairs(
       value: Array.isArray(value)
         ? value.map((entry) => String(entry)).join(", ")
         : value === null || value === undefined
-          ? "—"
+          ? "None"
           : typeof value === "object"
             ? JSON.stringify(value)
             : String(value),

@@ -117,7 +117,7 @@ const FIELDS: readonly Field[] = [
     name: DOCTOR_LOCATIONS_FIELD,
     label: "Practises at",
     hint: "The branches this doctor sees patients at.",
-    emptyLabel: "No branches yet — create one under Locations first.",
+    emptyLabel: "No branches yet. Create one under Locations first.",
   },
   { type: "checkbox", name: "inHouse", label: "In-house" },
   { type: "checkbox", name: "visiting", label: "Visiting consultant" },
@@ -145,7 +145,7 @@ export const doctorResource: ResourceConfig<Doctor, typeof doctorSchema> = {
   singular: "Doctor",
   plural: "Doctors",
   description:
-    "The clinical team. Every field is a statement about a real named person — fill it in from what the hospital has supplied and leave the rest empty.",
+    "The clinical team. Every field is a statement about a real named person, so fill it in from what the hospital has supplied and leave the rest empty.",
   emptyMessage: "No doctors yet.",
   fields: FIELDS,
   columns: COLUMNS,

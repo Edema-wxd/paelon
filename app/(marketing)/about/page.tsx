@@ -65,7 +65,7 @@ const siteUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
  */
 
 const FALLBACK_DESCRIPTION =
-  "About Paelon Memorial Hospital — our story, our leadership team, and the awards and accreditations we hold.";
+  "About Paelon Memorial Hospital: our story, our leadership team, and the awards and accreditations we hold.";
 
 export const revalidate = 3600;
 

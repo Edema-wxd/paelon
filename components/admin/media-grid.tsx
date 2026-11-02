@@ -181,7 +181,7 @@ function MediaCard({ item }: { item: MediaCardData }) {
                   onChange={(event) => setDecorative(event.target.checked)}
                   className="size-4 rounded border-input accent-brand-maroon"
                 />
-                Decorative — carries no information
+                Decorative, carries no information
               </label>
               {altError ? (
                 <p id={altErrorId} role="alert" className="text-xs text-destructive">
@@ -201,7 +201,7 @@ function MediaCard({ item }: { item: MediaCardData }) {
                 <p className="mt-1 text-sm wrap-break-word text-primary">{item.alt}</p>
               ) : item.alt === "" ? (
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Decorative — screen readers skip it.
+                  Decorative, so screen readers skip it.
                 </p>
               ) : (
                 <p className="mt-1 text-sm text-amber-800">

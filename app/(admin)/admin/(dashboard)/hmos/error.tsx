@@ -18,7 +18,7 @@ export default function HmosError({
         HMOs did not load
       </h1>
       <p className="mt-4 text-base text-foreground/80">
-        Nothing has been lost. This is a problem reading the HMOs, not a problem with the records themselves — the live site and the HMO check are unaffected.
+        Nothing has been lost. This is a problem reading the HMOs, not a problem with the records themselves, and the live site and the HMO check are unaffected.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
