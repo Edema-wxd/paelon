@@ -7,7 +7,7 @@ import {
   checkboxField,
   imageAltRule,
   imageFields,
-  markdownWithoutHeadings,
+  optionalMarkdownWithoutHeadings,
   optionalReferenceField,
   orderField,
   requiredText,
@@ -63,7 +63,10 @@ export const authorSchema = z
     name: requiredText("the author’s name", 200),
     slug: slugField,
     role: requiredText("the author’s role", 200),
-    bio: markdownWithoutHeadings("a bio", 4000),
+    // Optional (2026-11-02): an author can be credited before anyone has
+    // supplied a bio, and an invented one is not an option. Left blank, the
+    // post's "About the author" card shows the name and role alone.
+    bio: optionalMarkdownWithoutHeadings(4000),
     [AUTHOR_DOCTOR_FIELD]: optionalReferenceField("a doctor"),
     order: orderField,
     published: checkboxField,
@@ -108,10 +111,9 @@ const FIELDS: readonly Field[] = [
     name: "bio",
     section: "About the author",
     label: "Bio",
-    required: true,
     rows: 8,
     headings: false,
-    hint: "Shown in “About the author” at the foot of every post they wrote. A short paragraph or two; links are written as [text](/path) and must point at pages that exist.",
+    hint: "Optional. Shown in “About the author” at the foot of every post they wrote; left blank, the card shows the name and role only. A short paragraph or two; links are written as [text](/path) and must point at pages that exist.",
   },
   {
     type: "image",

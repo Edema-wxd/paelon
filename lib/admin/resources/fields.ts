@@ -118,6 +118,22 @@ export function markdownBodyRules(fields: readonly string[]) {
   };
 }
 
+/**
+ * `markdownWithoutHeadings`, but optional: blank is allowed and stays `""`
+ * rather than becoming `null`, for a column that is `NOT NULL` but may be
+ * empty (`authors.bio`). The heading rule still applies to what is written.
+ */
+export function optionalMarkdownWithoutHeadings(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max, `Must be ${max} characters or fewer.`)
+    .refine(
+      (value) => parseMarkdown(value).every((block) => block.type !== "heading"),
+      "Headings are not used here — use bold for emphasis instead.",
+    );
+}
+
 /** An optional single-line field. The empty string normalises to `null`. */
 export function optionalText(max: number) {
   return z
