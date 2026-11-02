@@ -101,7 +101,7 @@ describe("metadataPairs", () => {
   it("shows an unexpected shape rather than throwing", () => {
     expect(metadataPairs({ nested: { a: 1 }, missing: null })).toEqual([
       { key: "nested", value: '{"a":1}' },
-      { key: "missing", value: "—" },
+      { key: "missing", value: "None" },
     ]);
   });
 });

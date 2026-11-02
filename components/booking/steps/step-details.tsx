@@ -120,7 +120,7 @@ export function StepDetails({ draft, errors, patch }: StepProps) {
         label="What would you like to be seen about?"
         optional
         error={errors.reasonForVisit}
-        hint="A sentence is plenty. Please do not send anything urgent this way — call the hospital instead."
+        hint="A sentence is plenty. Please do not send anything urgent this way. Call the hospital instead."
       >
         <Textarea
           id="booking-reason"

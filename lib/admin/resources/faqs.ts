@@ -74,8 +74,8 @@ const FIELDS: readonly Field[] = [
     name: FAQ_SERVICES_FIELD,
     label: "Service pages",
     section: "Where it shows",
-    hint: "The service pages this FAQ appears on — only those. A service page shows nothing but the FAQs ticked for it here.",
-    emptyLabel: "No services yet — create one under Services first.",
+    hint: "The service pages this FAQ appears on, and only those. A service page shows nothing but the FAQs ticked for it here.",
+    emptyLabel: "No services yet. Create one under Services first.",
   },
   {
     type: "select",

@@ -67,7 +67,7 @@ export default async function AdminBookingsPage({
       <h1 className="text-2xl font-bold text-primary">Bookings</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         Appointment requests, soonest requested date first. A request is not a
-        reserved slot — the branch confirms the time by phone.
+        reserved slot, and the branch confirms the time by phone.
       </p>
 
       <section aria-labelledby="filters-heading" className="mt-8">

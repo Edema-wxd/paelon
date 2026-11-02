@@ -49,8 +49,8 @@ export async function HmoUsagePanel({ hmo }: { hmo: Hmo }) {
             state: "off",
             title: "Homepage logo strip",
             detail: upload
-              ? "Not shown — the upload has no recorded size. Re-upload it."
-              : "Not shown — there is no logo. Upload one under Logo to add it.",
+              ? "Not shown: the upload has no recorded size. Re-upload it."
+              : "Not shown: there is no logo. Upload one under Logo to add it.",
           };
 
   const search: Usage = hmo.published
@@ -75,7 +75,7 @@ export async function HmoUsagePanel({ hmo }: { hmo: Hmo }) {
           <SiteImage
             kind="hmo-logo"
             name={hmo.slug}
-            alt={`${hmo.name} — built-in logo`}
+            alt={`${hmo.name}, built-in logo`}
             className="h-full w-full object-contain"
           />
         </div>

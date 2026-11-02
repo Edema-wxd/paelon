@@ -193,7 +193,7 @@ export function BookingsTable({
               const row = rows.find((candidate) => candidate.id === skip.bookingId);
               return (
                 <li key={skip.bookingId}>
-                  {row?.reference ?? "A booking"} — {SKIP_REASONS[skip.reason]}
+                  {row?.reference ?? "A booking"}: {SKIP_REASONS[skip.reason]}
                 </li>
               );
             })}

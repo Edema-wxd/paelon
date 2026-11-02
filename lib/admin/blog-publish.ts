@@ -92,7 +92,7 @@ async function brokenBodyLinks(body: string): Promise<string[]> {
   if (broken.length === 0) return [];
 
   return [
-    `${broken.length === 1 ? "This link does" : "These links do"} not point at a page on this site: ${broken.join(", ")}. Link the nearest real page, or leave the sentence unlinked — do not invent a destination.`,
+    `${broken.length === 1 ? "This link does" : "These links do"} not point at a page on this site: ${broken.join(", ")}. Link the nearest real page, or leave the sentence unlinked. Do not invent a destination.`,
   ];
 }
 

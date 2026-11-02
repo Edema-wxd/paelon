@@ -97,7 +97,7 @@ export function formatSeedReport(gaps: SeedGap[]): string {
     "Outstanding seed content gaps",
     "=============================",
     "",
-    "Nothing here has been invented — master spec §5 forbids fabricating",
+    "Nothing here has been invented, as master spec §5 forbids fabricating",
     "content about Paelon. Each line is a field awaiting real material.",
     "",
   ];

@@ -55,7 +55,7 @@ function ConfirmButton({
           ) : null}
           <p className={warning ? "mt-2" : undefined}>
             It is removed from the site straight away and no longer appears in
-            this list. Nothing is erased — an admin can restore it from the
+            this list. Nothing is erased, and an admin can restore it from the
             database if it was a mistake.
           </p>
           {effectCount > 0 ? (

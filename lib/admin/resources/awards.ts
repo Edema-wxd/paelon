@@ -116,7 +116,7 @@ const FIELDS: readonly Field[] = [
     name: "externalLink",
     label: "Announcement link",
     section: "Award",
-    hint: "Optional. The awarding body’s own page about it — shown as a link under the award.",
+    hint: "Optional. The awarding body’s own page about it, shown as a link under the award.",
   },
   {
     type: "image",
@@ -150,7 +150,7 @@ const FIELDS: readonly Field[] = [
     type: "checkbox",
     name: "published",
     label: "Published",
-    hint: "A published award appears on the About page timeline. It is a public claim about the hospital — publish only what the certificate shows.",
+    hint: "A published award appears on the About page timeline. It is a public claim about the hospital, so publish only what the certificate shows.",
   },
 ];
 
@@ -166,7 +166,7 @@ export const awardResource: ResourceConfig<Award, typeof awardSchema> = {
   singular: "Award",
   plural: "Awards",
   description:
-    "Recognition Paelon has received. Every row is a factual claim about the hospital — add one only from a certificate or an announcement you have in front of you.",
+    "Recognition Paelon has received. Every row is a factual claim about the hospital, so add one only from a certificate or an announcement you have in front of you.",
   emptyMessage: "No awards yet.",
   fields: FIELDS,
   columns: COLUMNS,

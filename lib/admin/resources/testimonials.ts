@@ -54,9 +54,9 @@ const NAME_FORMAT_LABELS: Record<
   (typeof nameFormatEnum.enumValues)[number],
   string
 > = {
-  full: "Full name — “Sarah Adenuga”",
-  first_only: "First name only — “Sarah”",
-  initials: "Initials only — “S.A.”",
+  full: "Full name, “Sarah Adenuga”",
+  first_only: "First name only, “Sarah”",
+  initials: "Initials only, “S.A.”",
 };
 
 /** `testimonials.avatar_id`, with its alt text on the media row. */
@@ -98,7 +98,7 @@ const FIELDS: readonly Field[] = [
     required: true,
     maxLength: 200,
     section: "Patient and consent",
-    hint: "The full name as the patient gave it. It is never shown as typed — “Name shown as” decides how much of it appears.",
+    hint: "The full name as the patient gave it. It is never shown as typed. “Name shown as” decides how much of it appears.",
   },
   {
     type: "select",
@@ -153,7 +153,7 @@ const FIELDS: readonly Field[] = [
     section: "Context",
     width: "half",
     emptyLabel: "Not attached to a service",
-    hint: "Optional. Stored for when service pages show testimonials — none do yet.",
+    hint: "Optional. Stored for when service pages show testimonials, though none do yet.",
   },
   {
     type: "reference",
@@ -171,7 +171,7 @@ const FIELDS: readonly Field[] = [
     altName: TESTIMONIAL_AVATAR.alt,
     altLabel: "Photograph alt text",
     section: "Context",
-    hint: "Optional, and only with the patient’s consent — the same consent the quote itself needs. Not shown on the site yet.",
+    hint: "Optional, and only with the patient’s consent, the same consent the quote itself needs. Not shown on the site yet.",
   },
   {
     type: "slug",
@@ -187,7 +187,7 @@ const FIELDS: readonly Field[] = [
     type: "checkbox",
     name: "published",
     label: "Published",
-    hint: "A draft never appears. Published is not enough on its own — consent must be recorded too.",
+    hint: "A draft never appears. Published is not enough on its own, as consent must be recorded too.",
   },
 ];
 
@@ -209,7 +209,7 @@ export const testimonialResource: ResourceConfig<Testimonial, typeof testimonial
   singular: "Testimonial",
   plural: "Testimonials",
   description:
-    "Real patient words, with the consent record that decides whether they may be shown. Never write, extend or tidy a quote — enter it as it was given, or leave the row alone.",
+    "Real patient words, with the consent record that decides whether they may be shown. Never write, extend or tidy a quote. Enter it as it was given, or leave the row alone.",
   emptyMessage: "No testimonials yet.",
   fields: FIELDS,
   columns: COLUMNS,

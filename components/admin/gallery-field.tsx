@@ -125,8 +125,8 @@ export function GalleryField({
                 {asset.alt === null || asset.alt.trim() === "" ? (
                   <span className="block text-xs text-destructive">
                     {asset.alt === null
-                      ? "Alt text not written yet — add it in the media library."
-                      : "Marked decorative — describe it in the media library if it shows something."}
+                      ? "Alt text not written yet. Add it in the media library."
+                      : "Marked decorative. Describe it in the media library if it shows something."}
                   </span>
                 ) : null}
               </span>

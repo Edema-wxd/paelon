@@ -126,7 +126,7 @@ const FIELDS: readonly Field[] = [
     section: "Patient guidance",
     label: "Typical wait time",
     maxLength: 120,
-    hint: "Optional. Leave empty unless the hospital has given you a figure — never estimate one.",
+    hint: "Optional. Leave empty unless the hospital has given you a figure. Never estimate one.",
   },
   {
     type: "multiselect",
@@ -134,7 +134,7 @@ const FIELDS: readonly Field[] = [
     section: "Where it’s offered",
     label: "Offered at",
     hint: "The branches this service is available at. Shown on each branch page.",
-    emptyLabel: "No branches yet — create one under Locations first.",
+    emptyLabel: "No branches yet. Create one under Locations first.",
   },
   {
     type: "multiselect",
@@ -151,14 +151,14 @@ const FIELDS: readonly Field[] = [
     label: "Featured image",
     altName: SERVICE_IMAGE.alt,
     altLabel: "Featured image alt text",
-    hint: "Optional. No template renders a service image yet — the cards and the detail hero use their design-asset slot. Stored for when one does.",
+    hint: "Optional. No template renders a service image yet. The cards and the detail hero use their design-asset slot. Stored for when one does.",
   },
   {
     type: "gallery",
     name: SERVICE_GALLERY_FIELD,
     section: "Images",
     label: "Gallery",
-    hint: "Optional. Extra photographs for this service. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a service gallery yet.",
+    hint: "Optional. Extra photographs for this service. One upload can appear in several galleries, so add it from the library rather than uploading another copy. No template renders a service gallery yet.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {
@@ -181,7 +181,7 @@ export const serviceResource: ResourceConfig<Service, typeof serviceSchema> = {
   singular: "Service",
   plural: "Services",
   description:
-    "What the hospital offers, one page each under /services. Every row is a claim about Paelon’s care — write it from what the hospital has supplied, never from what a service of this name usually involves.",
+    "What the hospital offers, one page each under /services. Every row is a claim about Paelon’s care, so write it from what the hospital has supplied, never from what a service of this name usually involves.",
   emptyMessage: "No services yet. /services renders an empty index until one is published.",
   fields: FIELDS,
   columns: COLUMNS,

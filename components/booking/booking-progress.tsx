@@ -39,7 +39,7 @@ export function BookingProgress({
               />
               <span className="sr-only">
                 {index + 1}. {label}
-                {done ? " — Done" : isCurrent ? " — Current step" : ""}
+                {done ? ", done" : isCurrent ? ", current step" : ""}
               </span>
             </li>
           );

@@ -56,7 +56,7 @@ const sectionBody = z
   .string()
   .trim()
   .min(1, "Write the text for this block, or remove the block.")
-  .max(20000, "This block is too long — split it into two.")
+  .max(20000, "This block is too long. Split it into two.")
   .superRefine((body, ctx) => {
     if (imagePlacementIssues(body).length > 0) {
       ctx.addIssue({

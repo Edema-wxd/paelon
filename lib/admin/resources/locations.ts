@@ -109,7 +109,7 @@ const FIELDS: readonly Field[] = [
     type: "text",
     name: "latitude", section: "Address and map", width: "half",
     label: "Latitude",
-    hint: "Decimal degrees, up to 7 places, for both. They drive the map, the “Get directions” link and the branch’s geo data — fill both or neither.",
+    hint: "Decimal degrees, up to 7 places, for both. They drive the map, the “Get directions” link and the branch’s geo data, so fill both or neither.",
   },
   { type: "text", name: "longitude", section: "Address and map", width: "half", label: "Longitude" },
   { type: "text", name: "phone", section: "Contact", width: "third", label: "Phone", required: true, maxLength: 60 },
@@ -149,7 +149,7 @@ const FIELDS: readonly Field[] = [
     label: "Accessibility notes",
     rows: 3,
     maxLength: 2000,
-    hint: "Optional. Step-free access, lifts, accessible toilets — only what has been confirmed on site.",
+    hint: "Optional. Step-free access, lifts, accessible toilets, but only what has been confirmed on site.",
   },
   {
     type: "text",
@@ -170,7 +170,7 @@ const FIELDS: readonly Field[] = [
     type: "gallery",
     name: LOCATION_GALLERY_FIELD, section: "Images",
     label: "Gallery",
-    hint: "Optional. Photographs of this branch. One upload can appear in several galleries — add it from the library rather than uploading another copy. No template renders a branch gallery yet.",
+    hint: "Optional. Photographs of this branch. One upload can appear in several galleries, so add it from the library rather than uploading another copy. No template renders a branch gallery yet.",
   },
   { type: "number", name: "order", label: "Order", min: 0, max: 9999, hint: "Low numbers first." },
   {
@@ -193,7 +193,7 @@ export const locationResource: ResourceConfig<Location, typeof locationSchema> =
   singular: "Location",
   plural: "Locations",
   description:
-    "The branches. These rows are the address, the phone number and the opening hours a patient will travel on, and they are what the branch page publishes as structured data — an approximation here is a wasted journey.",
+    "The branches. These rows are the address, the phone number and the opening hours a patient will travel on, and they are what the branch page publishes as structured data, so an approximation here is a wasted journey.",
   emptyMessage:
     "No branches yet. The booking flow cannot run without at least one published branch.",
   fields: FIELDS,

@@ -60,7 +60,7 @@ export function BookingStatusForm({
   if (options.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        {BOOKING_STATUS_LABELS[current]} is final — this booking cannot move
+        {BOOKING_STATUS_LABELS[current]} is final, so this booking cannot move
         again.
       </p>
     );
@@ -102,7 +102,7 @@ export function BookingStatusForm({
           {options.map((status) => (
             <option key={status} value={status}>
               {BOOKING_STATUS_LABELS[status]}
-              {backward.includes(status) ? " (back — note required)" : ""}
+              {backward.includes(status) ? " (back, note required)" : ""}
             </option>
           ))}
         </select>

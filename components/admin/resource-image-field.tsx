@@ -263,7 +263,7 @@ export function ResourceImageField({
               }
             />
             <label htmlFor={decorativeId} className="text-sm text-foreground">
-              Decorative — it carries no information the text does not already
+              Decorative: it carries no information the text does not already
               give
             </label>
           </div>

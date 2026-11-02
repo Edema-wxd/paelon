@@ -192,7 +192,7 @@ export function StaffCreateForm() {
           <FieldError id="staff-password-error" messages={fields.password} />
           <p id="staff-password-hint" className="text-xs text-muted-foreground">
             At least {PASSWORD_MIN_LENGTH} characters, not containing their email
-            address. Give it to them directly — it is not emailed.
+            address. Give it to them directly, as it is not emailed.
           </p>
         </div>
       </div>

@@ -105,7 +105,7 @@
     "name": "Scope City Endoscopy Suite",
     "family": "diagnostics",
     "short_description": "Screening, diagnosis and treatment of gastrointestinal conditions, including the capsule endoscopy (PillCam) service.",
-    "long_description": "Scope City was set up for patients who need the gastrointestinal tract examined, invasively or otherwise, in a setting built around being comfortable rather than clinical. Procedures are carried out by trained endoscopists.\n\nCapsule endoscopy — the PillCam — is non-invasive: after a two-day bowel preparation you swallow a capsule, which records images of the gastrointestinal tract and can show inflammation, ulcers, tumours and occult bleeding in the small intestine.\n\nFor invasive procedures we offer oesophago-gastro-duodenoscopy (OGD), the gold standard test for upper gastrointestinal symptoms, and colonoscopy, which allows the lining of the large bowel to be seen directly, biopsied and treated in the same visit where that is needed.",
+    "long_description": "Scope City was set up for patients who need the gastrointestinal tract examined, invasively or otherwise, in a setting built around being comfortable rather than clinical. Procedures are carried out by trained endoscopists.\n\nCapsule endoscopy (the PillCam) is non-invasive: after a two-day bowel preparation you swallow a capsule, which records images of the gastrointestinal tract and can show inflammation, ulcers, tumours and occult bleeding in the small intestine.\n\nFor invasive procedures we offer oesophago-gastro-duodenoscopy (OGD), the gold standard test for upper gastrointestinal symptoms, and colonoscopy, which allows the lining of the large bowel to be seen directly, biopsied and treated in the same visit where that is needed.",
     "who_its_for": [
       "Patients with upper gastrointestinal symptoms",
       "Patients who need the small intestine examined",
@@ -113,7 +113,7 @@
     ],
     "how_to_access": [],
     "typical_wait_time": null,
-    "what_to_expect": "Bowel preparation before the procedure — two days for a capsule endoscopy — then the procedure itself with an endoscopist, and the findings explained to you afterwards.",
+    "what_to_expect": "Bowel preparation before the procedure (two days for a capsule endoscopy), then the procedure itself with an endoscopist, and the findings explained to you afterwards.",
     "location_slugs": ["victoria-island"],
     "related_slugs": ["general-practice"],
     "order": 6,
@@ -143,7 +143,7 @@
     "name": "High Dependency Care",
     "family": "specialist",
     "short_description": "A two-bed high dependency unit under a UK-trained intensivist and anaesthetist, for patients needing close monitoring.",
-    "long_description": "The High Dependency Unit takes patients whose condition needs continuous monitoring and intensive support — vital signs and other critical parameters watched without a break, by staff trained for it. It is overseen by a UK-trained intensivist and anaesthetist, and specialists from other departments are brought in as a patient's condition requires.\n\nTwo beds is a deliberate size: it is what allows each patient close, individual attention. The unit also takes patients recovering from major surgery, so that the move out of theatre is a managed one.",
+    "long_description": "The High Dependency Unit takes patients whose condition needs continuous monitoring and intensive support, with vital signs and other critical parameters watched without a break, by staff trained for it. It is overseen by a UK-trained intensivist and anaesthetist, and specialists from other departments are brought in as a patient's condition requires.\n\nTwo beds is a deliberate size: it is what allows each patient close, individual attention. The unit also takes patients recovering from major surgery, so that the move out of theatre is a managed one.",
     "who_its_for": [
       "Patients whose condition needs continuous monitoring",
       "Patients recovering from major surgery",

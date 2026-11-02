@@ -73,7 +73,7 @@ export default async function BookingConfirmedPage({
         </p>
 
         <h1 className="mt-4 text-4xl font-bold uppercase text-primary lg:text-5xl">
-          Thank you — we have your request
+          Thank you, we have your request
         </h1>
 
         {reference ? (
@@ -96,7 +96,7 @@ export default async function BookingConfirmedPage({
           <div className="mt-8 rounded-xl border border-border bg-surface p-6">
             <p className="text-base">
               We do not have a booking reference to show on this page. If you
-              have just submitted a request, check your email — the reference is
+              have just submitted a request, check your email, as the reference is
               in your confirmation. If nothing arrives, call us and we will
               check.
             </p>

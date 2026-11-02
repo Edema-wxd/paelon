@@ -46,8 +46,8 @@ export default async function AdminSettingsPage() {
     <div className="mx-auto max-w-2xl">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Values Paelon can change without a deploy. Everything else — email and
-        WhatsApp credentials, the emergency line, the privacy consent version —
+        Values Paelon can change without a deploy. Everything else (email and
+        WhatsApp credentials, the emergency line, the privacy consent version)
         is set per environment and changes by deploy.
       </p>
 

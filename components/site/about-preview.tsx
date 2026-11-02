@@ -57,7 +57,7 @@ export function AboutPreview() {
             to our unwavering commitment to providing world-class medical
             services, state-of-the-art facilities, and personalized care that
             places you, our patients, at the center of everything we do. Paelon
-            Memorial is equipped with the following;
+            Memorial is equipped with the following:
           </p>
 
           {/* col-reverse puts each figure above its label visually while

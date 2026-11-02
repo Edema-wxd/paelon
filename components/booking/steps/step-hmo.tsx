@@ -84,7 +84,7 @@ export function StepHmo({
             value=""
             checked={draft.hmoSlug === ""}
             onSelect={() => patch({ hmoSlug: "", hmoPlan: "" })}
-            title="None — I am paying privately"
+            title="None, I am paying privately"
           />
         </div>
 
