@@ -133,6 +133,13 @@ These must be resolved with Francis before the site goes live.
   `family_healthcare` because the enum has nowhere better. Lily Fertility,
   Family Healthcare and High Dependency Care are not on Paelon's list but are
   still published: confirm whether the list was complete.
+
+  **To bring the live database up to date** without re-seeding (which would
+  overwrite admin edits), run `lib/db/add-paelon-list.ts`. It inserts the new
+  services and doctors, extends the three existing clinicians' specialties
+  only where nobody has edited them, and sets Victoria Island's WhatsApp only
+  if it is empty. Dry run by default, `--apply` to write:
+  `node --env-file=.env.local ./node_modules/.bin/tsx lib/db/add-paelon-list.ts`.
 - **Which services run at which branch is unknown.** Every service is linked
   to Victoria Island only, because that is the hospital the live pages
   describe. Ikeja is an outpatient clinic and the Moshood Olugbani site is a
