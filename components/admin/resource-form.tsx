@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
@@ -22,6 +23,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { controlledBlurEvent } from "@/lib/admin/form-events";
+import { readableMessages, unsavedSummary } from "@/lib/admin/field-messages";
+import { saveButtonHint, saveButtonLabel } from "@/lib/admin/save-label";
 import type { ResourceState } from "@/lib/admin/resource-actions";
 import { RESOURCE_ACTIONS } from "@/lib/admin/resource-action-map";
 import { slugify, type Field, inSentence } from "@/lib/admin/resource-config";
@@ -91,6 +95,11 @@ export interface ResourceFormProps {
    * the database and use server components.
    */
   aside?: React.ReactNode;
+  /**
+   * The draft-mode link to this row on the marketing site, for a saved row
+   * that has a page. Built by the editor screen, which owns the preview rules.
+   */
+  previewUrl?: string;
 }
 
 export function ResourceForm({
@@ -103,6 +112,7 @@ export function ResourceForm({
   galleryValues = {},
   canPublish,
   aside,
+  previewUrl,
 }: ResourceFormProps) {
   const config = RESOURCES[resource];
   const actions = RESOURCE_ACTIONS[resource];
@@ -251,16 +261,36 @@ export function ResourceForm({
    */
   function errorsFor(name: string): string[] | undefined {
     const server = state && !state.ok ? state.fields[name] : undefined;
-    if (server?.length) return server;
-    const messages = collectMessages(form.formState.errors[name]);
-    return messages.length > 0 ? messages : undefined;
+    const messages = server?.length ? server : collectMessages(form.formState.errors[name]);
+    return messages.length > 0 ? readableMessages(labelFor(name), messages) : undefined;
   }
+
+  /** The label an editor sees for a submitted name, alt-text inputs included. */
+  function labelFor(name: string): string {
+    for (const field of config.fields) {
+      if (field.name === name) return field.label;
+      if (field.type === "image" && field.altName === name) return field.altLabel;
+    }
+    return name;
+  }
+
+  /**
+   * Why the last press of Save did nothing, beside the button that was pressed.
+   * Set when the form refuses to submit; the server's refusals arrive in
+   * `state` and are summarised from there.
+   */
+  const [blocked, setBlocked] = useState<string | null>(null);
+  const serverSummary =
+    state && !state.ok && Object.keys(state.fields).length > 0
+      ? unsavedSummary(Object.keys(state.fields).map(labelFor))
+      : null;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
     const valid = await form.trigger();
+    setBlocked(valid ? null : unsavedSummary(Object.keys(form.formState.errors).map(labelFor)));
     if (!valid) {
       // Focus the first invalid control, or the message is announced somewhere
       // off screen and nothing tells the editor where to go. The leaf path
@@ -289,6 +319,19 @@ export function ResourceForm({
   const visibleFields = config.fields.filter(
     (field) => canPublish || field.name !== "published",
   );
+
+  // The Save button names what this press does; see `lib/admin/save-label.ts`.
+  const hasPublishToggle = canPublish && config.fields.some((field) => field.name === "published");
+  const livePublished: unknown = hasPublishToggle ? form.watch("published") : false;
+  const labelInput = {
+    isNew: id === undefined,
+    singular: inSentence(config.singular),
+    canPublish: hasPublishToggle,
+    publishedNow: livePublished === true || livePublished === "on",
+    publishedSaved: defaults.published === true,
+  };
+  const saveLabel = saveButtonLabel(labelInput);
+  const saveHint = saveButtonHint(labelInput);
 
   // `published` and `order` decide where and whether the row appears, not what
   // it says, so they sit beside the content with the Save button rather than
@@ -376,20 +419,31 @@ export function ResourceForm({
                 {state.data.message}
               </p>
             ) : null}
-            {state && !state.ok ? (
+            {blocked || (state && !state.ok) ? (
               <p
                 role="alert"
                 className="rounded-md bg-secondary px-3 py-2 text-sm text-destructive"
               >
-                {state.error}
+                {blocked ?? serverSummary ?? (state && !state.ok ? state.error : null)}
               </p>
             ) : null}
           </div>
 
           <div className="mt-5 flex flex-col gap-2 border-t border-border pt-5">
             <Button type="submit" disabled={isPending} className="w-full">
-              {isPending ? "Saving…" : id ? "Save changes" : `Create ${inSentence(config.singular)}`}
+              {isPending ? "Saving…" : saveLabel}
             </Button>
+            {saveHint ? (
+              <p className="text-xs text-muted-foreground">{saveHint}</p>
+            ) : null}
+            {previewUrl ? (
+              <Button asChild variant="outline" className="w-full">
+                <a href={previewUrl} target="_blank" rel="noopener">
+                  <ExternalLink aria-hidden />
+                  Preview on site
+                </a>
+              </Button>
+            ) : null}
             <Button asChild variant="ghost" className="w-full">
               <Link href={`/admin/${resource}`}>Cancel</Link>
             </Button>
@@ -488,7 +542,11 @@ export function ResourceForm({
             headingOffset={field.headingOffset ?? 0}
             {...(media ? { figureImages: media } : {})}
             value={markdown[field.name] ?? ""}
-            onBlur={() => void registration.onBlur({ target: { name: field.name } })}
+            onBlur={() =>
+              void registration.onBlur(
+                controlledBlurEvent(field.name, markdown[field.name] ?? ""),
+              )
+            }
             onChange={(next) => {
               setMarkdown((current) => ({ ...current, [field.name]: next }));
               form.setValue(field.name, next, {

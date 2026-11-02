@@ -9,6 +9,8 @@ import {
   List,
   ListOrdered,
   Quote,
+  Redo2,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -30,6 +32,14 @@ import {
   type Edit,
   type InlineCommand,
 } from "@/lib/admin/markdown-commands";
+import {
+  EMPTY_HISTORY,
+  caretAfterJump,
+  recordChange,
+  redoChange,
+  undoChange,
+  type ChangeKind,
+} from "@/lib/admin/edit-history";
 import { cn } from "@/lib/utils";
 
 /**
@@ -56,9 +66,14 @@ import { cn } from "@/lib/utils";
  * What each button writes comes from `lib/admin/markdown-commands.ts`, which is
  * tested against the parser: only syntax that renders is ever inserted, block
  * commands add the blank lines the parser needs, and pressing a button again
- * undoes it. Edits go through the browser's own text insertion, so Ctrl/⌘-Z
- * steps back through toolbar changes like typed ones; ⌘/Ctrl-B, -I and -K
- * are the usual shortcuts.
+ * undoes it. ⌘/Ctrl-B, -I and -K are the usual shortcuts.
+ *
+ * ## Undo and Redo
+ *
+ * Buttons as well as ⌘/Ctrl-Z and ⌘/Ctrl-Shift-Z, both reading the editor's
+ * own history (`lib/admin/edit-history.ts`) rather than the browser's, which a
+ * controlled textarea cannot keep reliably. A burst of typing undoes as one
+ * step; each toolbar action, image included, undoes on its own.
  *
  * ## Write and Preview
  *
@@ -165,6 +180,37 @@ export function MarkdownField({
    */
   const [picked, setPicked] = useState<readonly PickableMedia[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [history, setHistory] = useState(EMPTY_HISTORY);
+
+  /**
+   * Set while a toolbar edit runs, so the input event it fires is recorded as
+   * one command rather than joined to the typing around it.
+   */
+  const commandRunning = useRef(false);
+
+  /** Every change to the body goes through here, so every one can be undone. */
+  function change(next: string, kind: ChangeKind) {
+    if (next === value) return;
+    setHistory((current) => recordChange(current, value, kind, Date.now()));
+    onChange(next);
+  }
+
+  /** Jump to an earlier or later version, caret just after what changed. */
+  function jump(step: { value: string; history: typeof history } | null) {
+    if (!step) return;
+    setHistory(step.history);
+    onChange(step.value);
+    const caret = caretAfterJump(value, step.value);
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(caret, caret);
+    });
+  }
+
+  const undo = () => jump(undoChange(history, value));
+  const redo = () => jump(redoChange(history, value));
   const previewId = useId();
 
   // An error is about the source, which cannot be fixed from the preview.
@@ -203,23 +249,25 @@ export function MarkdownField({
     const textarea = textareaRef.current;
     const expected = applyEdit(value, edit);
     if (!textarea) {
-      onChange(expected);
+      change(expected, "command");
       return;
     }
 
     textarea.focus();
     textarea.setSelectionRange(edit.from, edit.to);
+    commandRunning.current = true;
     const inserted =
       edit.insert.length > 0
         ? document.execCommand("insertText", false, edit.insert)
         : document.execCommand("delete");
+    commandRunning.current = false;
 
     if (inserted && textarea.value === expected) {
       textarea.setSelectionRange(edit.select.start, edit.select.end);
       return;
     }
 
-    onChange(expected);
+    change(expected, "command");
     // After the state flush, or the textarea still holds the old value and
     // the offsets point at the wrong text.
     requestAnimationFrame(() => {
@@ -281,7 +329,15 @@ export function MarkdownField({
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+    if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+    const key = event.key.toLowerCase();
+    if (key === "z" || (key === "y" && event.ctrlKey && !event.metaKey)) {
+      event.preventDefault();
+      if (key === "z" && !event.shiftKey) undo();
+      else redo();
+      return;
+    }
+    if (event.shiftKey) return;
     const command = SHORTCUTS[event.key.toLowerCase()];
     if (!command) return;
     event.preventDefault();
@@ -321,6 +377,29 @@ export function MarkdownField({
                 {option === "write" ? "Write" : "Preview"}
               </button>
             ))}
+          </div>
+
+          <div role="group" aria-label="History" className="flex items-center gap-0.5">
+            <button
+              type="button"
+              title="Undo (⌘/Ctrl+Z)"
+              disabled={!writing || history.past.length === 0}
+              onClick={undo}
+              className={TOOL_BUTTON}
+            >
+              <Undo2 aria-hidden className="size-4" />
+              <span className="sr-only">Undo</span>
+            </button>
+            <button
+              type="button"
+              title="Redo (⌘/Ctrl+Shift+Z)"
+              disabled={!writing || history.future.length === 0}
+              onClick={redo}
+              className={TOOL_BUTTON}
+            >
+              <Redo2 aria-hidden className="size-4" />
+              <span className="sr-only">Redo</span>
+            </button>
           </div>
 
           <div
@@ -376,7 +455,9 @@ export function MarkdownField({
           rows={rows}
           required={required}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) =>
+            change(event.target.value, commandRunning.current ? "command" : "typing")
+          }
           onKeyDown={onKeyDown}
           onBlur={onBlur}
           aria-invalid={invalid || undefined}

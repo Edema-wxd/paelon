@@ -137,8 +137,17 @@ export const uploadRouter = {
       });
 
       // Returned to the caller. The admin image field writes `mediaId` into
-      // the content row, not the URL — alt text lives on the media row.
-      return { url: file.ufsUrl, key: file.key, mediaId: row.id };
+      // the content row, not the URL — alt text lives on the media row. The
+      // size and name let the editor's image picker place a just-uploaded file
+      // without a second round trip to look the row up.
+      return {
+        url: file.ufsUrl,
+        key: file.key,
+        mediaId: row.id,
+        filename: file.name,
+        width: row.width,
+        height: row.height,
+      };
     }),
 } satisfies FileRouter;
 

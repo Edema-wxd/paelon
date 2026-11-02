@@ -395,6 +395,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           galleryValues={galleryValues}
           canPublish={canPublish}
           aside={aside}
+          {...(previewPath ? { previewUrl: previewHref(resource, previewPath) } : {})}
         />
       </div>
 
