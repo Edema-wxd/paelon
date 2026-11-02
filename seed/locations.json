@@ -11,7 +11,7 @@
     "latitude": null,
     "longitude": null,
     "phone": "+234 912 512 0020",
-    "whatsapp": null,
+    "whatsapp": "+234 912 512 0020",
     "emergency_line": "+234 912 512 0027",
     "hours": {
       "mon": { "open": "00:00", "close": "23:59" },

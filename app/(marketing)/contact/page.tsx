@@ -56,15 +56,25 @@ const CONTACT_EMAIL = "contact@paelonmemorial.com";
 /** Pre-populated WhatsApp greeting (spec §10). */
 const WHATSAPP_GREETING = "Hello Paelon Memorial Hospital, I have a question.";
 
+/*
+ * General-enquiry lines, supplied by Paelon on 2026-11-02 alongside the
+ * appointment line (the branch's `phone` and `whatsapp`, which the booking
+ * pages use). Hospital-wide rather than per-branch, so like CONTACT_EMAIL they
+ * have no column and sit here.
+ */
+const ENQUIRY_PHONES = ["+234 911 981 5190", "+234 901 175 3393"] as const;
+const ENQUIRY_WHATSAPP = "+234 901 175 3393";
+
 export default async function ContactPage() {
   const locations = await getLocations();
   const primary = await getPrimaryLocation();
 
-  // The branch's own number wins; the site-wide number is the fallback so the
-  // link still works before per-branch WhatsApp numbers are seeded.
-  const whatsappHref = toWhatsAppHref(
+  // This page's greeting is a general question, so it goes to the enquiries
+  // WhatsApp line. The branch's own WhatsApp is the appointment line.
+  const whatsappHref = toWhatsAppHref(ENQUIRY_WHATSAPP, WHATSAPP_GREETING);
+  const appointmentWhatsappHref = toWhatsAppHref(
     primary?.whatsapp ?? clientEnv.NEXT_PUBLIC_WHATSAPP_NUMBER,
-    WHATSAPP_GREETING,
+    "Hello Paelon Memorial Hospital, I would like to book an appointment.",
   );
 
   const breadcrumbLd = {
@@ -196,21 +206,55 @@ export default async function ContactPage() {
                       className="mt-0.5 size-6 shrink-0 text-accent"
                       aria-hidden
                     />
-                    <a
-                      href={toTelHref(primary.phone)}
-                      className="rounded-md text-base underline-offset-4 hover:underline"
-                    >
-                      <span className="sr-only">Phone: </span>
-                      {primary.phone}
-                    </a>
+                    <span className="text-base">
+                      <span className="block font-medium">Appointments</span>
+                      <a
+                        href={toTelHref(primary.phone)}
+                        className="rounded-md underline-offset-4 hover:underline"
+                      >
+                        <span className="sr-only">Call appointments on </span>
+                        {primary.phone}
+                      </a>
+                      {appointmentWhatsappHref ? (
+                        <>
+                          {" "}
+                          <span aria-hidden>·</span>{" "}
+                          <a
+                            href={appointmentWhatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-md text-accent underline underline-offset-4"
+                          >
+                            WhatsApp appointments
+                          </a>
+                        </>
+                      ) : null}
+                    </span>
                   </li>
                 ) : null}
 
-                {/* Spec §6 asks for a WhatsApp deep link here. No number is
-                    seeded and NEXT_PUBLIC_WHATSAPP_NUMBER is empty until the
-                    WhatsApp Business provider is chosen (spec §18), so the row
-                    appears the moment either lands rather than linking
-                    somewhere that fails on tap. */}
+                <li className="flex items-start gap-3">
+                  <Phone
+                    className="mt-0.5 size-6 shrink-0 text-accent"
+                    aria-hidden
+                  />
+                  <span className="text-base">
+                    <span className="block font-medium">Other enquiries</span>
+                    {ENQUIRY_PHONES.map((number, index) => (
+                      <span key={number}>
+                        {index > 0 ? " / " : null}
+                        <a
+                          href={toTelHref(number)}
+                          className="rounded-md underline-offset-4 hover:underline"
+                        >
+                          <span className="sr-only">Call enquiries on </span>
+                          {number}
+                        </a>
+                      </span>
+                    ))}
+                  </span>
+                </li>
+
                 {whatsappHref ? (
                   <li className="flex items-start gap-3">
                     <MessageCircle
@@ -224,6 +268,7 @@ export default async function ContactPage() {
                       className="rounded-md text-base underline-offset-4 hover:underline"
                     >
                       Message us on WhatsApp
+                      <span className="sr-only"> about other enquiries</span>
                     </a>
                   </li>
                 ) : null}

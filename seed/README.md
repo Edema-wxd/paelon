@@ -20,6 +20,16 @@ These must be resolved with Francis before the site goes live.
   including `(01) 290 0844` for retainer enquiries and `0909 360 8138`. Confirm
   whether each branch has a direct line, and confirm the emergency hotline is
   answered 24/7 as the site states.
+
+  **Updated 2026-11-02 from Paelon's own list.** `+234 912 512 0020` is the
+  appointment line, for calls and WhatsApp, so it is now Victoria Island's
+  `whatsapp` too (the booking confirmation's WhatsApp link). Other enquiries
+  are calls on `0911 981 5190` / `0901 175 3393` and WhatsApp on
+  `0901 175 3393`; those are hospital-wide, have no column, and sit inline in
+  `app/(marketing)/contact/page.tsx` beside `CONTACT_EMAIL`. The list named no
+  emergency number, so `+234 912 512 0027` is still the live site's value, and
+  `(01) 290 0844` (retainer FAQ) and `0909 360 8138` were not mentioned:
+  confirm whether either is still answered.
 - **`locations.json` — one branch for now.** Francis ruled on 2026-10-26 that
   Victoria Island is the only branch. Ikeja and Moshood Olugbani stay in the
   file with `published: false`, so their addresses are not lost, and the Ikeja
@@ -48,7 +58,17 @@ These must be resolved with Francis before the site goes live.
 
 ## Missing content, non-blocking
 
-- **`doctors.json` — three clinicians, no biographies.** Seeded on 2026-10-24
+- **`doctors.json`: five clinicians, specialties from Paelon (2026-11-02).**
+  Paelon's list added specialties for the original three (Onyia: Paediatrics,
+  General Practice, Travel Health; Talabi: General Surgery, General Practice;
+  Nwaukwa: Endocrinology, General Practice) and two new clinicians, Dr.
+  Adebimpe Abudu (Obstetrician and Gynaecologist) and Dr. Lovina Ekpo
+  (Paediatrician). Both new rows are linked to Victoria Island and marked
+  `in_house`, which the list did not state: confirm. Spellings to confirm: the
+  list wrote "Michael Talabi" and "Paulyn Nwaukwan" where the live site has
+  "Micheal" and "Nwaukwa" (kept, since a slug change breaks links), and
+  "Lovi na" was read as "Lovina".
+- **`doctors.json`: no biographies.** Seeded on 2026-10-24
   from the live site's team section: Dr. Ngozi Onyia (Managing Director and
   Founding Partner), Dr. Micheal Talabi (Chief Medical Officer) and Dr. Paulyn
   Nwaukwa (Head of Medical Services). Names and titles only — the live site
@@ -99,6 +119,27 @@ These must be resolved with Francis before the site goes live.
   because the live site never states them: `how_to_access` (private, corporate
   and HMO routes, which spec §6 asks each service page for) and
   `typical_wait_time`. Both need Paelon, not a website.
+- **`services.json`: 18 more services, names only (2026-11-02)**, from
+  Paelon's own list: Minimally Invasive & General Surgery, Executive Health
+  Checks, Emergency Care, Urgent Care, Radiology (X-ray and ultrasound),
+  Laboratory (24 hours), Pharmacy (24 hours), Physiotherapy, Orthopaedics,
+  Psychiatry, Cardiology, Haematology, ENT, Dermatology, Nephrology,
+  Neurology, Urology and Rheumatology. The list's Family Medicine, Paediatrics,
+  Obstetrics & Gynaecology, Endoscopy and Travel health map onto rows that
+  already existed. The only copy is what the list itself says (the opening
+  hours and the X-ray/ultrasound scope); every other page renders its name and
+  the pending note until an editor writes it in `/admin/services`. `family`
+  is again a best guess, and Emergency, Urgent Care and Pharmacy sit under
+  `family_healthcare` because the enum has nowhere better. Lily Fertility,
+  Family Healthcare and High Dependency Care are not on Paelon's list but are
+  still published: confirm whether the list was complete.
+
+  **To bring the live database up to date** without re-seeding (which would
+  overwrite admin edits), run `lib/db/add-paelon-list.ts`. It inserts the new
+  services and doctors, extends the three existing clinicians' specialties
+  only where nobody has edited them, and sets Victoria Island's WhatsApp only
+  if it is empty. Dry run by default, `--apply` to write:
+  `node --env-file=.env.local ./node_modules/.bin/tsx lib/db/add-paelon-list.ts`.
 - **Which services run at which branch is unknown.** Every service is linked
   to Victoria Island only, because that is the hospital the live pages
   describe. Ikeja is an outpatient clinic and the Moshood Olugbani site is a
