@@ -58,7 +58,7 @@ These must be resolved with Francis before the site goes live.
 
 ## Missing content, non-blocking
 
-- **`doctors.json` — five clinicians, specialties from Paelon (2026-11-02).**
+- **`doctors.json`: five clinicians, specialties from Paelon (2026-11-02).**
   Paelon's list added specialties for the original three (Onyia: Paediatrics,
   General Practice, Travel Health; Talabi: General Surgery, General Practice;
   Nwaukwa: Endocrinology, General Practice) and two new clinicians, Dr.
@@ -68,7 +68,7 @@ These must be resolved with Francis before the site goes live.
   list wrote "Michael Talabi" and "Paulyn Nwaukwan" where the live site has
   "Micheal" and "Nwaukwa" (kept, since a slug change breaks links), and
   "Lovi na" was read as "Lovina".
-- **`doctors.json` — no biographies.** Seeded on 2026-10-24
+- **`doctors.json`: no biographies.** Seeded on 2026-10-24
   from the live site's team section: Dr. Ngozi Onyia (Managing Director and
   Founding Partner), Dr. Micheal Talabi (Chief Medical Officer) and Dr. Paulyn
   Nwaukwa (Head of Medical Services). Names and titles only — the live site
@@ -119,7 +119,7 @@ These must be resolved with Francis before the site goes live.
   because the live site never states them: `how_to_access` (private, corporate
   and HMO routes, which spec §6 asks each service page for) and
   `typical_wait_time`. Both need Paelon, not a website.
-- **`services.json` — 18 more services, names only (2026-11-02)**, from
+- **`services.json`: 18 more services, names only (2026-11-02)**, from
   Paelon's own list: Minimally Invasive & General Surgery, Executive Health
   Checks, Emergency Care, Urgent Care, Radiology (X-ray and ultrasound),
   Laboratory (24 hours), Pharmacy (24 hours), Physiotherapy, Orthopaedics,
