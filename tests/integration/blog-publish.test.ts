@@ -100,18 +100,25 @@ describeIfDb("blog publish checks", () => {
     it("accepts the built static routes", async () => {
       const { unresolvedPaths } = await import("@/lib/blog/link-targets");
 
-      expect(await unresolvedPaths(["/", "/services", "/locations", "/blog", "/contact"])).toEqual(
-        [],
-      );
+      expect(
+        await unresolvedPaths([
+          "/",
+          "/about",
+          "/services",
+          "/locations",
+          "/doctors",
+          "/blog",
+          "/contact",
+        ]),
+      ).toEqual([]);
     });
 
     it("refuses a route that is specified but not built", async () => {
       const { unresolvedPaths } = await import("@/lib/blog/link-targets");
 
-      // §6 lists all three; none of them exists yet, so a body linking to one
-      // would ship a 404 (CLAUDE.md live gaps).
-      expect(await unresolvedPaths(["/about", "/for-corporates", "/hmo-check"])).toEqual([
-        "/about",
+      // §6 lists both; neither exists yet, so a body linking to one would ship
+      // a 404 (CLAUDE.md live gaps).
+      expect(await unresolvedPaths(["/for-corporates", "/hmo-check"])).toEqual([
         "/for-corporates",
         "/hmo-check",
       ]);
@@ -140,6 +147,23 @@ describeIfDb("blog publish checks", () => {
       await seedLocation("victoria-island");
 
       expect(await unresolvedPaths(["/locations/victoria-island"])).toEqual([]);
+    });
+
+    it("accepts a published doctor and refuses a draft or deleted one", async () => {
+      const { unresolvedPaths } = await import("@/lib/blog/link-targets");
+      // Placeholder rows: nothing here names or describes a real clinician.
+      await dbTx().execute(sql`
+        INSERT INTO doctors (name, slug, title, bio, published, deleted_at) VALUES
+          ('Placeholder A', 'live-doc', 'Placeholder', 'Placeholder.', true, null),
+          ('Placeholder B', 'draft-doc', 'Placeholder', 'Placeholder.', false, null),
+          ('Placeholder C', 'gone-doc', 'Placeholder', 'Placeholder.', true, now())
+      `);
+
+      expect(await unresolvedPaths(["/doctors/live-doc"])).toEqual([]);
+      expect(await unresolvedPaths(["/doctors/draft-doc", "/doctors/gone-doc"])).toEqual([
+        "/doctors/draft-doc",
+        "/doctors/gone-doc",
+      ]);
     });
 
     it("refuses a published post that has no publication date", async () => {
@@ -175,7 +199,7 @@ describeIfDb("blog publish checks", () => {
     it("reports each broken path once, however often it was linked", async () => {
       const { unresolvedPaths } = await import("@/lib/blog/link-targets");
 
-      expect(await unresolvedPaths(["/about", "/about"])).toEqual(["/about"]);
+      expect(await unresolvedPaths(["/hmo-check", "/hmo-check"])).toEqual(["/hmo-check"]);
     });
 
     it("costs no query when every path is static", async () => {
@@ -194,7 +218,7 @@ describeIfDb("blog publish checks", () => {
 
       const errors = await blogPublishErrors({
         published: false,
-        body: "Placeholder linking to [nothing](/about) and [nowhere](/services/missing).",
+        body: "Placeholder linking to [nothing](/hmo-check) and [nowhere](/services/missing).",
         relatedIds: [],
         id: null,
       });
@@ -282,7 +306,7 @@ describeIfDb("blog publish checks", () => {
 
       const errors = await blogPublishErrors({
         published: true,
-        body: "Placeholder [one](/about) and [two](/contact).",
+        body: "Placeholder [one](/hmo-check) and [two](/contact).",
         relatedIds: [draftId],
         id: null,
       });

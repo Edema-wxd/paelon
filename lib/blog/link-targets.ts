@@ -1,7 +1,7 @@
 import { and, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
-import { blogPosts, locations, services } from "@/lib/db/schema";
+import { blogPosts, doctors, locations, services } from "@/lib/db/schema";
 
 import { publicFilter } from "@/lib/db/queries/shared";
 
@@ -23,11 +23,12 @@ import { publicFilter } from "@/lib/db/queries/shared";
  * "a route file exists":
  *
  *  - The **static** routes below are the built marketing pages, and only those.
- *    `/about`, `/for-corporates` and `/hmo-check` are specified in §6 and not
- *    built, so a link to one is refused today and starts resolving on its own
- *    the moment the page ships and is added here.
- *  - The **dynamic** routes resolve against `published` rows, because that is
- *    what their templates serve: an unpublished service 404s, so linking to one
+ *    `/for-corporates` and `/hmo-check` are specified in §6 and not built, so a
+ *    link to one is refused today and starts resolving on its own the moment
+ *    the page ships and is added here.
+ *  - The **dynamic** routes (`/services`, `/locations`, `/doctors`, `/blog`)
+ *    resolve against `published`, non-deleted rows, because that is what their
+ *    templates serve: an unpublished service or doctor 404s, so linking to one
  *    is the same broken link as a typo in the slug. A post additionally needs
  *    `published_at`, which is the column `/blog` sorts and filters on.
  *  - The `noindex` endpoints — `/book/confirmed`, `/contact/thank-you` and the
@@ -46,13 +47,15 @@ import { publicFilter } from "@/lib/db/queries/shared";
  * Kept as a list rather than derived from the filesystem: `app/(marketing)`
  * also holds the routes above that a body must not link to, and a directory
  * walk cannot tell the difference. Add a page here when it ships (§6 still
- * lists `/about`, `/for-corporates` and `/hmo-check` as unbuilt).
+ * lists `/for-corporates` and `/hmo-check` as unbuilt).
  */
 export const STATIC_ROUTES: ReadonlySet<string> = new Set([
   "/",
+  "/about",
   "/blog",
   "/book",
   "/contact",
+  "/doctors",
   "/locations",
   "/privacy",
   "/services",
@@ -60,7 +63,7 @@ export const STATIC_ROUTES: ReadonlySet<string> = new Set([
 ]);
 
 /** A slugged route and the table whose published rows satisfy it. */
-const DYNAMIC_PREFIXES = ["/services", "/locations", "/blog"] as const;
+const DYNAMIC_PREFIXES = ["/services", "/locations", "/doctors", "/blog"] as const;
 
 type DynamicPrefix = (typeof DYNAMIC_PREFIXES)[number];
 
@@ -148,6 +151,16 @@ async function publishedSlugs(
       .select({ slug: locations.slug })
       .from(locations)
       .where(and(publicFilter(locations), inArray(locations.slug, slugs)));
+    return new Set(rows.map((row) => row.slug));
+  }
+
+  if (prefix === "/doctors") {
+    // The same guard `/doctors/[slug]` serves through outside draft mode, so
+    // an unpublished or soft-deleted profile is refused like any other 404.
+    const rows = await db()
+      .select({ slug: doctors.slug })
+      .from(doctors)
+      .where(and(publicFilter(doctors), inArray(doctors.slug, slugs)));
     return new Set(rows.map((row) => row.slug));
   }
 
