@@ -76,6 +76,7 @@ export function MarkdownMediaPicker({
   chosen,
   triggerClassName,
   iconOnly = false,
+  askForAltText = true,
 }: {
   /** Called with the chosen asset. The caller decides what to do with it. */
   onPick: (asset: PickableMedia) => void;
@@ -85,6 +86,12 @@ export function MarkdownMediaPicker({
   triggerClassName?: string;
   /** Show only the icon; `label` stays as the accessible name and tooltip. */
   iconOnly?: boolean;
+  /**
+   * Ask for alt text before handing over an undescribed image. Off for a form
+   * field that asks for it itself, right under the image, so it is not asked
+   * for twice.
+   */
+  askForAltText?: boolean;
   description?: string;
   chosen?: readonly string[];
 }) {
@@ -104,6 +111,11 @@ export function MarkdownMediaPicker({
   const [saving, setSaving] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadId = useId();
+  // Generated, not fixed: a form can hold several pickers (the body's Insert
+  // image and an image field), and a repeated id points every label at the
+  // first one.
+  const headingId = useId();
+  const filterId = useId();
   const altId = useId();
 
   /**
@@ -157,7 +169,7 @@ export function MarkdownMediaPicker({
 
   /** Straight in when the image is described; via the describe step if not. */
   function choose(asset: PickableMedia) {
-    if ((asset.alt ?? "").trim().length > 0) {
+    if (!askForAltText || (asset.alt ?? "").trim().length > 0) {
       handOver(asset);
       return;
     }
@@ -207,7 +219,7 @@ export function MarkdownMediaPicker({
         );
         return;
       }
-      describe({
+      choose({
         id: uploaded.mediaId,
         url: uploaded.url,
         alt: null,
@@ -243,7 +255,7 @@ export function MarkdownMediaPicker({
 
       <dialog
         ref={dialog}
-        aria-labelledby="media-picker-heading"
+        aria-labelledby={headingId}
         onClose={() => {
           setOpen(false);
           setDescribing(null);
@@ -251,7 +263,7 @@ export function MarkdownMediaPicker({
         }}
         className="m-auto max-h-[80vh] w-[min(48rem,92vw)] overflow-y-auto rounded-xl border border-border bg-background p-6 backdrop:bg-black/40"
       >
-        <h2 id="media-picker-heading" className="text-lg font-semibold text-primary">
+        <h2 id={headingId} className="text-lg font-semibold text-primary">
           {title}
         </h2>
         {describing ? (
@@ -373,13 +385,13 @@ export function MarkdownMediaPicker({
             </div>
 
             <label
-              htmlFor="media-picker-filter"
+              htmlFor={filterId}
               className="mt-4 block text-sm font-medium text-primary"
             >
               Search by alt text or filename
             </label>
             <input
-              id="media-picker-filter"
+              id={filterId}
               type="search"
               value={query}
               autoComplete="off"
@@ -438,7 +450,9 @@ export function MarkdownMediaPicker({
                         ) : null}
                         {!described ? (
                           <span className="mt-0.5 block text-xs text-muted-foreground">
-                            No alt text yet. You will be asked for it when you choose it.
+                            {askForAltText
+                              ? "No alt text yet. You will be asked for it when you choose it."
+                              : "No alt text yet. Write it in the form once you choose it."}
                           </span>
                         ) : null}
                         {!usable ? (
