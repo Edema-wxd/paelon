@@ -5,6 +5,7 @@ import { BLOG_CATEGORY_LABELS } from "@/lib/blog/categories";
 import { blogCategoryEnum, type BlogPost } from "@/lib/db/schema";
 import { MIN_INTERNAL_LINKS, internalLinks } from "@/lib/blog/internal-links";
 import { headingSkips, imagePlacementIssues } from "@/lib/markdown";
+import { todayInLagos } from "@/lib/validation/primitives";
 
 import {
   checkboxField,
@@ -12,7 +13,7 @@ import {
   imageAltRule,
   imageFields,
   type ImageFieldNames,
-  optionalPastDateField,
+  optionalDateField,
   orderField,
   requiredReferenceField,
   requiredText,
@@ -52,9 +53,20 @@ import {
  * `validate` hook on this resource's entry in `./server.ts`, and reports on
  * `body` and `relatedIds` exactly as these rules do.
  *
- * All of it applies **only when the post is being published**. A draft is work
- * in progress; refusing to save one because the second link is not written yet
- * would make the rule something editors route around rather than meet.
+ * All of it applies **only when the post is going live** — published now, or
+ * scheduled. A draft is work in progress; refusing to save one because the
+ * second link is not written yet would make the rule something editors route
+ * around rather than meet. A scheduled post is checked when it is scheduled,
+ * because nobody is watching at 08:00 when the job publishes it, and again by
+ * the job itself (`lib/blog/publish-scheduled.ts`) in case a link target was
+ * taken down in between.
+ *
+ * ## Scheduling
+ *
+ * `scheduled` (migration 0010) marks a post to go live on its publication
+ * date: `/api/jobs/publish-scheduled` runs at 08:00 WAT and publishes every
+ * scheduled post dated today or earlier. Published and Schedule are
+ * exclusive — one says "now", the other "on the date".
  *
  * ## The hero image
  *
@@ -64,6 +76,11 @@ import {
  * renders today: the article template makes it the LCP element and the index
  * cards crop it to 16:9.
  */
+
+/** Published now, or scheduled to be: the publish rules apply to both. */
+function goingLive(value: Record<string, unknown>): boolean {
+  return value.published === true || value.scheduled === true;
+}
 
 /** `blog_posts.hero_image_id`, with its alt text on the media row. */
 export const BLOG_HERO: ImageFieldNames = {
@@ -84,7 +101,7 @@ export const BLOG_RELATED_FIELD = "relatedIds";
  */
 function internalLinkRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void {
   const value = ctx.value as Record<string, unknown>;
-  if (value.published !== true) return;
+  if (!goingLive(value)) return;
 
   const body = String(value.body ?? "");
   const found = internalLinks(body).length;
@@ -102,24 +119,57 @@ function internalLinkRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }
 }
 
 /**
- * A published post needs a publication date.
+ * The publication date, against what the post is about to do.
  *
- * Not a default: `/blog` orders by this column and `livePost()` requires it, so
- * a missing one means the post is flagged published and appears nowhere. Asking
- * is better than stamping `now()` behind the editor's back, which would date a
- * post written last month to today.
+ * Published now: a date is required (`/blog` orders by it and `livePost()`
+ * needs it — "Saved" with nothing on the site is the worst feedback) and it
+ * cannot be in the future, or the post would top `/blog` until the date came.
+ * Not a default either: stamping `now()` would date last month's post today.
+ *
+ * Scheduled: a date is required and has to be today or later, in Lagos —
+ * the job publishes on that date at 08:00 WAT.
  */
 function publishedAtRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void {
   const value = ctx.value as Record<string, unknown>;
-  if (value.published !== true) return;
-  if (value.publishedAt != null) return;
+  const date = typeof value.publishedAt === "string" ? value.publishedAt : null;
+  const today = todayInLagos();
+
+  const issue = (message: string) =>
+    ctx.issues.push({ code: "custom", input: value.publishedAt, path: ["publishedAt"], message });
+
+  if (value.published === true) {
+    if (date === null) {
+      issue("Give the post a publication date. Without one it stays off /blog even when published.");
+    } else if (date > today) {
+      issue(
+        "A post published now cannot be dated in the future. To put it live on that date, tick Schedule instead of Published.",
+      );
+    }
+    return;
+  }
+
+  if (value.scheduled === true) {
+    if (date === null) {
+      issue("Give the post a publication date. A scheduled post goes live at 8am WAT on that day.");
+    } else if (date < today) {
+      issue(
+        "A scheduled date has to be today or later. To put the post live now, tick Published instead of Schedule.",
+      );
+    }
+  }
+}
+
+/** Published means now, Schedule means on the date; a post cannot be both. */
+function scheduleConflictRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void {
+  const value = ctx.value as Record<string, unknown>;
+  if (value.published !== true || value.scheduled !== true) return;
 
   ctx.issues.push({
     code: "custom",
-    input: value.publishedAt,
-    path: ["publishedAt"],
+    input: value.scheduled,
+    path: ["scheduled"],
     message:
-      "Give the post a publication date. Without one it stays off /blog even when published.",
+      "Tick one, not both: Published puts the post live now, Schedule puts it live at 8am WAT on its publication date.",
   });
 }
 
@@ -136,7 +186,7 @@ function publishedAtRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] })
  */
 function imageRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void {
   const value = ctx.value as Record<string, unknown>;
-  if (value.published !== true) return;
+  if (!goingLive(value)) return;
 
   const body = String(value.body ?? "");
   const issues = imagePlacementIssues(body);
@@ -163,7 +213,7 @@ function imageRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void
  */
 function headingRule(ctx: { value: unknown; issues: z.core.$ZodRawIssue[] }): void {
   const value = ctx.value as Record<string, unknown>;
-  if (value.published !== true) return;
+  if (!goingLive(value)) return;
 
   const body = String(value.body ?? "");
   const skips = headingSkips(body);
@@ -189,13 +239,17 @@ export const blogPostSchema = z
     authorId: requiredReferenceField("an author"),
     category: z.enum(blogCategoryEnum.enumValues, "Choose a category."),
     tags: tagsField("tag", { maxItems: 12, maxLength: 60 }),
-    publishedAt: optionalPastDateField("the publication date"),
+    publishedAt: optionalDateField("the publication date"),
     [BLOG_RELATED_FIELD]: idListField("related posts"),
     order: orderField,
     published: checkboxField,
+    scheduled: checkboxField,
     ...imageFields(BLOG_HERO),
   })
   .check(imageAltRule(BLOG_HERO))
+  // First of the publish rules: Zod stops at the first failing check, and
+  // "tick one, not both" is the mistake to fix before any of the others.
+  .check(scheduleConflictRule)
   .check(internalLinkRule)
   .check(publishedAtRule)
   .check(imageRule)
@@ -287,7 +341,7 @@ const FIELDS: readonly Field[] = [
     name: "publishedAt",
     section: "Byline and filing",
     label: "Publication date",
-    hint: "The date shown on the post and the one /blog sorts by. Required to publish; leave it blank while the post is a draft.",
+    hint: "The date shown on the post and the one /blog sorts by. Required to publish or schedule: a scheduled post goes live at 8am WAT on this date. Leave it blank while the post is a draft.",
   },
   {
     type: "multiselect",
@@ -314,6 +368,12 @@ const FIELDS: readonly Field[] = [
     label: "Published",
     hint: "An unpublished post is gone from /blog and its own page 404s.",
   },
+  {
+    type: "checkbox",
+    name: "scheduled",
+    label: "Schedule",
+    hint: "Publishes the post automatically at 8am WAT on its publication date. Leave Published unticked. The publish checks run now, so a scheduled post is ready to go live.",
+  },
 ];
 
 const COLUMNS: readonly Column<BlogPost>[] = [
@@ -332,7 +392,16 @@ const COLUMNS: readonly Column<BlogPost>[] = [
     value: (row) =>
       row.publishedAt ? row.publishedAt.toISOString().slice(0, 10) : "No date",
   },
-  { label: "Status", sortKey: "published", value: (row) => (row.published ? "Published" : "Draft") },
+  {
+    label: "Status",
+    sortKey: "published",
+    value: (row) =>
+      row.published
+        ? "Published"
+        : row.scheduled && row.publishedAt
+          ? `Scheduled for ${row.publishedAt.toISOString().slice(0, 10)}`
+          : "Draft",
+  },
 ];
 
 export const blogPostResource: ResourceConfig<BlogPost, typeof blogPostSchema> = {

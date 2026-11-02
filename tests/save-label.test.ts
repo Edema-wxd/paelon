@@ -24,6 +24,23 @@ describe("saveButtonLabel", () => {
   });
 });
 
+describe("scheduling labels", () => {
+  it("says Schedule when only Schedule is ticked", () => {
+    expect(
+      saveButtonLabel({ ...base, isNew: true, publishedNow: false, scheduledNow: true, publishedSaved: false }),
+    ).toBe("Schedule post");
+    expect(
+      saveButtonLabel({ ...base, isNew: false, publishedNow: false, scheduledNow: true, publishedSaved: true }),
+    ).toBe("Unpublish and schedule");
+  });
+
+  it("explains when a scheduled post goes live", () => {
+    expect(saveButtonHint({ isNew: false, canPublish: true, publishedNow: false, scheduledNow: true })).toMatch(
+      /8am WAT on the publication date/,
+    );
+  });
+});
+
 describe("saveButtonHint", () => {
   it("explains how to preview a draft", () => {
     expect(saveButtonHint({ isNew: true, canPublish: true, publishedNow: false })).toMatch(/Once it is saved, Preview on site/);

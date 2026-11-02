@@ -227,12 +227,18 @@ function publishRefusal(
   server: ResourceServerConfig,
   values: Record<string, unknown>,
 ): ActionFailure | null {
-  if (values.published !== true) return null;
+  // Scheduling is publishing on a date, so it needs the same permission.
+  const field = values.published === true ? "published" : values.scheduled === true ? "scheduled" : null;
+  if (field === null) return null;
   if (can(user.role, "publish", server.permission)) return null;
 
   return fail(INVALID_MESSAGE, {
     fields: {
-      published: ["Publishing needs an editor or an admin. Save it as a draft."],
+      [field]: [
+        field === "published"
+          ? "Publishing needs an editor or an admin. Save it as a draft."
+          : "Scheduling needs an editor or an admin. Save it as a draft.",
+      ],
     },
   });
 }

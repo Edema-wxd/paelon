@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils";
  */
 export function PublishedBadge({
   published,
+  scheduled = false,
   className,
 }: {
   published: boolean;
+  /** Waiting for its publication date (blog posts, migration 0010). */
+  scheduled?: boolean;
   className?: string;
 }) {
   return (
@@ -18,12 +21,14 @@ export function PublishedBadge({
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         published
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-slate-200 bg-slate-100 text-slate-700",
+          : scheduled
+            ? "border-sky-200 bg-sky-50 text-sky-800"
+            : "border-slate-200 bg-slate-100 text-slate-700",
         className,
       )}
     >
       <span aria-hidden className="size-1.5 rounded-full bg-current opacity-70" />
-      {published ? "Published" : "Draft"}
+      {published ? "Published" : scheduled ? "Scheduled" : "Draft"}
     </span>
   );
 }

@@ -82,6 +82,12 @@ const serverSchema = z
       .string()
       .min(16, "RATE_LIMIT_SALT must be at least 16 characters"),
     JOBS_SECRET: optionalString,
+    /**
+     * Vercel Cron sends `Authorization: Bearer $CRON_SECRET` on every scheduled
+     * call, so the job routes accept it beside `JOBS_SECRET`. Self-hosted cron
+     * calls with `JOBS_SECRET` instead.
+     */
+    CRON_SECRET: optionalString,
     DPO_EMAIL: optionalString,
     CONSENT_TEXT_VERSION: z.string().default("2026-01-v1"),
     /** Sends `X-Robots-Tag: noindex` on every response; read in middleware.ts. */

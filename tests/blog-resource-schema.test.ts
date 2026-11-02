@@ -14,6 +14,7 @@ import {
   blogPostSchema,
 } from "@/lib/admin/resources/blog-posts";
 import { toDateInput, toTimestamp } from "@/lib/admin/resources/fields";
+import { addDaysToIsoDate, todayInLagos } from "@/lib/validation/primitives";
 
 /**
  * Accept and reject cases for the blog and author form schemas (CLAUDE.md
@@ -237,12 +238,60 @@ describe("blogPostSchema", () => {
       const nextYear = `${new Date().getUTCFullYear() + 1}-01-01`;
       const result = blogPostSchema.safeParse({ ...validPost, publishedAt: nextYear });
 
-      expect(issueOn(result, "publishedAt")).toMatch(/cannot be in the future/);
+      expect(issueOn(result, "publishedAt")).toMatch(/cannot be dated in the future/);
     });
 
     it("refuses something that is not a date", () => {
       const result = blogPostSchema.safeParse({ ...validPost, publishedAt: "last Tuesday" });
       expect(issueOn(result, "publishedAt")).toBeDefined();
+    });
+  });
+
+  describe("scheduling", () => {
+    const tomorrow = addDaysToIsoDate(todayInLagos(), 1);
+    const yesterday = addDaysToIsoDate(todayInLagos(), -1);
+    const scheduled = (overrides: Record<string, unknown> = {}) => ({
+      ...without(validPost, "published"),
+      scheduled: "on",
+      publishedAt: tomorrow,
+      ...overrides,
+    });
+
+    it("accepts a post scheduled for a future date", () => {
+      const parsed = blogPostSchema.parse(scheduled());
+      expect(parsed.scheduled).toBe(true);
+      expect(parsed.published).toBe(false);
+      expect(parsed.publishedAt).toBe(tomorrow);
+    });
+
+    it("accepts today, which the 8am run publishes", () => {
+      expect(blogPostSchema.safeParse(scheduled({ publishedAt: todayInLagos() })).success).toBe(true);
+    });
+
+    it("needs a date to schedule for", () => {
+      const result = blogPostSchema.safeParse(scheduled({ publishedAt: "" }));
+      expect(issueOn(result, "publishedAt")).toMatch(/8am WAT/);
+    });
+
+    it("refuses a date that has passed, pointing at Published instead", () => {
+      const result = blogPostSchema.safeParse(scheduled({ publishedAt: yesterday }));
+      expect(issueOn(result, "publishedAt")).toMatch(/today or later/);
+    });
+
+    it("refuses Published and Schedule together", () => {
+      const result = blogPostSchema.safeParse(scheduled({ published: "on", publishedAt: todayInLagos() }));
+      expect(issueOn(result, "scheduled")).toMatch(/not both/);
+    });
+
+    it("applies the publish rules when scheduling, not only when publishing", () => {
+      const result = blogPostSchema.safeParse(scheduled({ body: "Placeholder text with no links at all." }));
+      expect(issueOn(result, "body")).toMatch(/at least 2 links/);
+    });
+
+    it("leaves a draft with a future date alone: only Schedule makes it go live", () => {
+      const parsed = blogPostSchema.parse(asDraft({ publishedAt: tomorrow }));
+      expect(parsed.scheduled).toBe(false);
+      expect(parsed.published).toBe(false);
     });
   });
 

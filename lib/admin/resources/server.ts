@@ -426,7 +426,9 @@ export const RESOURCE_SERVER: Record<ResourceName, ResourceServerConfig> = {
     // which both sides parse; these two need rows.
     validate: (values, { id, relations }) =>
       blogPublishErrors({
-        published: values.published === true,
+        // A scheduled post is checked now, as if publishing: nobody is
+        // watching when the job puts it live.
+        published: values.published === true || values.scheduled === true,
         body: String(values.body ?? ""),
         relatedIds: relations.get(BLOG_RELATED_FIELD) ?? [],
         id,

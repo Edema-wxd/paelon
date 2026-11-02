@@ -92,9 +92,15 @@ export function ResourceTable<R extends { id: string; published: boolean }>({
                 }
 
                 if (column.sortKey === "published") {
+                  // Blog posts can also be waiting for a date (migration 0010);
+                  // the column's own text then says which date.
+                  const scheduled = !row.published && "scheduled" in row && row.scheduled === true;
                   return (
                     <td key={column.label} className="p-3">
-                      <PublishedBadge published={row.published} />
+                      <PublishedBadge published={row.published} scheduled={scheduled} />
+                      {scheduled ? (
+                        <span className="mt-1 block text-xs text-muted-foreground">{text}</span>
+                      ) : null}
                     </td>
                   );
                 }
