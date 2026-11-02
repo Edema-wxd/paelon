@@ -101,10 +101,19 @@ describe("authorSchema", () => {
     expect(issueOn(result, AUTHOR_DOCTOR_FIELD)).toMatch(/from the list/);
   });
 
-  it("rejects a missing name, role and bio", () => {
-    for (const key of ["name", "role", "bio"] as const) {
+  it("rejects a missing name or role", () => {
+    for (const key of ["name", "role"] as const) {
       const result = authorSchema.safeParse({ ...validAuthor, [key]: "  " });
       expect(issueOn(result, key)).toBeDefined();
+    }
+  });
+
+  it("accepts an author with no bio, stored as an empty string", () => {
+    for (const bio of ["", "   "]) {
+      const parsed = authorSchema.parse({ ...validAuthor, bio });
+      // "" rather than null: `authors.bio` is NOT NULL, and the byline card
+      // hides an empty bio.
+      expect(parsed.bio).toBe("");
     }
   });
 
