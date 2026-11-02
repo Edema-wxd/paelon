@@ -420,6 +420,8 @@ author_id         uuid, references authors
 category          enum: seasonal_alerts | family_health | women_and_children | corporate_wellness
 tags              string[]
 published_at      timestamp
+scheduled         boolean, default false — waiting to go live on published_at's
+                  date; never true on a published post (CHECK, migration 0010)
 related_post_ids  uuid[]
 search_vector     tsvector, generated (title A, excerpt B, body C; GIN-indexed)
 ```
@@ -1078,6 +1080,7 @@ Configure via Next.js middleware:
 - Data subject access request flow: email to a documented address triggers manual review. No automated deletion in Phase 1.
 - Data retention: bookings are anonymised in place 12 months after `preferred_date`. Retention periods for contact submissions, corporate enquiries and newsletter subscribers: `TODO`, set by counsel.
 - Retention job: `POST /api/jobs/retention`, guarded by `JOBS_SECRET` and idempotent. It also nulls `internal_notes` and `booking_status_history.note`. Scheduled by Vercel Cron now and by system cron once self-hosted. It must ship before the first booking reaches 12 months past its `preferred_date`.
+- Scheduled posts job: `/api/jobs/publish-scheduled` (GET for Vercel Cron, POST for system cron), guarded by `JOBS_SECRET` or `CRON_SECRET` and idempotent. Runs at 08:00 WAT (`0 7 * * *` UTC, `vercel.json`) and publishes every post marked `scheduled` whose `published_at` date is today or earlier in Lagos (2026-11-02, Francis: a missed run catches up). Each post is re-checked against the publish rules first; one that now fails is held, still scheduled, with a `blog.schedule_held` audit entry naming why.
 
 ### Env vars
 
@@ -1089,6 +1092,7 @@ DATABASE_URL_UNPOOLED=
 AUTH_SECRET=
 AUTH_URL=
 JOBS_SECRET=
+CRON_SECRET=
 
 UPLOADTHING_TOKEN=
 

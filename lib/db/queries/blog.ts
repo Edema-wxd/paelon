@@ -422,5 +422,6 @@ function blogPostColumns() {
     category: blogPosts.category,
     tags: blogPosts.tags,
     publishedAt: blogPosts.publishedAt,
+    scheduled: blogPosts.scheduled,
   };
 }

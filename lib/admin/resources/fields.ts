@@ -589,13 +589,13 @@ export function requiredReferenceField(label: string) {
  * An optional calendar date. The empty string means "not set", which is a real
  * answer and is stored as `null`.
  *
- * `pastDateField` without the `min(1)`: the same `YYYY-MM-DD` string for the
- * same timezone reason, and the same refusal of a future date.
- * `blog_posts.published_at` is the case — a draft has none, and a post dated
- * next March would sit at the top of `/blog` today, since `livePost()` only
- * checks that the column is not null. Nothing here schedules a publish.
+ * `pastDateField` without the `min(1)` and without the refusal of a future
+ * date: `blog_posts.published_at` is the case, and whether a future date is
+ * allowed depends on another field — a scheduled post needs one, a post
+ * published now must not have one (it would sit at the top of `/blog` until
+ * the date arrived). That rule spans fields, so it lives on the blog schema.
  */
-export function optionalPastDateField(label: string) {
+export function optionalDateField(label: string) {
   return z
     .string()
     .trim()
@@ -608,10 +608,6 @@ export function optionalPastDateField(label: string) {
     .refine(
       (value) => value === null || !Number.isNaN(Date.parse(value)),
       "That is not a real date.",
-    )
-    .refine(
-      (value) => value === null || value <= new Date().toISOString().slice(0, 10),
-      `${label[0]?.toUpperCase()}${label.slice(1)} cannot be in the future.`,
     );
 }
 

@@ -317,17 +317,22 @@ export function ResourceForm({
   }
 
   const visibleFields = config.fields.filter(
-    (field) => canPublish || field.name !== "published",
+    (field) => canPublish || !STATUS_FIELDS.has(field.name),
   );
 
   // The Save button names what this press does; see `lib/admin/save-label.ts`.
   const hasPublishToggle = canPublish && config.fields.some((field) => field.name === "published");
-  const livePublished: unknown = hasPublishToggle ? form.watch("published") : false;
+  const ticked = (name: string) => {
+    if (!hasPublishToggle || !config.fields.some((field) => field.name === name)) return false;
+    const value: unknown = form.watch(name);
+    return value === true || value === "on";
+  };
   const labelInput = {
     isNew: id === undefined,
     singular: inSentence(config.singular),
     canPublish: hasPublishToggle,
-    publishedNow: livePublished === true || livePublished === "on",
+    publishedNow: ticked("published"),
+    scheduledNow: ticked("scheduled"),
     publishedSaved: defaults.published === true,
   };
   const saveLabel = saveButtonLabel(labelInput);
@@ -339,7 +344,7 @@ export function ResourceForm({
   // Published first: whether the row is live is the decision; order is detail.
   const panelFields = visibleFields
     .filter((field) => PANEL_FIELDS.has(field.name))
-    .sort((a, b) => (a.name === "published" ? -1 : b.name === "published" ? 1 : 0));
+    .sort((a, b) => PANEL_ORDER.indexOf(a.name) - PANEL_ORDER.indexOf(b.name));
   const sections = groupBySection(
     visibleFields.filter((field) => !PANEL_FIELDS.has(field.name)),
   );
@@ -365,15 +370,18 @@ export function ResourceForm({
     >
       {id ? <input type="hidden" name="id" value={id} /> : null}
 
-      {/* Draft state has to be submitted even when the toggle is hidden, or
-          saving as a contributor would silently publish or unpublish the row. */}
-      {canPublish ? null : (
-        <input
-          type="hidden"
-          name="published"
-          value={defaults.published === true ? "on" : ""}
-        />
-      )}
+      {/* The saved status has to be submitted even when the toggles are
+          hidden, or saving as a contributor would silently publish, unpublish
+          or unschedule the row. Only a ticked box is sent, as a checkbox would:
+          an empty string is not a value the schema accepts, and sending one
+          refused every contributor's save with nothing highlighted. */}
+      {canPublish
+        ? null
+        : config.fields
+            .filter((field) => STATUS_FIELDS.has(field.name) && defaults[field.name] === true)
+            .map((field) => (
+              <input key={field.name} type="hidden" name={field.name} value="on" />
+            ))}
 
       <div className="min-w-0 space-y-6">
         {sections.map(([title, fields]) => {
@@ -781,7 +789,12 @@ const WIDTH_CLASS = {
 } as const;
 
 /** Fields that live in the publishing panel rather than a content section. */
-const PANEL_FIELDS = new Set(["published", "order"]);
+/** Whether and when the row is live: shown only to roles that may publish. */
+const STATUS_FIELDS = new Set(["published", "scheduled"]);
+
+/** The Publishing panel's fields, in order: live now, live later, then detail. */
+const PANEL_ORDER = ["published", "scheduled", "order"];
+const PANEL_FIELDS = new Set(PANEL_ORDER);
 
 const DEFAULT_SECTION = "Details";
 

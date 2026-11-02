@@ -388,6 +388,12 @@ export const blogPosts = pgTable(
     tags: text("tags").array().notNull().default([]),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     /**
+     * Waiting to go live on `published_at`'s date (migration 0010). Set only
+     * on an unpublished post with a date; `/api/jobs/publish-scheduled`
+     * publishes it and clears this at 08:00 WAT on the day.
+     */
+    scheduled: boolean("scheduled").notNull().default(false),
+    /**
      * Full-text search index over the post (migration 0004).
      *
      * Generated and stored, so it cannot drift from the row the way a trigger

@@ -355,7 +355,7 @@ export async function ResourceEditorScreen<R extends ContentRow>({
           </h1>
           {row ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <PublishedBadge published={row.published === true} />
+              <PublishedBadge published={row.published === true} scheduled={row.scheduled === true} />
               {previewUnavailable ? <span>{previewUnavailable}</span> : null}
             </div>
           ) : null}

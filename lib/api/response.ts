@@ -17,6 +17,8 @@ export type ApiErrorCode =
   | "RATE_LIMITED"
   | "NOT_FOUND"
   | "BAD_REQUEST"
+  | "UNAUTHORIZED"
+  | "UNAVAILABLE"
   | "INTERNAL";
 
 export interface ApiSuccess<T> {
@@ -40,6 +42,8 @@ const STATUS: Record<ApiErrorCode, number> = {
   BAD_REQUEST: 400,
   RATE_LIMITED: 429,
   NOT_FOUND: 404,
+  UNAUTHORIZED: 401,
+  UNAVAILABLE: 503,
   INTERNAL: 500,
 };
 
