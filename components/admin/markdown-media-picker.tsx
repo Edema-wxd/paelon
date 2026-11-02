@@ -1,10 +1,12 @@
 "use client";
 
-import { ImagePlus, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, ImagePlus, Loader2, Upload } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { searchMediaAction } from "@/lib/admin/media-actions";
+import { updateMediaAltAction } from "@/lib/uploadthing/actions";
+import { useUploadThing } from "@/lib/uploadthing/client";
 
 /**
  * One asset an editor can place.
@@ -52,12 +54,24 @@ export interface PickableMedia {
  * An asset with no recorded dimensions is listed but not choosable: the
  * renderer refuses to build a figure without them, because the alternative is
  * guessing a ratio against a hard CLS budget. The row says what to do instead.
+ *
+ * ## Uploading from here, and alt text before placing
+ *
+ * An editor writing a post should not have to leave it for the media library
+ * to add one picture, so the dialog uploads too — into the same library, with
+ * the same router the library page uses.
+ *
+ * A just-uploaded image, or a library image nobody has described, goes through
+ * a short describe step before it is handed over. Publishing refuses a post
+ * whose images have no alt text (`lib/admin/blog-publish.ts`), so the moment
+ * of placing an image is the cheapest moment to write it — and it is saved on
+ * the media row, so it is written once for every page that uses the image.
  */
 export function MarkdownMediaPicker({
   onPick,
   label = "Image",
   title = "Insert an image",
-  description = "Alt text comes from the media library, so it is written once per image and stays right everywhere it is used. Upload new images under Media.",
+  description = "Choose an image from the media library, or upload a new one. Alt text is saved with the image, so it is written once and stays right everywhere the image is used.",
   /** Ids already chosen, shown as such so the same asset is not added twice. */
   chosen,
   triggerClassName,
@@ -81,6 +95,16 @@ export function MarkdownMediaPicker({
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  /** The asset waiting for alt text before it is handed over, if any. */
+  const [describing, setDescribing] = useState<PickableMedia | null>(null);
+  const [altDraft, setAltDraft] = useState("");
+  const [decorative, setDecorative] = useState(false);
+  const [describeError, setDescribeError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploadId = useId();
+  const altId = useId();
 
   /**
    * The request this component is currently waiting on.
@@ -126,10 +150,76 @@ export function MarkdownMediaPicker({
     return () => clearTimeout(timer);
   }, [open, query, load]);
 
-  function choose(asset: PickableMedia) {
+  function handOver(asset: PickableMedia) {
     dialog.current?.close();
     onPick(asset);
   }
+
+  /** Straight in when the image is described; via the describe step if not. */
+  function choose(asset: PickableMedia) {
+    if ((asset.alt ?? "").trim().length > 0) {
+      handOver(asset);
+      return;
+    }
+    describe(asset);
+  }
+
+  function describe(asset: PickableMedia) {
+    setDescribing(asset);
+    setAltDraft("");
+    setDecorative(false);
+    setDescribeError(null);
+  }
+
+  /** Save the alt text on the media row, then place the image. */
+  async function saveAndPlace() {
+    if (!describing) return;
+    setSaving(true);
+    setDescribeError(null);
+
+    const form = new FormData();
+    form.set("id", describing.id);
+    form.set("alt", altDraft);
+    if (decorative) form.set("decorative", "on");
+
+    const result = await updateMediaAltAction(null, form);
+    setSaving(false);
+
+    if (!result.ok) {
+      setDescribeError(result.fields.alt?.[0] ?? result.error);
+      return;
+    }
+    handOver({ ...describing, alt: decorative ? "" : altDraft.trim() });
+  }
+
+  const { startUpload, isUploading } = useUploadThing("contentImage", {
+    onClientUploadComplete: (files) => {
+      const uploaded = files[0]?.serverData;
+      if (!uploaded) {
+        setUploadError("The upload finished but returned nothing. Try again.");
+        return;
+      }
+      // Listed in the library from now on, whichever way this dialog closes.
+      void load(query, 0);
+      if (uploaded.width === null || uploaded.height === null) {
+        setUploadError(
+          "Uploaded, but the image’s size could not be read, so it cannot be placed in content. Try saving it again as a JPEG or PNG and uploading that.",
+        );
+        return;
+      }
+      describe({
+        id: uploaded.mediaId,
+        url: uploaded.url,
+        alt: null,
+        filename: uploaded.filename,
+        width: uploaded.width,
+        height: uploaded.height,
+      });
+    },
+    onUploadError: (error) => {
+      setUploadError(error.message || "The upload failed. Try again.");
+    },
+  });
 
   const alreadyChosen = new Set(chosen ?? []);
 
@@ -154,126 +244,248 @@ export function MarkdownMediaPicker({
       <dialog
         ref={dialog}
         aria-labelledby="media-picker-heading"
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          setDescribing(null);
+          setUploadError(null);
+        }}
         className="m-auto max-h-[80vh] w-[min(48rem,92vw)] overflow-y-auto rounded-xl border border-border bg-background p-6 backdrop:bg-black/40"
       >
         <h2 id="media-picker-heading" className="text-lg font-semibold text-primary">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        {describing ? (
+          <div className="mt-4">
+            <div className="flex items-start gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- an admin
+                  thumbnail, as in the list below. */}
+              <img
+                src={describing.url}
+                alt=""
+                aria-hidden
+                width={160}
+                height={160}
+                className="size-40 shrink-0 rounded-md border border-border object-contain"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-primary">
+                  {describing.filename || "This image"} has no alt text yet.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Describe what the picture shows for someone who cannot see it.
+                  It is saved with the image, so you will not be asked again.
+                </p>
+              </div>
+            </div>
 
-        <label
-          htmlFor="media-picker-filter"
-          className="mt-4 block text-sm font-medium text-primary"
-        >
-          Search by alt text or filename
-        </label>
-        <input
-          id="media-picker-filter"
-          type="search"
-          value={query}
-          autoComplete="off"
-          maxLength={120}
-          onChange={(event) => setQuery(event.target.value)}
-          className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-        />
+            <label htmlFor={altId} className="mt-4 block text-sm font-medium text-primary">
+              Alt text
+            </label>
+            <textarea
+              id={altId}
+              rows={3}
+              maxLength={300}
+              value={altDraft}
+              disabled={decorative}
+              onChange={(event) => setAltDraft(event.target.value)}
+              aria-invalid={describeError ? true : undefined}
+              aria-describedby={describeError ? `${altId}-error` : undefined}
+              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-primary outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:bg-secondary disabled:text-muted-foreground"
+            />
+            <label className="mt-2 flex items-center gap-2 text-sm text-primary">
+              <input
+                type="checkbox"
+                checked={decorative}
+                onChange={(event) => setDecorative(event.target.checked)}
+                className="size-4 rounded border-input accent-brand-maroon"
+              />
+              Decorative: it carries no information
+            </label>
+            {describeError ? (
+              <p id={`${altId}-error`} role="alert" className="mt-2 text-sm text-destructive">
+                {describeError}
+              </p>
+            ) : null}
 
-        {/* Announced, because the list below changes without the focus moving. */}
-        <p aria-live="polite" className="mt-3 text-xs text-muted-foreground">
-          {failed
-            ? "The library could not be loaded. Close this and try again."
-            : loading
-              ? "Searching…"
-              : rows.length === 0
-                ? query.trim().length > 0
-                  ? `Nothing matched “${query.trim()}”.`
-                  : "The media library is empty. Upload an image under Media first."
-                : `${rows.length} image${rows.length === 1 ? "" : "s"}${hasMore ? ", more available" : ""}`}
-        </p>
-
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-          {rows.map((asset) => {
-            const usable = asset.width !== null && asset.height !== null;
-            const described = (asset.alt ?? "").trim().length > 0;
-            const picked = alreadyChosen.has(asset.id);
-
-            return (
-              <li key={asset.id}>
-                <button
-                  type="button"
-                  disabled={!usable || picked}
-                  onClick={() => choose(asset)}
-                  className="flex w-full items-start gap-3 rounded-lg border border-border p-2 text-start hover:border-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {/* Deliberately a plain `img`: these are library thumbnails
-                      inside an admin modal, not content, and `next/image` would
-                      route each one through the optimizer for a 64px box. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={asset.url}
-                    alt=""
-                    aria-hidden
-                    width={64}
-                    height={64}
-                    className="size-16 shrink-0 rounded object-cover"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-primary">
-                      {described ? asset.alt : asset.filename || "Untitled"}
-                    </span>
-                    {picked ? (
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        Already added.
-                      </span>
-                    ) : null}
-                    {!described ? (
-                      <span className="mt-0.5 block text-xs text-destructive">
-                        No alt text — add it under Media before using this.
-                      </span>
-                    ) : null}
-                    {!usable ? (
-                      <span className="mt-0.5 block text-xs text-destructive">
-                        No recorded size — re-upload it to use it in content.
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        {hasMore ? (
-          <div className="mt-4 flex justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={loading}
-              onClick={() => void load(query, rows.length)}
-            >
-              {loading ? (
-                <>
-                  <Loader2 aria-hidden className="size-4 animate-spin" />
-                  Loading
-                </>
-              ) : (
-                "Show more"
-              )}
-            </Button>
+            <div className="mt-6 flex flex-wrap justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDescribing(null)}
+              >
+                <ArrowLeft aria-hidden className="size-4" />
+                Back to the library
+              </Button>
+              <Button type="button" size="sm" disabled={saving} onClick={() => void saveAndPlace()}>
+                {saving ? (
+                  <>
+                    <Loader2 aria-hidden className="size-4 animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  "Save alt text and insert"
+                )}
+              </Button>
+            </div>
           </div>
-        ) : null}
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
 
-        <div className="mt-6 flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => dialog.current?.close()}
-          >
-            Cancel
-          </Button>
-        </div>
+            <div className="mt-4 rounded-lg border border-dashed border-border p-3">
+              <label
+                htmlFor={uploadId}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-primary hover:border-accent has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50"
+              >
+                {isUploading ? (
+                  <Loader2 aria-hidden className="size-4 animate-spin" />
+                ) : (
+                  <Upload aria-hidden className="size-4" />
+                )}
+                {isUploading ? "Uploading…" : "Upload a new image"}
+                <input
+                  id={uploadId}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  disabled={isUploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    // Let the same file be chosen again after a failed attempt.
+                    event.target.value = "";
+                    if (!file) return;
+                    setUploadError(null);
+                    void startUpload([file], {});
+                  }}
+                />
+              </label>
+              <span className="ml-3 text-xs text-muted-foreground">
+                JPEG, PNG or WebP · up to 4 MB
+              </span>
+              <div aria-live="polite">
+                {uploadError ? (
+                  <p role="alert" className="mt-2 text-sm text-destructive">
+                    {uploadError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <label
+              htmlFor="media-picker-filter"
+              className="mt-4 block text-sm font-medium text-primary"
+            >
+              Search by alt text or filename
+            </label>
+            <input
+              id="media-picker-filter"
+              type="search"
+              value={query}
+              autoComplete="off"
+              maxLength={120}
+              onChange={(event) => setQuery(event.target.value)}
+              className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            />
+
+            {/* Announced, because the list below changes without the focus moving. */}
+            <p aria-live="polite" className="mt-3 text-xs text-muted-foreground">
+              {failed
+                ? "The library could not be loaded. Close this and try again."
+                : loading
+                  ? "Searching…"
+                  : rows.length === 0
+                    ? query.trim().length > 0
+                      ? `Nothing matched “${query.trim()}”.`
+                      : "The media library is empty. Upload an image above."
+                    : `${rows.length} image${rows.length === 1 ? "" : "s"}${hasMore ? ", more available" : ""}`}
+            </p>
+
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              {rows.map((asset) => {
+                const usable = asset.width !== null && asset.height !== null;
+                const described = (asset.alt ?? "").trim().length > 0;
+                const picked = alreadyChosen.has(asset.id);
+
+                return (
+                  <li key={asset.id}>
+                    <button
+                      type="button"
+                      disabled={!usable || picked}
+                      onClick={() => choose(asset)}
+                      className="flex w-full items-start gap-3 rounded-lg border border-border p-2 text-start hover:border-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {/* Deliberately a plain `img`: these are library thumbnails
+                          inside an admin modal, not content, and `next/image` would
+                          route each one through the optimizer for a 64px box. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={asset.url}
+                        alt=""
+                        aria-hidden
+                        width={64}
+                        height={64}
+                        className="size-16 shrink-0 rounded object-cover"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-primary">
+                          {described ? asset.alt : asset.filename || "Untitled"}
+                        </span>
+                        {picked ? (
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            Already added.
+                          </span>
+                        ) : null}
+                        {!described ? (
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            No alt text yet. You will be asked for it when you choose it.
+                          </span>
+                        ) : null}
+                        {!usable ? (
+                          <span className="mt-0.5 block text-xs text-destructive">
+                            No recorded size — re-upload it to use it in content.
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {hasMore ? (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => void load(query, rows.length)}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 aria-hidden className="size-4 animate-spin" />
+                      Loading
+                    </>
+                  ) : (
+                    "Show more"
+                  )}
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => dialog.current?.close()}
+              >
+                Cancel
+              </Button>
+            </div>
+          </>
+        )}
       </dialog>
     </>
   );
