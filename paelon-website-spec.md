@@ -789,6 +789,11 @@ Role stored on the `users` table. Three roles, labelled in the UI by their enum 
 
 All content deletes are soft deletes.
 
+**Pre-delete check** (2026-11-02). Delete is how a row is taken off the site without being sent back to draft, so before any content delete the panel checks what still points at the row (`lib/admin/delete-checks.ts`). The editor's Delete section lists the findings, and the delete action refuses on the same ones:
+
+- **Blockers** refuse the delete until fixed: a live page (published post, page layout, FAQ answer, doctor or author bio) linking to the row's public URL or booking it by `/book?service=` / `/book?branch=` deep link; a live post choosing a post as Related reading; an author with any posts; the last published branch, which the booking form needs.
+- **Effects** are shown but do not block, because nothing breaks and all of it returns on a restore: drafts linking to the row, branch pages listing one service/doctor/HMO fewer, testimonials attached to a service or branch, open bookings naming it, an author byline losing its doctor link, a FAQ or testimonial or awards section emptying.
+
 ### Admin routes
 
 - `/admin/login` — Public.

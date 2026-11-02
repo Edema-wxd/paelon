@@ -14,6 +14,7 @@ import type { ImageFieldValue } from "@/components/admin/resource-image-field";
 import { toDateInput } from "@/lib/admin/resources/fields";
 import type { Field, ResourceConfig } from "@/lib/admin/resource-config";
 import { RESOURCE_SERVER } from "@/lib/admin/resources/server";
+import { getDeleteImpact } from "@/lib/admin/delete-checks";
 import type { ResourceName } from "@/lib/admin/resources";
 import { can, canOnRow } from "@/lib/auth/policy";
 import { requireAdminUser } from "@/lib/auth/session";
@@ -309,9 +310,11 @@ export async function ResourceEditorScreen<R extends ContentRow>({
     defaults[field.name] = value === null || value === undefined ? "" : String(value);
   }
 
-  const [aside, below] = await Promise.all([
+  const [aside, below, deleteImpact] = await Promise.all([
     row && renderAside ? renderAside(row) : null,
     row && renderBelow ? renderBelow(row) : null,
+    // Only for someone who may delete: the check reads half a dozen tables.
+    canDelete && id ? getDeleteImpact(resource, id) : null,
   ]);
 
   const heading = row
@@ -407,11 +410,17 @@ export async function ResourceEditorScreen<R extends ContentRow>({
             Delete this {inSentence(config.singular)}
           </h2>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-            Removes it from the site. The row is kept and can be restored from
-            the database.
+            Takes it off the site without making it a draft. The row is kept
+            and can be restored from the database. Before it goes, everything
+            that points at it is checked, and anything it would break has to
+            be fixed first.
           </p>
           <div className="mt-3">
-            <ResourceDeleteForm resource={resource} id={id} />
+            <ResourceDeleteForm
+              resource={resource}
+              id={id}
+              {...(deleteImpact ? { impact: deleteImpact } : {})}
+            />
           </div>
         </section>
       ) : null}

@@ -28,7 +28,7 @@ import {
  *  1. **An author has no page of its own.** `slug` is there because every
  *     content type carries one (§5), and the §6 template list has no
  *     `/authors/[slug]`, so deleting one 404s nothing. Deleting one who still
- *     has posts is refused by the `beforeDelete` hook in `./server.ts`: the
+ *     has posts is refused by the pre-delete check in `lib/admin/delete-checks.ts`: the
  *     `on delete restrict` on `blog_posts.author_id` never fires, because
  *     every admin delete is soft.
  *  2. **`published` does not gate the byline.** The blog queries filter on the

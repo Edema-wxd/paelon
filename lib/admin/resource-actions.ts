@@ -25,6 +25,9 @@ import { locationResource } from "@/lib/admin/resources/locations";
 import { serviceResource } from "@/lib/admin/resources/services";
 import { testimonialResource } from "@/lib/admin/resources/testimonials";
 import { resourceInput } from "@/lib/admin/resource-input";
+import { getDeleteImpact } from "@/lib/admin/delete-checks";
+import { refusalMessage } from "@/lib/admin/delete-impact";
+import type { ResourceName } from "@/lib/admin/resources";
 import type { ImageFieldNames } from "@/lib/admin/resources/fields";
 import {
   RESOURCE_SERVER,
@@ -444,7 +447,13 @@ function buildDeleteAction<R, S extends z.ZodType>(
       row: (input) => getContentOwner(server.table, input.id),
     },
     async ({ id }) => {
-      const refusal = server.beforeDelete ? await server.beforeDelete(id) : null;
+      // Every delete is soft, so no foreign key can refuse it: the check that
+      // nothing live would break is this one (`lib/admin/delete-checks.ts`),
+      // the same one the editor's Delete section shows.
+      const refusal = refusalMessage(
+        config.singular,
+        await getDeleteImpact(config.name as ResourceName, id),
+      );
       if (refusal) return fail(refusal);
 
       // Soft, always (spec §8: "All content deletes are soft deletes").

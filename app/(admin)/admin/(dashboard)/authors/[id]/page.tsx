@@ -9,7 +9,7 @@ import { authorResource } from "@/lib/admin/resources";
  *
  * A delete is soft, so `blog_posts.author_id`'s `on delete restrict` never
  * fires; deleting an author who still has posts is refused by the
- * `beforeDelete` hook in `lib/admin/resources/server.ts` instead.
+ * pre-delete check in `lib/admin/delete-checks.ts` instead.
  */
 
 export const dynamic = "force-dynamic";
