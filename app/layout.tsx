@@ -1,12 +1,33 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 
 import { UmamiScript } from "@/components/site/umami-script";
 import { OG_IMAGES, TWITTER_IMAGES } from "@/lib/seo";
 import "@/styles/globals.css";
 
-// TODO(brand): swap to next/font/local with the Neo Tech .woff2 files (weights
-// 400/500/600/700, display: 'swap') once they are delivered. Until then the
-// fallback stack from the spec applies via --font-sans in globals.css.
+/**
+ * Neo Tech, the brand face (spec §4), self-hosted from `/public/fonts/`.
+ *
+ * Only the faces the site sets: 400, 500 and 700 upright, and 400 italic for
+ * `<em>`, blockquotes and the legal pages' notes. Neo Tech has no 600, so
+ * `font-semibold` resolves to the 700 file by the CSS matching rules rather
+ * than a synthesised bold. Bold italic is never rendered (the Markdown editor
+ * cannot combine them), so it is not shipped.
+ *
+ * Exposed as `--font-neo-tech` on `<html>`, which `--font-sans` in
+ * `styles/globals.css` puts first. The size-adjusted Arial fallback next/font
+ * generates keeps the swap from shifting layout (CLS budget, §13).
+ */
+const neoTech = localFont({
+  src: [
+    { path: "../public/fonts/neo-tech-400.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/neo-tech-400-italic.woff2", weight: "400", style: "italic" },
+    { path: "../public/fonts/neo-tech-500.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/neo-tech-700.woff2", weight: "700", style: "normal" },
+  ],
+  display: "swap",
+  variable: "--font-neo-tech",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -43,7 +64,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={neoTech.variable}>
       <body className="antialiased">
         <a
           href="#main"

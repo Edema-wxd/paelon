@@ -176,7 +176,7 @@ The booking E2E is `tests/e2e/booking.e2e.ts`. It writes a real row to `bookings
 Assets and decisions not yet in the spec. Flag these rather than inventing around them:
 
 - Brand colour hex codes (§4 is a placeholder block) and light/dark surface treatments
-- Neo Tech `.woff2` files + license
+- ~~Neo Tech `.woff2` files + license~~ **Resolved** 2026-11-02: Neo Tech Std TTFs (with the Naira sign) delivered, and Francis confirmed Paelon's Monotype license covers web embedding. 400, 400 italic, 500 and 700 are converted to `.woff2` in `public/fonts/` and loaded by `next/font/local` in `app/layout.tsx`; Neo Tech has no 600, so `font-semibold` draws the 700 face.
 - Seed content drafted from Figma
 - WhatsApp Business API provider
 - Insta HMS API docs

@@ -236,7 +236,7 @@ Brand assets and typography are **locked**. Follow the Figma file for spacing, s
 
 - **Family:** Neo Tech (self-hosted `.woff2` files in `/public/fonts/`).
 - Load via `next/font/local` with `display: 'swap'`.
-- Weights required: 400, 500, 600, 700.
+- Weights required: 400, 500, 600, 700. Neo Tech has no 600: the site ships 400, 400 italic, 500 and 700 (converted from the delivered Neo Tech Std TTFs, which include the Naira sign), and `font-semibold` resolves to 700.
 - Fallback stack: `Neo Tech, ui-sans-serif, system-ui, sans-serif`.
 
 Type scale (Tailwind extension):
@@ -1260,7 +1260,7 @@ If Paelon requests any of these during the build, they enter the Phase 2+ backlo
 Items that must be answered before Day 1. Flag any of these to Francis if they are still unresolved when work begins.
 
 - [ ] Final brand colour hex codes and light/dark surface treatments.
-- [ ] Neo Tech font files delivered as `.woff2` with license.
+- [x] Neo Tech font files delivered as `.woff2` with license. Files delivered as TTF on 2026-11-02 and converted to `.woff2`; Francis confirmed the same day that Paelon's Monotype license covers web embedding.
 - [ ] Domain access confirmed with Paelon IT.
 - [ ] Content seed data drafted from Figma.
 - [ ] WhatsApp Business API provider decision.
