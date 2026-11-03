@@ -303,6 +303,35 @@ async function main(): Promise<void> {
   );
 }
 
+/**
+ * What actually went wrong underneath a failed query. Drizzle wraps the
+ * driver's error, and a failed WebSocket to Neon is an ErrorEvent rather than
+ * an `Error`, so its reason lives on `message` / `error`, which a plain
+ * `instanceof Error` check, `String()` and `inspect` all drop.
+ */
+function describeCause(cause: unknown): string | undefined {
+  if (cause === undefined || cause === null) return undefined;
+  if (cause instanceof Error) {
+    const code = (cause as { code?: unknown }).code;
+    const inner = describeCause(cause.cause);
+    return [cause.message, code ? `code ${String(code)}` : null, inner ? `caused by: ${inner}` : null]
+      .filter(Boolean)
+      .join("; ");
+  }
+  if (typeof cause === "object") {
+    const event = cause as { type?: unknown; message?: unknown; error?: unknown };
+    const parts = [
+      typeof event.type === "string" ? `${event.type} event` : null,
+      typeof event.message === "string" && event.message ? event.message : null,
+      describeCause(event.error) ?? null,
+    ].filter((part): part is string => Boolean(part));
+    // An ErrorEvent's `message` usually repeats its `error.message`.
+    const unique = [...new Set(parts)];
+    if (unique.length > 0) return unique.join("; ");
+  }
+  return String(cause);
+}
+
 main()
   .then(() => closePool())
   .catch(async (error: unknown) => {
@@ -311,10 +340,9 @@ main()
         level: "error",
         event: "db.add_paelon_list.failed",
         errorMessage: error instanceof Error ? error.message : String(error),
-        cause:
-          error instanceof Error && error.cause instanceof Error
-            ? error.cause.message
-            : undefined,
+        // Not only `Error`s: a failed WebSocket to Neon surfaces as an
+        // ErrorEvent, and dropping it leaves the bare "Failed query" above.
+        cause: error instanceof Error ? describeCause(error.cause) : undefined,
       })}\n`,
     );
     await closePool();
