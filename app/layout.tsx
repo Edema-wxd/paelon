@@ -17,6 +17,13 @@ import "@/styles/globals.css";
  * Exposed as `--font-neo-tech` on `<html>`, which `--font-sans` in
  * `styles/globals.css` puts first. The size-adjusted Arial fallback next/font
  * generates keeps the swap from shifting layout (CLS budget, §13).
+ *
+ * Not preloaded. A preload is per `localFont` call, so it would cover all four
+ * files at high priority, and on the homepage they queued ahead of the hero
+ * image that is the LCP element: Lighthouse mobile medians on production
+ * (2026-11-03) were LCP 2.75s preloaded against 2.03s without the fonts, over
+ * the 2.0s budget. Unpreloaded, the files are fetched as soon as the CSS that
+ * declares them is parsed, and the fallback holds the layout until they swap.
  */
 const neoTech = localFont({
   src: [
@@ -26,6 +33,7 @@ const neoTech = localFont({
     { path: "../public/fonts/neo-tech-700.woff2", weight: "700", style: "normal" },
   ],
   display: "swap",
+  preload: false,
   variable: "--font-neo-tech",
 });
 
