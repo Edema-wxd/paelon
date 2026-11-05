@@ -4,7 +4,6 @@ import { CalendarPlus, Phone, RotateCw, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
 import { NAV_ITEMS } from "@/components/site/nav-items";
-import { SiteImage } from "@/components/site/site-image";
 import { Button } from "@/components/ui/button";
 import { EMERGENCY_LINE, EMERGENCY_TEL_HREF } from "@/lib/emergency";
 
@@ -51,10 +50,19 @@ export function ErrorContent({
             className="flex shrink-0 items-center rounded-md"
             aria-label="Paelon Memorial Hospital, home"
           >
-            <SiteImage
-              kind="logo"
-              name="main"
+            {/* eslint-disable-next-line @next/next/no-img-element -- not
+                `SiteImage`: this component is the root error boundary, whose
+                chunk every page downloads, and `SiteImage` would ship the whole
+                image manifest to the browser with it. The logo is a static SVG
+                from /public with its intrinsic size set, so there is nothing
+                for the image pipeline to do and no layout shift. Decorative:
+                the link carries the accessible name. */}
+            <img
+              src="/images/logo/main.svg"
               alt=""
+              width={138}
+              height={64}
+              decoding="async"
               className="h-12 w-auto lg:h-16"
             />
           </Link>
