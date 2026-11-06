@@ -969,6 +969,7 @@ Every JSON-LD block is serialised with `serializeJsonLd` (`lib/json-ld.ts`), nev
 
 - Dynamic `sitemap.xml` at `/sitemap.xml` generated from published content.
 - `robots.txt` at `/robots.txt` allowing all crawlers except on `/admin`, `/api`, `/book/confirmed`.
+- `X-Robots-Tag` covers what `<meta name="robots">` cannot reach (2026-11-06), from `lib/indexing.ts`: `noindex, nofollow` on every response under `/admin`, `/api` and the thank-you routes (middleware; the same `PRIVATE_ROUTE_PREFIXES` list feeds the robots.txt `Disallow`s, since a disallowed URL can still be indexed from a link), and `noindex` on RSC payloads (`RSC: 1` / `?_rsc=`), `/_next/static` scripts and styles, `/images/hmo-logo/*` (the insurers' marks) and the unused top-level `/images/*.png` masters (`next.config.ts` `headers()`, because Next hides the RSC markers from middleware and middleware skips static files). `/_next` is never disallowed: Google needs the scripts to render pages. Editorial images (`/images/<kind>/`, `og.png`) and UploadThing media stay indexable; UploadThing's CDN is a third-party host, so its files cannot carry the header at all.
 
 ### Redirects
 
@@ -1122,7 +1123,7 @@ NEXT_PUBLIC_SITE_URL=
 SITE_NOINDEX=false
 ```
 
-`SITE_NOINDEX=true` sends `X-Robots-Tag: noindex, nofollow` on every response from middleware, for a review build or a preview that is shared by link but must stay out of search. It is the env-driven gate the robots baseline asks for instead of `Disallow: /`, and is left unset at launch.
+`SITE_NOINDEX=true` sends `X-Robots-Tag: noindex, nofollow` on every response, from middleware for pages and data and from `next.config.ts` for static files (read when the server starts, so a change needs a rebuild or restart), for a review build or a preview that is shared by link but must stay out of search. It is the env-driven gate the robots baseline asks for instead of `Disallow: /`, and is left unset at launch.
 
 `AUTH_SECRET` and `AUTH_URL` are required in production, enforced by a `superRefine` the same way as the Resend vars. `UPLOADTHING_TOKEN` is UploadThing v7's single token, replacing the v6 `UPLOADTHING_SECRET`/`UPLOADTHING_APP_ID` pair. `UPLOADTHING_UPLOADS_ENABLED` is removed.
 
