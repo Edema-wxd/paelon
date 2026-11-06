@@ -82,10 +82,10 @@ function noindexRule(
  * - `/images/hmo-logo`: the insurers' own marks. Shown so a patient can see
  *   their plan is accepted, not for Paelon to rank in image search for another
  *   company's logo.
- * - `/images/*.png` at the top level only: unprocessed masters that no
- *   template references. The pipeline (`npm run images`) writes what the site
- *   serves into `/images/<kind>/`, which stays indexable: hero, service cards,
- *   the About feature and the logo are the hospital's own editorial images.
+ *
+ * Everything else under `/images/<kind>/` stays indexable: hero, service
+ * cards, the About feature and the logo are the hospital's own editorial
+ * images.
  *
  * With `siteNoindex` (the `SITE_NOINDEX=true` review-build gate) a catch-all
  * comes last so it overrides the narrower values: Next applies every matching
@@ -100,7 +100,6 @@ export function noindexHeaderRules(siteNoindex: boolean): HeaderRule[] {
     noindexRule("/:path*", NOINDEX, [{ type: "query", key: "_rsc" }]),
     noindexRule("/_next/static/:path*"),
     noindexRule("/images/hmo-logo/:path*"),
-    noindexRule("/images/:file([^/]+\\.png)"),
   ];
 
   return siteNoindex ? [...rules, noindexRule("/:path*", NOINDEX_NOFOLLOW)] : rules;

@@ -52,11 +52,10 @@ describe("noindexHeaderRules", () => {
     expect(rsc.every((rule) => rule.headers[0]?.value === NOINDEX)).toBe(true);
   });
 
-  it("covers scripts, insurer logos and unused masters", () => {
+  it("covers scripts and insurer logos", () => {
     const rules = noindexHeaderRules(false);
     expect(value(rules, "/_next/static/:path*")).toBe(NOINDEX);
     expect(value(rules, "/images/hmo-logo/:path*")).toBe(NOINDEX);
-    expect(value(rules, "/images/:file([^/]+\\.png)")).toBe(NOINDEX);
     expect(rules.some((rule) => rule.source === "/:path*" && !rule.has)).toBe(false);
   });
 
