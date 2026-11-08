@@ -15,6 +15,17 @@ import { NextResponse, type NextRequest } from "next/server";
  * way to find those cases is to observe violations on real traffic before
  * enforcing. Flip `CSP_ENFORCE` to true once the report endpoint has been quiet
  * across every template — not before.
+ *
+ * TODO(francis): it will not go quiet as built. The nonce below is minted per
+ * request, but prerendered pages (the homepage among them, served from the
+ * cache with `x-nextjs-prerender: 1`) were rendered once at build time, so
+ * their `<script>` tags carry no nonce and every one of them violates
+ * `script-src`. Lighthouse reports it as a CSP issue on every page (2026-11-08),
+ * and enforcing today would block all JavaScript on static pages. The fix is a
+ * choice between rendering every page dynamically (a nonce per request, at the
+ * cost of the cache and of TTFB), or a `script-src` without a nonce for static
+ * pages (`'self'` plus `'unsafe-inline'` for Next's inline bootstrap). Decide
+ * before flipping this.
  */
 const CSP_ENFORCE = false;
 
@@ -75,7 +86,11 @@ function contentSecurityPolicy(nonce: string, pathname: string): string {
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `upgrade-insecure-requests`,
+    // Browsers ignore this directive in a report-only policy and log a console
+    // error saying so, which costs Lighthouse's Best Practices score on every
+    // page. It joins the policy when the policy is enforced. HSTS below
+    // already keeps every request on HTTPS meanwhile.
+    ...(CSP_ENFORCE ? [`upgrade-insecure-requests`] : []),
   ];
 
   return directives.join("; ");

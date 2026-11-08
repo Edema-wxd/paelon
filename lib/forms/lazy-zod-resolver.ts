@@ -8,8 +8,15 @@ import type { FieldValues, Resolver } from "react-hook-form";
  * API imports it. Imported statically, it sat in the first-load JS of every
  * page with a form — the newsletter form alone put `/`, `/contact` and `/blog`
  * at or over the 150 kB budget (spec §13). Loaded here instead, it arrives
- * after the page is interactive: `preload()` fetches it when the browser is
- * idle, so by the time anyone submits it is already there.
+ * only once someone starts using the form: wire `preload()` to the form's
+ * `onFocus`, which fires for the first field they enter, so the schema is there
+ * long before they submit.
+ *
+ * Not on idle, as it was until 2026-11: an idle callback still fires during
+ * page load on most visits, and parsing ~65 kB of Zod then landed inside
+ * Lighthouse's Total Blocking Time window on every page with a form, for the
+ * few visitors who fill one in. A visitor who submits without ever focusing a
+ * field (autofill, then Enter) simply waits one round trip in `resolver`.
  *
  * `load` is written at the call site as dynamic imports of the resolver and
  * the schema module, so the schema is still the one the route handler parses
@@ -68,18 +75,4 @@ export function lazyZodResolver<
       });
     },
   };
-}
-
-/**
- * Run `preload` once the browser is idle, so the download never competes with
- * the page's own loading. Returns a cleanup for `useEffect`.
- */
-export function preloadWhenIdle(preload: () => void): () => void {
-  if (typeof window.requestIdleCallback === "function") {
-    const handle = window.requestIdleCallback(preload, { timeout: 4000 });
-    return () => window.cancelIdleCallback(handle);
-  }
-  // Safari has no requestIdleCallback; a short delay keeps it off the load path.
-  const handle = window.setTimeout(preload, 2000);
-  return () => window.clearTimeout(handle);
 }

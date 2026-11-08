@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { z } from "zod";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { track } from "@/lib/analytics/track";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { lazyZodResolver, preloadWhenIdle } from "@/lib/forms/lazy-zod-resolver";
+import { lazyZodResolver } from "@/lib/forms/lazy-zod-resolver";
 import type { contactSchema, ContactSubmissionInput } from "@/lib/validation/contact";
 
 /**
@@ -77,8 +77,6 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [serverError, setServerError] = useState<string | null>(null);
-
-  useEffect(() => preloadWhenIdle(validation.preload), []);
 
   const {
     register,
@@ -172,7 +170,12 @@ export function ContactForm({ branches }: { branches: ContactFormBranch[] }) {
   const errorClass = "mt-2 text-sm text-destructive";
 
   return (
-    <form noValidate onSubmit={handleSubmit(onSubmit)}>
+    <form
+      noValidate
+      onSubmit={handleSubmit(onSubmit)}
+      // Fetches the schema when someone starts filling the form in.
+      onFocus={validation.preload}
+    >
       {/*
         Honeypot. Hidden from sighted users and from assistive tech, and never
         focusable, so no real person can fill it in — a non-empty value means a
