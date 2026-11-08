@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { NOINDEX_NOFOLLOW, isPrivatePath } from "@/lib/indexing";
+
 /**
  * Security headers (master spec §14, backend spec §18).
  *
@@ -185,7 +187,7 @@ const DRAFT_COOKIE = "__prerender_bypass";
 function draftHeaders(request: NextRequest, response: NextResponse): void {
   if (!request.cookies.has(DRAFT_COOKIE)) return;
 
-  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  response.headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW);
   response.headers.set("Cache-Control", "no-store, must-revalidate");
 }
 
@@ -200,7 +202,25 @@ function draftHeaders(request: NextRequest, response: NextResponse): void {
 function siteNoindexHeaders(response: NextResponse): void {
   if (process.env.SITE_NOINDEX !== "true") return;
 
-  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  response.headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW);
+}
+
+/**
+ * Keep private routes out of search (`lib/indexing.ts` explains the layers).
+ *
+ * Admin pages and thank-you pages already say `noindex` in their metadata, but
+ * only their HTML does: the RSC payload a client navigation fetches, a JSON
+ * response from `/api`, and a redirect carry no `<meta>`. The header covers
+ * them all, and the robots.txt `Disallow` for the same paths cannot, because a
+ * crawler that may not fetch a URL never sees its `noindex`.
+ *
+ * RSC payloads of public pages are tagged in `next.config.ts`, not here: Next
+ * strips the `RSC` header and `_rsc` param before middleware sees the request.
+ */
+function privateRouteHeaders(request: NextRequest, response: NextResponse): void {
+  if (!isPrivatePath(request.nextUrl.pathname)) return;
+
+  response.headers.set("X-Robots-Tag", NOINDEX_NOFOLLOW);
 }
 
 export function middleware(request: NextRequest): NextResponse {
@@ -236,6 +256,7 @@ export function middleware(request: NextRequest): NextResponse {
     "geolocation=(), microphone=(), camera=()",
   );
 
+  privateRouteHeaders(request, response);
   siteNoindexHeaders(response);
   draftHeaders(request, response);
 
@@ -246,7 +267,8 @@ export const config = {
   /**
    * Everything except Next's own static output and image optimiser. Static
    * assets do not need a CSP and running middleware on them is wasted latency
-   * on every page load.
+   * on every page load. Their `X-Robots-Tag` comes from `next.config.ts`
+   * instead (`noindexHeaderRules` in `lib/indexing.ts`).
    */
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2)$).*)",

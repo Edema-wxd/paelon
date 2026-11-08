@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+import { noindexHeaderRules } from "./lib/indexing";
 import { redirectsForNextConfig } from "./lib/redirects";
 
 const nextConfig: NextConfig = {
@@ -9,6 +10,17 @@ const nextConfig: NextConfig = {
    */
   async redirects() {
     return redirectsForNextConfig();
+  },
+
+  /**
+   * `X-Robots-Tag` where the middleware cannot send it: RSC payloads, scripts
+   * and styles, insurer logos, font files, and everything when
+   * `SITE_NOINDEX=true`. Read once when the
+   * server starts, so a change to `SITE_NOINDEX` needs a rebuild or restart.
+   * The rules and their reasons are in lib/indexing.ts.
+   */
+  async headers() {
+    return noindexHeaderRules(process.env.SITE_NOINDEX === "true");
   },
 
   images: {
