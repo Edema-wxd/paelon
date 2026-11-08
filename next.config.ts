@@ -14,7 +14,8 @@ const nextConfig: NextConfig = {
 
   /**
    * `X-Robots-Tag` where the middleware cannot send it: RSC payloads, scripts
-   * and styles, insurer logos, and everything when `SITE_NOINDEX=true`. Read once when the
+   * and styles, insurer logos, font files, and everything when
+   * `SITE_NOINDEX=true`. Read once when the
    * server starts, so a change to `SITE_NOINDEX` needs a rebuild or restart.
    * The rules and their reasons are in lib/indexing.ts.
    */

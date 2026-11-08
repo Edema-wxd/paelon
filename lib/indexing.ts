@@ -82,6 +82,9 @@ function noindexRule(
  * - `/images/hmo-logo`: the insurers' own marks. Shown so a patient can see
  *   their plan is accepted, not for Paelon to rank in image search for another
  *   company's logo.
+ * - `/fonts`: the Neo Tech `.woff2` files. `next/font/local` serves its own
+ *   copies from `/_next/static/media`, but the sources in `public/fonts/` are
+ *   reachable at their own URLs too. Licensed type, not content.
  *
  * Everything else under `/images/<kind>/` stays indexable: hero, service
  * cards, the About feature and the logo are the hospital's own editorial
@@ -100,6 +103,7 @@ export function noindexHeaderRules(siteNoindex: boolean): HeaderRule[] {
     noindexRule("/:path*", NOINDEX, [{ type: "query", key: "_rsc" }]),
     noindexRule("/_next/static/:path*"),
     noindexRule("/images/hmo-logo/:path*"),
+    noindexRule("/fonts/:path*"),
   ];
 
   return siteNoindex ? [...rules, noindexRule("/:path*", NOINDEX_NOFOLLOW)] : rules;
