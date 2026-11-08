@@ -15,7 +15,13 @@ import { Input } from "@/components/ui/input";
  * form that collects personal data, and an email address qualifies.
  */
 export function NewsletterSignup() {
-  const { form, status, serverError, submit: onSubmit } = useNewsletterForm();
+  const {
+    form,
+    status,
+    serverError,
+    submit: onSubmit,
+    preloadValidation,
+  } = useNewsletterForm();
   const {
     register,
     handleSubmit,
@@ -43,6 +49,7 @@ export function NewsletterSignup() {
           <form
             noValidate
             onSubmit={handleSubmit(onSubmit)}
+            onFocus={preloadValidation}
             className="mx-auto mt-10 max-w-2xl"
           >
             {/*

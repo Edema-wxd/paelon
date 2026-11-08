@@ -30,7 +30,8 @@ export function NewsletterPopupDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const { form, status, serverError, submit } = useNewsletterForm(snooze);
+  const { form, status, serverError, submit, preloadValidation } =
+    useNewsletterForm(snooze);
   const {
     register,
     handleSubmit,
@@ -88,7 +89,12 @@ export function NewsletterPopupDialog({
             </Button>
           </div>
         ) : (
-          <form noValidate onSubmit={handleSubmit(submit)} className="mt-6">
+          <form
+            noValidate
+            onSubmit={handleSubmit(submit)}
+            onFocus={preloadValidation}
+            className="mt-6"
+          >
             {/* Honeypot — see newsletter-signup.tsx. */}
             <div className="hidden" aria-hidden="true">
               <label htmlFor="newsletter-popup-website">

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { track } from "@/lib/analytics/track";
-import { lazyZodResolver, preloadWhenIdle } from "@/lib/forms/lazy-zod-resolver";
+import { lazyZodResolver } from "@/lib/forms/lazy-zod-resolver";
 import type { NewsletterInput } from "@/lib/validation/newsletter";
 
 export type NewsletterStatus = "idle" | "submitting" | "success" | "error";
@@ -62,8 +62,6 @@ export function useNewsletterForm(onSuccess?: () => void) {
     defaultValues: emptyValues(),
   });
 
-  useEffect(() => preloadWhenIdle(validation.preload), []);
-
   const { setError, reset } = form;
 
   async function submit(values: NewsletterInput) {
@@ -119,5 +117,13 @@ export function useNewsletterForm(onSuccess?: () => void) {
     }
   }
 
-  return { form, status, serverError, submit };
+  return {
+    form,
+    status,
+    serverError,
+    submit,
+    /** Put on the form's `onFocus`: fetches the schema when someone starts
+        filling it in. See `lazyZodResolver`. */
+    preloadValidation: validation.preload,
+  };
 }
