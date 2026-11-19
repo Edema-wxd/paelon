@@ -90,7 +90,7 @@ const serverSchema = z
     CRON_SECRET: optionalString,
     DPO_EMAIL: optionalString,
     CONSENT_TEXT_VERSION: z.string().default("2026-01-v1"),
-    /** Sends `X-Robots-Tag: noindex` on every response; read in middleware.ts. */
+    /** Sends `X-Robots-Tag: noindex` on every response; read in middleware.ts and next.config.ts. */
     SITE_NOINDEX: booleanFromString,
   })
   .superRefine((v, ctx) => {
